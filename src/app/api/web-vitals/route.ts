@@ -18,9 +18,25 @@ interface WebVitalMetric {
   timestamp: number;
 }
 
+const VALID_METRIC_NAMES = new Set(['CLS', 'FID', 'FCP', 'INP', 'LCP', 'TTFB']);
+const VALID_RATINGS = new Set(['good', 'needs-improvement', 'poor']);
+
 export async function POST(request: NextRequest) {
   try {
-    const metric: WebVitalMetric = await request.json();
+    const body = await request.json();
+
+    // Validate and sanitize all string inputs to prevent log injection
+    const name = typeof body.name === 'string' && VALID_METRIC_NAMES.has(body.name) ? body.name : null;
+    const value = typeof body.value === 'number' && Number.isFinite(body.value) ? body.value : null;
+    const rating = typeof body.rating === 'string' && VALID_RATINGS.has(body.rating) ? body.rating : 'unknown';
+    const url = typeof body.url === 'string' ? body.url.slice(0, 512) : '';
+    const timestamp = typeof body.timestamp === 'number' ? body.timestamp : Date.now();
+
+    if (!name || value === null) {
+      return NextResponse.json({ success: false, error: 'Invalid metric' }, { status: 400 });
+    }
+
+    const metric: WebVitalMetric = { name, value, rating, delta: 0, id: '', navigationType: '', url, timestamp };
 
     // Log the metric (in production, you'd store this in a database or send to analytics)
     console.log('[Web Vitals API]', {
@@ -33,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Check if CLS is within acceptable threshold
     if (metric.name === 'CLS' && metric.value >= 0.1) {
-      console.warn(`[Web Vitals] CLS score ${metric.value} exceeds threshold of 0.1 on ${metric.url}`);
+      console.warn(`[Web Vitals] CLS score ${metric.value} exceeds threshold of 0.1`);
     }
 
     // TODO: Store metrics in database for analysis

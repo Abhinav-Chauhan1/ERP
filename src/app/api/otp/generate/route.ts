@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // Send OTP via SMS if it's a mobile number
     const isMobile = /^\d{10}$/.test(identifier.trim())
-    console.log('📱 Mobile detection:', { identifier, trimmed: identifier.trim(), isMobile })
+    console.log('📱 Mobile detection:', { isMobile })
 
     if (isMobile) {
       try {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         const formattedMobile = `+91${identifier.trim()}`
         const message = `Your OTP for ${school.name} login is: ${otpCode}. Valid for 5 minutes. Do not share this code.`
 
-        console.log('📤 Attempting to send SMS:', { to: formattedMobile, message })
+        console.log('📤 Attempting to send SMS:', { to: '[REDACTED]', message: '[REDACTED]' })
 
         // Send SMS using MSG91 service
         const smsResult = await sendSMS(formattedMobile, message)
@@ -163,11 +163,6 @@ export async function POST(request: NextRequest) {
       }
     } else {
       console.log('⚠️ Not sending SMS - identifier is not a 10-digit mobile number')
-    }
-
-    // For development/testing, also log the OTP
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`OTP for ${identifier}: ${otpCode}`)
     }
 
     return NextResponse.json({

@@ -28,6 +28,7 @@ model User {
   mobile                   String?                @unique
   passwordHash             String?
   mustChangePassword       Boolean                @default(false)
+  passwordChangedAt        DateTime?
   accounts                 Account[]
   administrator            Administrator?
   documents                Document[]
@@ -267,10 +268,12 @@ model EnhancedSubscription {
   updatedAt              DateTime           @updatedAt
   razorpaySubscriptionId String?            @unique
   plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
-  school                 School             @relation(fields: [schoolId], references: [id])
+  school                 School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   invoices               Invoice[]
   payments               Payment[]
 
+  @@index([schoolId])
+  @@index([status])
   @@map("enhanced_subscriptions")
 }
 
@@ -286,9 +289,10 @@ model Invoice {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   razorpayInvoiceId String?              @unique
-  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id])
+  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   payments          Payment[]
 
+  @@index([subscriptionId])
   @@map("invoices")
 }
 
@@ -305,9 +309,11 @@ model Payment {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   razorpayPaymentId String?              @unique
-  invoice           Invoice?             @relation(fields: [invoiceId], references: [id])
-  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id])
+  invoice           Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
+  @@index([subscriptionId])
+  @@index([invoiceId])
   @@map("payments")
 }
 
@@ -327,8 +333,9 @@ model PaymentMethodRecord {
   metadata           Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
-  school             School   @relation(fields: [schoolId], references: [id])
+  school             School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId])
   @@map("payment_method_records")
 }
 
@@ -855,6 +862,8 @@ model ClassEnrollment {
   student    Student          @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, classId, sectionId])
+  @@index([classId])
+  @@index([status])
   @@index([schoolId])
 }
 
@@ -909,7 +918,7 @@ model SubjectVariant {
 model SubjectGroup {
   id                String                @id @default(cuid())
   name              String
-  code              String                @unique
+  code              String
   description       String?
   boardType         String                @default("CBSE")
   applicableClasses String[]
@@ -919,6 +928,7 @@ model SubjectGroup {
   school            School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjects          SubjectGroupMapping[]
 
+  @@unique([schoolId, code])
   @@index([schoolId])
 }
 
@@ -1186,6 +1196,11 @@ model TimetableSlot {
   timetable        Timetable      @relation(fields: [timetableId], references: [id])
   topic            SubModule?     @relation(fields: [topicId], references: [id])
 
+  @@index([timetableId])
+  @@index([classId])
+  @@index([sectionId])
+  @@index([day])
+  @@index([subjectTeacherId])
   @@index([topicId])
   @@index([schoolId])
 }
@@ -1236,6 +1251,8 @@ model Exam {
   components        ExamComponent[]
   subjectMarkConfig SubjectMarkConfig[]
 
+  @@index([termId])
+  @@index([examTypeId])
   @@index([schoolId])
   @@index([classId])
 }
@@ -1256,9 +1273,9 @@ model ExamResult {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   schoolId       String
-  exam           Exam     @relation(fields: [examId], references: [id])
+  exam           Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student        Student  @relation(fields: [studentId], references: [id])
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentId])
   @@index([studentId, examId])
@@ -1357,7 +1374,7 @@ model Assignment {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   schoolId     String
-  creator      Teacher?               @relation(fields: [creatorId], references: [id])
+  creator      Teacher?               @relation(fields: [creatorId], references: [id], onDelete: SetNull)
   school       School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subject      Subject                @relation(fields: [subjectId], references: [id])
   classes      AssignmentClass[]
@@ -1365,6 +1382,7 @@ model Assignment {
 
   @@index([subjectId])
   @@index([dueDate])
+  @@index([creatorId])
   @@index([schoolId])
 }
 
@@ -1373,7 +1391,7 @@ model AssignmentClass {
   assignmentId String
   classId      String
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   schoolId     String
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   class        Class      @relation(fields: [classId], references: [id])
@@ -1394,11 +1412,11 @@ model AssignmentSubmission {
   feedback       String?
   status         SubmissionStatus @default(PENDING)
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   schoolId       String
-  assignment     Assignment       @relation(fields: [assignmentId], references: [id])
+  assignment     Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student        Student          @relation(fields: [studentId], references: [id])
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([assignmentId, studentId])
   @@index([studentId])
@@ -1424,18 +1442,20 @@ model ReportCard {
   isPublished      Boolean             @default(false)
   publishDate      DateTime?
   createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
   schoolId         String
   academicYearId   String?
   remarkType       String?
   resultStatus     String?
+  examTypeId       String?
   academicYear     AcademicYear?       @relation(fields: [academicYearId], references: [id])
   school           School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student          Student             @relation(fields: [studentId], references: [id])
+  student          Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   template         ReportCardTemplate? @relation(fields: [templateId], references: [id])
   term             Term?               @relation(fields: [termId], references: [id])
 
-  @@unique([studentId, termId, academicYearId])
+  @@index([studentId, termId, academicYearId])
+  @@index([studentId, termId, examTypeId])
   @@index([templateId])
   @@index([isPublished])
   @@index([schoolId])
@@ -1451,11 +1471,11 @@ model StudentAttendance {
   reason    String?
   markedBy  String?
   createdAt DateTime         @default(now())
-  updatedAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   schoolId  String
   school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   section   ClassSection     @relation(fields: [sectionId], references: [id])
-  student   Student          @relation(fields: [studentId], references: [id])
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, date, sectionId])
   @@index([studentId, date])
@@ -1472,10 +1492,10 @@ model TeacherAttendance {
   reason    String?
   markedBy  String?
   createdAt DateTime         @default(now())
-  updatedAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   schoolId  String
   school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher   Teacher          @relation(fields: [teacherId], references: [id])
+  teacher   Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([teacherId, date])
   @@index([schoolId])
@@ -1494,10 +1514,13 @@ model LeaveApplication {
   remarks       String?
   attachments   String?
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   schoolId      String
   school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@index([applicantId])
+  @@index([status])
+  @@index([fromDate])
   @@index([schoolId])
 }
 
@@ -1509,7 +1532,7 @@ model FeeType {
   frequency     FeeFrequency         @default(ANNUAL)
   isOptional    Boolean              @default(false)
   createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
   schoolId      String
   feeStructures FeeStructureItem[]
   school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1529,7 +1552,7 @@ model FeeStructure {
   validTo           DateTime?
   isActive          Boolean             @default(true)
   createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   schoolId          String
   payments          FeePayment[]
   academicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
@@ -1538,6 +1561,7 @@ model FeeStructure {
   items             FeeStructureItem[]
   paymentReceipts   PaymentReceipt[]
 
+  @@index([academicYearId])
   @@index([schoolId])
 }
 
@@ -1548,7 +1572,7 @@ model FeeStructureItem {
   amount         Float
   dueDate        DateTime?
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   schoolId       String
   feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
   feeType        FeeType      @relation(fields: [feeTypeId], references: [id])
@@ -1609,11 +1633,11 @@ model FeePayment {
   remarks        String?
   paymentSource  PaymentSource   @default(MANUAL)
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   schoolId       String
-  feeStructure   FeeStructure    @relation(fields: [feeStructureId], references: [id])
+  feeStructure   FeeStructure    @relation(fields: [feeStructureId], references: [id], onDelete: Restrict)
   school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student        Student         @relation(fields: [studentId], references: [id])
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
   paymentReceipt PaymentReceipt?
 
   @@index([studentId, status, paymentDate])
@@ -1642,10 +1666,10 @@ model PaymentReceipt {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   schoolId        String
-  feePayment      FeePayment?   @relation(fields: [feePaymentId], references: [id])
-  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  feePayment      FeePayment?   @relation(fields: [feePaymentId], references: [id], onDelete: SetNull)
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id], onDelete: Restrict)
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student         Student       @relation(fields: [studentId], references: [id])
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
   notes           ReceiptNote[]
 
   @@index([studentId, status])
@@ -1684,7 +1708,7 @@ model Scholarship {
   duration    String?
   fundedBy    String?
   createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
   schoolId    String
   school      School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   recipients  ScholarshipRecipient[]
@@ -1701,11 +1725,11 @@ model ScholarshipRecipient {
   amount        Float
   status        String
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   schoolId      String
-  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id])
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
   school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student       Student     @relation(fields: [studentId], references: [id])
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([scholarshipId, studentId])
   @@index([schoolId])
@@ -1726,12 +1750,14 @@ model Expense {
   attachments    String?
   budgetId       String?
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   schoolId       String
   budgetCategory Budget?       @relation(fields: [budgetId], references: [id])
   school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([schoolId, category])
+  @@index([schoolId, paymentStatus, date])
 }
 
 model Budget {
@@ -1745,7 +1771,7 @@ model Budget {
   endDate         DateTime?
   status          String       @default("Active")
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   schoolId        String
   academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
   school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1798,7 +1824,7 @@ model Payroll {
   status          PaymentStatus @default(PENDING)
   remarks         String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   schoolId        String
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher         Teacher       @relation(fields: [teacherId], references: [id])
@@ -1817,13 +1843,14 @@ model Message {
   readAt      DateTime?
   attachments String?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   schoolId    String
-  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
   school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
   @@index([senderId])
   @@index([createdAt])
   @@index([schoolId])
@@ -1840,13 +1867,14 @@ model Announcement {
   isActive       Boolean       @default(true)
   attachments    String?
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   schoolId       String
-  publisher      Administrator @relation(fields: [publisherId], references: [id])
+  publisher      Administrator @relation(fields: [publisherId], references: [id], onDelete: Restrict)
   school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([isActive])
   @@index([startDate])
+  @@index([publisherId])
   @@index([schoolId])
 }
 
@@ -1860,10 +1888,10 @@ model Notification {
   readAt    DateTime?
   link      String?
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   schoolId  String
   school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([createdAt])
@@ -1882,13 +1910,14 @@ model ParentMeeting {
   location      String?
   notes         String?
   createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   schoolId      String
-  parent        Parent        @relation(fields: [parentId], references: [id])
+  parent        Parent        @relation(fields: [parentId], references: [id], onDelete: Cascade)
   school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher       Teacher       @relation(fields: [teacherId], references: [id])
+  teacher       Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([parentId])
+  @@index([parentId, scheduledDate])
   @@index([teacherId])
   @@index([scheduledDate])
   @@index([status])
@@ -1900,7 +1929,7 @@ model DocumentType {
   name        String
   description String?
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   schoolId    String
   documents   Document[]
   school      School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1922,7 +1951,7 @@ model Document {
   isPublic       Boolean           @default(false)
   tags           String?
   createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   schoolId       String
   documentType   DocumentType?     @relation(fields: [documentTypeId], references: [id])
   school         School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1951,7 +1980,7 @@ model Event {
   isPublic             Boolean            @default(true)
   thumbnail            String?
   createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   schoolId             String
   school               School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   participants         EventParticipant[]
@@ -1972,7 +2001,7 @@ model EventParticipant {
   attended         Boolean  @default(false)
   feedback         String?
   createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   schoolId         String
   event            Event    @relation(fields: [eventId], references: [id])
   school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -2036,8 +2065,8 @@ model AuditLog {
   details    Json?
   schoolId   String?
   action     AuditAction
-  school     School?     @relation(fields: [schoolId], references: [id])
-  user       User?       @relation(fields: [userId], references: [id])
+  school     School?     @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([schoolId, createdAt])
@@ -2055,7 +2084,7 @@ model ComplianceReport {
   reportData      Json
   filePath        String?
   createdAt       DateTime @default(now())
-  generatedByUser User     @relation(fields: [generatedBy], references: [id])
+  generatedByUser User     @relation(fields: [generatedBy], references: [id], onDelete: Restrict)
 
   @@map("compliance_reports")
 }
@@ -2067,8 +2096,8 @@ model AnalyticsEvent {
   userId     String?
   properties Json
   timestamp  DateTime @default(now())
-  school     School?  @relation(fields: [schoolId], references: [id])
-  user       User?    @relation(fields: [userId], references: [id])
+  school     School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([eventType, timestamp])
   @@index([schoolId, timestamp])
@@ -2110,9 +2139,9 @@ model BookIssue {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   schoolId   String
-  book       Book        @relation(fields: [bookId], references: [id])
+  book       Book        @relation(fields: [bookId], references: [id], onDelete: Restrict)
   school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student    Student     @relation(fields: [studentId], references: [id])
+  student    Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, status])
   @@index([bookId, status])
@@ -2128,12 +2157,13 @@ model BookReservation {
   expiresAt  DateTime
   status     ReservationStatus @default(ACTIVE)
   schoolId   String
-  book       Book              @relation(fields: [bookId], references: [id])
+  book       Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
   school     School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student    Student           @relation(fields: [studentId], references: [id])
+  student    Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, status])
   @@index([bookId, status])
+  @@index([expiresAt, status])
   @@index([schoolId])
 }
 
@@ -2226,7 +2256,7 @@ model MeritListConfig {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   meritLists     MeritList[]
-  appliedClass   Class       @relation("MeritListConfigs", fields: [appliedClassId], references: [id])
+  appliedClass   Class       @relation("MeritListConfigs", fields: [appliedClassId], references: [id], onDelete: Cascade)
   school         School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([appliedClassId])
@@ -2243,8 +2273,8 @@ model MeritList {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   schoolId          String
-  appliedClass      Class            @relation("GeneratedMeritLists", fields: [appliedClassId], references: [id])
-  config            MeritListConfig  @relation(fields: [configId], references: [id])
+  appliedClass      Class            @relation("GeneratedMeritLists", fields: [appliedClassId], references: [id], onDelete: Cascade)
+  config            MeritListConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
   school            School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   entries           MeritListEntry[]
 
@@ -3004,7 +3034,7 @@ model HostelRoomAllocation {
   feePayments   HostelFeePayment[]
   room          HostelRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
   school        School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student       Student            @relation(fields: [studentId], references: [id])
+  student       Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, studentId, allocatedDate])
   @@index([studentId, status])
@@ -3030,7 +3060,7 @@ model HostelVisitor {
   updatedAt       DateTime  @updatedAt
   schoolId        String
   school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student         Student   @relation(fields: [studentId], references: [id])
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, checkInTime])
   @@index([checkInTime])
@@ -3059,7 +3089,7 @@ model HostelFeePayment {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   schoolId      String
-  allocation    HostelRoomAllocation @relation(fields: [allocationId], references: [id])
+  allocation    HostelRoomAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
   school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([allocationId, month, year])
@@ -3086,9 +3116,9 @@ model HostelComplaint {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   schoolId    String
-  hostel      Hostel            @relation(fields: [hostelId], references: [id])
+  hostel      Hostel            @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student     Student           @relation(fields: [studentId], references: [id])
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([hostelId, status])
   @@index([studentId, status])
@@ -3210,7 +3240,7 @@ model CourseEnrollment {
   schoolId          String
   course            Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
   school            School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student           Student                @relation(fields: [studentId], references: [id])
+  student           Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
   lessonProgress    LessonProgress[]
 
   @@unique([courseId, studentId])
@@ -3439,7 +3469,7 @@ model ReportCardTemplate {
 
 model CalendarEventCategory {
   id          String          @id @default(cuid())
-  name        String          @unique
+  name        String
   description String?
   color       String
   icon        String?
@@ -3451,6 +3481,7 @@ model CalendarEventCategory {
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   events      CalendarEvent[]
 
+  @@unique([schoolId, name])
   @@index([isActive, order])
   @@index([schoolId])
   @@map("calendar_event_categories")
@@ -3679,9 +3710,11 @@ model SupportTicket {
   updatedAt    DateTime        @updatedAt
   assignee     User?           @relation("AssignedTickets", fields: [assignedTo], references: [id])
   creator      User            @relation("CreatedTickets", fields: [createdBy], references: [id])
-  school       School          @relation(fields: [schoolId], references: [id])
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   comments     TicketComment[]
 
+  @@index([schoolId])
+  @@index([status])
   @@map("support_tickets")
 }
 
@@ -3692,8 +3725,8 @@ model TicketComment {
   content    String
   isInternal Boolean       @default(false)
   createdAt  DateTime      @default(now())
-  author     User          @relation(fields: [authorId], references: [id])
-  ticket     SupportTicket @relation(fields: [ticketId], references: [id])
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("ticket_comments")
 }
@@ -4636,4 +4669,48 @@ enum LessonContentType {
   TEXT
   AUDIO
   INTERACTIVE
+}
+
+// ---------------------------------------------------------------------------
+// System Configuration — used by configuration-service.ts
+// ---------------------------------------------------------------------------
+
+model SystemConfiguration {
+  id          String   @id @default(cuid())
+  key         String
+  value       Json
+  description String?
+  category    String   @default("GLOBAL")
+  environment String   @default("production")
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([key, environment])
+  @@index([category])
+  @@index([environment])
+}
+
+model FeatureFlag {
+  id                 String   @id @default(cuid())
+  name               String
+  description        String?
+  isEnabled          Boolean  @default(false)
+  rolloutPercentage  Int      @default(0)
+  rolloutStrategy    String   @default("PERCENTAGE")
+  targetSchools      Json?
+  targetUsers        Json?
+  conditions         Json?
+  environment        String   @default("production")
+  startDate          DateTime?
+  endDate            DateTime?
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([name, environment])
+  @@index([environment, isEnabled])
 }

@@ -3,7 +3,7 @@ import { getStudentCalendarEvents } from "@/lib/actions/calendar-widget-actions"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get("limit") || "5");
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "5", 10) || 5, 1), 100);
 
   const result = await getStudentCalendarEvents(limit);
   

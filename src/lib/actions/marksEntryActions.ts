@@ -237,6 +237,10 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
             (entry.theoryMarks || 0) +
             (entry.practicalMarks || 0) +
             (entry.internalMarks || 0);
+          // Cap at exam.totalMarks when no SubjectMarkConfig provides component-level limits
+          if (!markConfig && totalMarks > exam.totalMarks) {
+            totalMarks = exam.totalMarks;
+          }
           percentage = calculatePercentage(totalMarks, exam.totalMarks);
           grade = await calculateGradeForPercentage(percentage);
         }

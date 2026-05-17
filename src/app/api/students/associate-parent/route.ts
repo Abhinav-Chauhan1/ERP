@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // POST /api/students/associate-parent - Associate a parent with a student
 export async function POST(request: NextRequest) {
@@ -9,6 +10,13 @@ export async function POST(request: NextRequest) {
         if (!session?.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const context = await requireSchoolAccess();
+        const schoolId = context.isSuperAdmin ? undefined : context.schoolId!;
 
         const body = await request.json();
         const { studentId, parentId, isPrimary } = body;
@@ -20,24 +28,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if association already exists
-        const existingAssociation = await db.studentParent.findFirst({
-            where: {
-                studentId,
-                parentId,
-            },
-        });
-
-        if (existingAssociation) {
-            return NextResponse.json(
-                { message: "This parent is already associated with the student" },
-                { status: 400 }
-            );
-        }
-
-        // Get schoolId from student record
-        const student = await db.student.findUnique({
-            where: { id: studentId },
+        // Verify student belongs to the current school (prevents cross-tenant access)
+        const student = await db.student.findFirst({
+            where: { id: studentId, ...(schoolId ? { schoolId } : {}) },
             select: { schoolId: true }
         });
 
@@ -49,31 +42,37 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify parent exists and belongs to same school
-        const parent = await db.parent.findUnique({
-            where: { id: parentId },
+        const parent = await db.parent.findFirst({
+            where: { id: parentId, schoolId: student.schoolId },
             select: { schoolId: true }
         });
 
         if (!parent) {
             return NextResponse.json(
-                { message: "Parent not found" },
+                { message: "Parent not found or does not belong to this school" },
                 { status: 404 }
             );
         }
 
-        if (parent.schoolId !== student.schoolId) {
+        // Check if association already exists
+        const existingAssociation = await db.studentParent.findFirst({
+            where: { studentId, parentId },
+        });
+
+        if (existingAssociation) {
             return NextResponse.json(
-                { message: "Parent and student must belong to the same school" },
+                { message: "This parent is already associated with the student" },
                 { status: 400 }
             );
         }
 
-        // If setting as primary, unset any existing primary parent
+        // If setting as primary, unset any existing primary parent — scoped to this school via student
         if (isPrimary) {
             await db.studentParent.updateMany({
                 where: {
                     studentId,
                     isPrimary: true,
+                    student: { schoolId: student.schoolId },
                 },
                 data: {
                     isPrimary: false,

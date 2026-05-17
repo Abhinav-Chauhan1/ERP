@@ -484,10 +484,11 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
       );
     }
 
-    // Batch create new records
+    // Batch create new records (skipDuplicates guards the unique constraint on studentId+date+sectionId)
     if (recordsToCreate.length > 0) {
       await db.studentAttendance.createMany({
         data: recordsToCreate,
+        skipDuplicates: true,
       });
     }
 

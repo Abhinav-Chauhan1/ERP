@@ -26,7 +26,6 @@ const publicRoutes = [
   /^\/api\/webhooks/,
   /^\/api\/csrf-token/,
   /^\/api\/web-vitals/,
-  /^\/api\/test-rate-limit/,
   /^\/api\/subdomain/, // Subdomain validation API
   /^\/api\/schools\/validate/, // School validation API
   /^\/api\/otp/, // OTP generation API
@@ -201,12 +200,21 @@ export default auth(async (req) => {
   }
 
   // Force password change on first login
-  if (
-    session.user.mustChangePassword &&
-    !pathname.startsWith("/auth/change-password") &&
-    !pathname.startsWith("/api/")
-  ) {
-    return NextResponse.redirect(new URL("/auth/change-password", req.url));
+  if (session.user.mustChangePassword) {
+    // Auth endpoints and the change-password action itself are always allowed
+    const isChangePasswordPath = pathname.startsWith("/auth/change-password");
+    const isAuthApi = pathname.startsWith("/api/auth/");
+
+    if (!isChangePasswordPath && !isAuthApi) {
+      if (pathname.startsWith("/api/")) {
+        // Block API calls with a machine-readable error so clients can redirect
+        return NextResponse.json(
+          { error: "PASSWORD_CHANGE_REQUIRED" },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL("/auth/change-password", req.url));
+    }
   }
 
   // Role-based route protection

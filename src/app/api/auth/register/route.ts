@@ -7,6 +7,7 @@ import { getVerificationEmailHtml } from "@/lib/utils/email-templates"
 import { UserRole } from "@prisma/client"
 import { schoolContextService } from "@/lib/services/school-context-service"
 import { logAuditEvent } from "@/lib/services/audit-service"
+import { rateLimitingService } from "@/lib/services/rate-limiting-service"
 import crypto from "crypto"
 
 /**
@@ -41,7 +42,20 @@ function determineRoleFromContext(schoolCode?: string): UserRole {
 }
 
 export async function POST(request: NextRequest) {
+  const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                   request.headers.get('x-real-ip') ||
+                   'unknown'
+
   try {
+    // Rate limit: 5 registrations per 15 minutes per IP
+    const rateLimitResult = await rateLimitingService.checkLoginRateLimit(`register:${ipAddress}`)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many registration attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
 
     // C-7: Validate with Zod — role field is absent from schema so it is silently stripped

@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, Printer, Download, Mail,
-  Calendar, FileText, User, CheckCircle,
-  Loader2, AlertCircle, Share2
+  ArrowLeft, Printer, FileText, CheckCircle,
+  Loader2, AlertCircle, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,10 +81,6 @@ export default function ReportCardDetailPage() {
     }
   }
 
-  function handleSendEmail() {
-    toast.success("Report card has been sent to parent's email");
-  }
-
   function getInitials(name: string) {
     if (!name) return "ST";
     return name
@@ -152,28 +147,31 @@ export default function ReportCardDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight">Report Card</h1>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <GenerateReportCardDialog
-            studentId={reportCard.studentId}
-            studentName={reportCard.studentName}
-            termId={reportCard.termId}
-            termName={reportCard.term}
-            trigger={
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Printer className="h-4 w-4 mr-2" />
-                Print / Download PDF
-              </Button>
-            }
-          />
+          {reportCard.pdfUrl ? (
+            <Button variant="outline" className="w-full sm:w-auto" asChild>
+              <a href={reportCard.pdfUrl} target="_blank" rel="noopener noreferrer">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </a>
+            </Button>
+          ) : (
+            <GenerateReportCardDialog
+              studentId={reportCard.studentId}
+              studentName={reportCard.studentName}
+              termId={reportCard.termId}
+              termName={reportCard.term}
+              trigger={
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Generate PDF
+                </Button>
+              }
+            />
+          )}
           {!reportCard.isPublished && (
             <Button onClick={() => setPublishDialogOpen(true)} className="w-full sm:w-auto">
               <CheckCircle className="h-4 w-4 mr-2" />
               Publish
-            </Button>
-          )}
-          {reportCard.isPublished && (
-            <Button variant="outline" onClick={handleSendEmail} className="w-full sm:w-auto">
-              <Mail className="h-4 w-4 mr-2" />
-              Send to Parent
             </Button>
           )}
         </div>

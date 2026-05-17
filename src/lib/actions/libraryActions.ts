@@ -10,6 +10,7 @@ import {
 } from "@/lib/schemaValidation/librarySchemaValidation";
 import { calculateOverdueFine } from "@/lib/utils/library";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 
 // Get all books with pagination and filters
 export async function getBooks(params?: {
@@ -21,6 +22,7 @@ export async function getBooks(params?: {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
+    await requirePlanFeature(schoolId, "library");
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;

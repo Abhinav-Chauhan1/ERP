@@ -220,7 +220,7 @@ export async function updateContentProgress(
     // Award XP for completion
     if (isCompleted && !progress.completed) {
       // Import achievement actions to award XP
-      const { awardXP, updateAchievementProgress } = await import('./student-achievements-actions');
+      const { awardXP, updateAchievementProgress } = await import('./student-gamification-actions');
       
       // Award XP based on content type and duration
       let xpPoints = 10; // Base XP

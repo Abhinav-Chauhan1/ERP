@@ -5,46 +5,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@/lib/auth-helpers';
 import { db } from '@/lib/db';
-import { UserRole, PaymentStatus, PaymentMethod } from '@prisma/client';
+import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { verifyPaymentSignature } from '@/lib/utils/payment-gateway';
 import { verifyPaymentSchema } from '@/lib/schemaValidation/parent-fee-schemas';
 import { verifyCsrfToken } from '@/lib/utils/csrf';
 import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
+import { getCurrentParent } from '@/lib/utils/payment-helpers';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-
-/**
- * Helper function to get current parent
- */
-async function getCurrentParent() {
-  const clerkUser = await currentUser();
-
-  if (!clerkUser) {
-    return null;
-  }
-
-  // CRITICAL: Get school context first
-  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-  const schoolId = await getRequiredSchoolId();
-
-  const dbUser = await db.user.findFirst({
-    where: {
-      id: clerkUser.id,    }
-  });
-
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    return null;
-  }
-
-  const parent = await db.parent.findFirst({
-    where: {
-      userId: dbUser.id,    }
-  });
-
-  return parent;
-}
 
 /**
  * Helper function to verify parent-child relationship

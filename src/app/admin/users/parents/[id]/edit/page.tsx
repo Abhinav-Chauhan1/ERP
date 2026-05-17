@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { baseUserSchema, parentSchema } from "@/lib/schemaValidation/usersSchemaValidation";
 import { updateParent } from "@/lib/actions/usersAction";
-import { getParentWithDetails } from "@/lib/actions/parentActions";
+import { getParentWithDetails } from "@/lib/actions/adminParentActions";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -363,7 +363,7 @@ export default function EditParentPage({ params }: EditParentPageProps) {
                 <Label htmlFor="new-password">New Password</Label>
                 <Input
                   id="new-password"
-                  type="text"
+                  type="password"
                   placeholder="Enter new password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}

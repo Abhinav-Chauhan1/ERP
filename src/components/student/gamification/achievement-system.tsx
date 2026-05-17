@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { triggerHapticFeedback } from '@/lib/utils/mobile-navigation';
-import { getStudentAchievements, unlockAchievement, Achievement, StudentStats } from '@/lib/actions/student-achievements-actions';
+import { getStudentAchievements, unlockAchievement, Achievement, StudentStats } from '@/lib/actions/student-gamification-actions';
 import { toast } from 'sonner';
 
 interface AchievementSystemProps {

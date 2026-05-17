@@ -319,6 +319,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         })
 
         if (dbUser && dbUser.isActive) {
+          // Revoke token if password was changed after it was issued
+          if (dbUser.passwordChangedAt && token.iat) {
+            const tokenIssuedAtMs = (token.iat as number) * 1000
+            if (dbUser.passwordChangedAt.getTime() > tokenIssuedAtMs) {
+              return null
+            }
+          }
+
           token.email = dbUser.email
           token.mobile = dbUser.mobile ?? undefined
           token.name = dbUser.name
@@ -345,8 +353,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               token.schoolCode = primary.school.schoolCode
               token.authorizedSchools = activeUserSchools.map((us) => us.schoolId)
             } else {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              token.role = null as any
+              token.role = null
               token.schoolId = null
               token.schoolName = null
               token.schoolCode = null
@@ -354,8 +361,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
         } else {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          token.role = null as any
+          token.role = null
           token.schoolId = null
           token.schoolName = null
           token.schoolCode = null

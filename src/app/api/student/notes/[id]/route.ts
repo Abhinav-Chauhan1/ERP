@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { updateStudentNote, deleteStudentNote } from "@/lib/actions/student-notes-actions";
 
 export async function PUT(
@@ -6,6 +7,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: noteId } = await params;
     const body = await request.json();
     const { title, content, subject, tags, folder, isPublic } = body;
@@ -44,8 +50,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: noteId } = await params;
-    
+
     if (!noteId) {
       return NextResponse.json(
         { success: false, message: "Note ID is required" },

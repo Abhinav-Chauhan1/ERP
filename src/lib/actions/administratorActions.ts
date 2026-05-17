@@ -13,7 +13,6 @@ export async function getAdministratorWithDetails(administratorId: string) {
   }
 
   try {
-    console.log(`Fetching administrator details for ID: ${administratorId}`);
 
     // Get required school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
@@ -40,9 +39,7 @@ export async function getAdministratorWithDetails(administratorId: string) {
     });
 
     if (!administrator) {
-      console.log(`No administrator found with ID: ${administratorId}`);
     } else {
-      console.log(`Found administrator: ${administrator.user.firstName} ${administrator.user.lastName}`);
     }
 
     return administrator;

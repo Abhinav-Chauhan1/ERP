@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { logAuditEvent } from "@/lib/services/audit-service"
+import { rateLimitingService } from "@/lib/services/rate-limiting-service"
 
 /**
  * Validate Password Reset Token API Route
@@ -10,12 +11,21 @@ import { logAuditEvent } from "@/lib/services/audit-service"
  * Requirements: 11.3, 11.8, 15.1, 15.2
  */
 export async function POST(request: NextRequest) {
-  const ipAddress = request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
+  const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                   request.headers.get('x-real-ip') ||
                    'unknown'
   const userAgent = request.headers.get('user-agent') || 'Unknown'
 
   try {
+    // Rate limit: 10 token validation attempts per 15 minutes per IP
+    const rateLimitResult = await rateLimitingService.checkLoginRateLimit(`token-validate:${ipAddress}`)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     const { token } = body
 

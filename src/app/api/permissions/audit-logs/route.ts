@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
     const resource = searchParams.get('resource');
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
+    const rawLimit = parseInt(searchParams.get('limit') || '100', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
     const stats = searchParams.get('stats') === 'true';
 
     // Return statistics if requested

@@ -83,15 +83,15 @@ async function ensureSystemUser(): Promise<string | null> {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify cron secret in production
-    const authHeader = request.headers.get("authorization")
+    // Verify cron secret — fail closed if not configured
     const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!cronSecret) {
+      console.error('[cron/cleanup-sessions] CRON_SECRET environment variable is not configured')
+      return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 })
+    }
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
     const timestamp = new Date()
@@ -198,15 +198,15 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret in production
-    const authHeader = request.headers.get("authorization")
+    // Verify cron secret — fail closed if not configured
     const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!cronSecret) {
+      console.error('[cron/cleanup-sessions] CRON_SECRET environment variable is not configured')
+      return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 })
+    }
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
     const now = new Date()

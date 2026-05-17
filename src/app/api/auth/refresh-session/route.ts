@@ -79,15 +79,7 @@ export async function GET(request: NextRequest) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { 
-          isValid: false, 
-          error: "No active session",
-          debugInfo: {
-            hasSession: !!session,
-            hasUser: !!session?.user,
-            hasUserId: !!session?.user?.id
-          }
-        },
+        { isValid: false, error: "No active session" },
         { status: 401 }
       );
     }
@@ -107,16 +99,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Session validation API error:", error);
-    
+    console.error('[refresh-session] Session validation error:', error);
     return NextResponse.json(
-      { 
-        isValid: false, 
-        error: "Internal server error during session validation",
-        debugInfo: {
-          errorMessage: error instanceof Error ? error.message : "Unknown error"
-        }
-      },
+      { isValid: false, error: 'Session refresh failed. Please sign in again.' },
       { status: 500 }
     );
   }

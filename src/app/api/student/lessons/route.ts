@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit");
 
     if (recommended) {
-      const result = await getRecommendedContent(limit ? parseInt(limit) : 5);
+      const result = await getRecommendedContent(limit ? (Math.min(Math.max(parseInt(limit, 10) || 5, 1), 100)) : 5);
       return NextResponse.json({ success: true, data: result });
     }
 

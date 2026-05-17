@@ -37,7 +37,7 @@ import {
   updateEvent, deleteEvent, updateEventStatus,
   addParticipant, removeParticipant, markAttendance, getEventParticipants,
 } from "@/lib/actions/eventActions";
-import { getUsersForDropdown } from "@/lib/actions/userActions";
+import { getUsersForDropdown } from "@/lib/actions/userDashboardActions";
 import * as z from "zod";
 
 const formatDate = (d: Date | string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });

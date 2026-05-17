@@ -9,7 +9,6 @@ export async function getTeacherWithDetails(teacherId: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) throw new Error("School context required");
-    console.log(`Fetching teacher details for ID: ${teacherId}`);
 
     const teacher = await db.teacher.findFirst({
       where: { id: teacherId, schoolId },
@@ -61,9 +60,7 @@ export async function getTeacherWithDetails(teacherId: string) {
     });
 
     if (!teacher) {
-      console.log(`No teacher found with ID: ${teacherId}`);
     } else {
-      console.log(`Found teacher: ${teacher.user.firstName} ${teacher.user.lastName}`);
     }
 
     return teacher;

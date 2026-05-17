@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       category: searchParams.get('category') || undefined,
       startDate: searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined,
       endDate: searchParams.get('endDate') ? new Date(searchParams.get('endDate')!) : undefined,
-      limit: parseInt(searchParams.get('limit') || '50'),
-      offset: parseInt(searchParams.get('offset') || '0'),
+      limit: Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500),
+      offset: Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0),
       search: searchParams.get('search') || undefined,
     };
 

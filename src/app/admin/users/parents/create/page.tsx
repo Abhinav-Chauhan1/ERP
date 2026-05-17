@@ -82,10 +82,11 @@ export default function CreateParentPage() {
       const fetchStudents = async () => {
         setLoadingStudents(true);
         try {
-          const response = await fetch("/api/students");
+          const response = await fetch("/api/students?limit=200");
           if (response.ok) {
             const data = await response.json();
-            setStudents(data);
+            // Handle both paginated ({ data: [...] }) and legacy ([...]) response shapes
+            setStudents(Array.isArray(data) ? data : data.data ?? []);
           }
         } catch (error) {
           console.error("Error fetching students:", error);

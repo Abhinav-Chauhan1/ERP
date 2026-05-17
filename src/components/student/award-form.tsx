@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
-import { addAward } from "@/lib/actions/student-achievement-actions";
+import { addAward } from "@/lib/actions/student-academic-achievement-actions";
 
 // Form schema
 const formSchema = z.object({

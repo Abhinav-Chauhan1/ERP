@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Specify Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -12,24 +13,41 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
+    if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Check if current user is admin
-    const currentUser = await db.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+    const role = session.user.role as UserRole;
+    if (role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
     const { id } = await params;
-    const user = await db.user.findUnique({
-      where: { id }
+    const context = await requireSchoolAccess();
+
+    const whereClause = context.isSuperAdmin
+      ? { id }
+      : { id, userSchools: { some: { schoolId: context.schoolId! } } };
+
+    const user = await db.user.findFirst({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        mobile: true,
+        role: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+        mustChangePassword: true,
+        avatar: true,
+        // passwordHash, twoFactorSecret, twoFactorBackupCodes intentionally excluded
+      },
     });
 
     if (!user) {
@@ -49,41 +67,46 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
+    if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Check if current user is admin
-    const currentUser = await db.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+    const role = session.user.role as UserRole;
+    if (role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
     const body = await req.json();
-    const { role } = body;
+    const { role: newRole } = body;
 
-    if (!Object.values(UserRole).includes(role)) {
+    if (!Object.values(UserRole).includes(newRole)) {
       return new NextResponse("Invalid role", { status: 400 });
     }
 
     const { id } = await params;
-    const user = await db.user.findUnique({
-      where: { id }
-    });
+    const context = await requireSchoolAccess();
 
-    if (!user) {
+    const whereClause = context.isSuperAdmin
+      ? { id }
+      : { id, userSchools: { some: { schoolId: context.schoolId! } } };
+
+    // Verify target user belongs to this school before updating
+    const target = await db.user.findFirst({ where: whereClause });
+    if (!target) {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    // Update user role in database
     const updatedUser = await db.user.update({
       where: { id },
-      data: { role }
+      data: { role: newRole },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
     });
 
     return NextResponse.json(updatedUser);

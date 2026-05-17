@@ -200,22 +200,18 @@ export async function getUserSchools(userId: string) {
  */
 export async function setActiveSchool(userId: string, schoolId: string) {
   try {
-    // First, deactivate all schools for this user
-    await db.userSchool.updateMany({
-      where: { userId },
-      data: { isActive: false },
-    });
+    const [, activated] = await db.$transaction([
+      db.userSchool.updateMany({
+        where: { userId },
+        data: { isActive: false },
+      }),
+      db.userSchool.updateMany({
+        where: { userId, schoolId },
+        data: { isActive: true },
+      }),
+    ]);
 
-    // Then activate the specified school
-    const result = await db.userSchool.updateMany({
-      where: {
-        userId,
-        schoolId,
-      },
-      data: { isActive: true },
-    });
-
-    return result.count > 0;
+    return activated.count > 0;
   } catch (error) {
     console.error("Error setting active school:", error);
     return false;

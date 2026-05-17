@@ -67,7 +67,12 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-    const hasAccess = user.role === UserRole.ADMIN || event.visibleToRoles.includes(user.role);
+    // Enforce tenant isolation — SUPER_ADMIN can access all events
+    if (user.role !== UserRole.SUPER_ADMIN && event.schoolId !== session.user.schoolId) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    const hasAccess = user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || event.visibleToRoles.includes(user.role);
     if (!hasAccess) return NextResponse.json({ error: 'Event not found or you don\'t have access' }, { status: 404 });
 
     return NextResponse.json(
@@ -150,9 +155,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    // Get the existing event for audit logging
-    const existingEvent = await db.calendarEvent.findUnique({
-      where: { id: id }
+    // Get the existing event for audit logging — scoped to this school
+    const isSuperAdmin = session.user.role === UserRole.SUPER_ADMIN;
+    const existingEvent = await db.calendarEvent.findFirst({
+      where: {
+        id,
+        ...(!isSuperAdmin && session.user.schoolId ? { schoolId: session.user.schoolId } : {}),
+      },
     });
 
     if (!existingEvent) {
@@ -275,9 +284,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       );
     }
 
-    // Get the existing event for audit logging
-    const existingEvent = await db.calendarEvent.findUnique({
-      where: { id: id }
+    // Get the existing event for audit logging — scoped to this school
+    const isSuperAdminDelete = session.user.role === UserRole.SUPER_ADMIN;
+    const existingEvent = await db.calendarEvent.findFirst({
+      where: {
+        id,
+        ...(!isSuperAdminDelete && session.user.schoolId ? { schoolId: session.user.schoolId } : {}),
+      },
     });
 
     if (!existingEvent) {

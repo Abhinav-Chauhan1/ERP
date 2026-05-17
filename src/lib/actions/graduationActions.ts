@@ -139,50 +139,41 @@ async function sendGraduationNotifications(
       },
     });
 
-    let notificationCount = 0;
+    // Build all messages in memory then insert in a single createMany call
+    const messagesToCreate: Array<{
+      senderId: string;
+      recipientId: string;
+      subject: string;
+      content: string;
+      schoolId: string;
+    }> = [];
 
-    // Send notifications to each student and their parents
     for (const student of students) {
-      const message = ceremonyDetails
+      const messageContent = ceremonyDetails
         ? `Congratulations on your graduation! Ceremony details:\nDate: ${ceremonyDetails.ceremonyDate.toLocaleDateString()}\nVenue: ${ceremonyDetails.venue || "TBA"}\nChief Guest: ${ceremonyDetails.chiefGuest || "TBA"}`
         : "Congratulations on your graduation!";
 
-      // Send to student
-      try {
-        await db.message.create({
-          data: {
-            senderId: "system",
-            recipientId: student.userId,
-            subject: "Congratulations on Your Graduation!",
-            content: message,
-            schoolId,
-          },
-        });
-        notificationCount++;
-      } catch (error) {
-        console.error(`Failed to send notification to student ${student.id}:`, error);
-      }
+      messagesToCreate.push({
+        senderId: "system",
+        recipientId: student.userId,
+        subject: "Congratulations on Your Graduation!",
+        content: messageContent,
+        schoolId,
+      });
 
-      // Send to parents
       for (const parentRelation of student.parents) {
-        try {
-          await db.message.create({
-            data: {
-              senderId: "system",
-              recipientId: parentRelation.parent.userId,
-              subject: `Congratulations! ${student.user.firstName} ${student.user.lastName} has graduated`,
-              content: message,
-              schoolId,
-            },
-          });
-          notificationCount++;
-        } catch (error) {
-          console.error(`Failed to send notification to parent:`, error);
-        }
+        messagesToCreate.push({
+          senderId: "system",
+          recipientId: parentRelation.parent.userId,
+          subject: `Congratulations! ${student.user.firstName} ${student.user.lastName} has graduated`,
+          content: messageContent,
+          schoolId,
+        });
       }
     }
 
-    return notificationCount;
+    const result = await db.message.createMany({ data: messagesToCreate });
+    return result.count;
   } catch (error) {
     console.error("Error sending graduation notifications:", error);
     return 0;
@@ -287,37 +278,38 @@ export async function markStudentsAsGraduated(
     let graduatedCount = 0;
     let alumniCreated = 0;
 
-    // Process each student in a transaction
+    // Batch-fetch all students and existing alumni in 2 queries to avoid N+1
+    const [studentsWithEnrollments, existingAlumniSet] = await Promise.all([
+      db.student.findMany({
+        where: { id: { in: studentIds }, schoolId },
+        include: {
+          user: true,
+          enrollments: {
+            where: { status: EnrollmentStatus.ACTIVE },
+            include: {
+              class: { include: { academicYear: true } },
+              section: true,
+            },
+          },
+        },
+      }),
+      db.alumni.findMany({
+        where: { studentId: { in: studentIds } },
+        select: { studentId: true },
+      }),
+    ]);
+
+    const studentMap = new Map(studentsWithEnrollments.map((s) => [s.id, s]));
+    const alumniStudentIds = new Set(existingAlumniSet.map((a) => a.studentId));
+
+    // Process each student in a transaction (writes only — reads already done above)
     await db.$transaction(async (tx) => {
       for (const studentId of studentIds) {
         try {
-          // Fetch student with active enrollment
-          const student = await tx.student.findUnique({
-            where: { id: studentId, schoolId },
-            include: {
-              user: true,
-              enrollments: {
-                where: {
-                  status: EnrollmentStatus.ACTIVE,
-                },
-                include: {
-                  class: {
-                    include: {
-                      academicYear: true,
-                    },
-                  },
-                  section: true,
-                },
-              },
-            },
-          });
+          const student = studentMap.get(studentId);
 
           if (!student) {
-            failures.push({
-              studentId,
-              studentName: "Unknown",
-              reason: "Student not found",
-            });
+            failures.push({ studentId, studentName: "Unknown", reason: "Student not found" });
             continue;
           }
 
@@ -334,17 +326,10 @@ export async function markStudentsAsGraduated(
           // Update enrollment status to GRADUATED
           await tx.classEnrollment.update({
             where: { id: activeEnrollment.id },
-            data: {
-              status: EnrollmentStatus.GRADUATED,
-            },
+            data: { status: EnrollmentStatus.GRADUATED },
           });
 
-          // Check if alumni profile already exists
-          const existingAlumni = await tx.alumni.findUnique({
-            where: { studentId },
-          });
-
-          if (!existingAlumni) {
+          if (!alumniStudentIds.has(studentId)) {
             // Create alumni profile
             await tx.alumni.create({
               data: {

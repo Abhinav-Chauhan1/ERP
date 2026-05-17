@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getSubjectPerformanceReport } from "@/lib/actions/subjectPerformanceActions";
 import { db } from "@/lib/db";
+import { UserRole } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (!["ADMIN", "TEACHER"].includes(session.user.role as string)) {
+    if (session.user.role !== UserRole.ADMIN && session.user.role !== UserRole.TEACHER) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

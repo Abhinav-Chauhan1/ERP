@@ -57,7 +57,7 @@ export default async function TeacherCoursesPage() {
           <h1 className="text-3xl font-bold">My Courses</h1>
           <p className="text-muted-foreground">Manage your learning courses</p>
         </div>
-        <Link href="/teacher/courses/new">
+        <Link href="/teacher/courses">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Create Course
@@ -71,7 +71,7 @@ export default async function TeacherCoursesPage() {
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No courses yet</h3>
             <p className="text-muted-foreground mb-4">Create your first course to get started</p>
-            <Link href="/teacher/courses/new">
+            <Link href="/teacher/courses">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Course

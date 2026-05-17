@@ -34,6 +34,24 @@ async function checkPermission(resource: string, action: PermissionAction, error
   return userId;
 }
 
+function generateSecureDefaultPassword(): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const special = '!@#$%';
+  const all = upper + lower + digits + special;
+  const buf = new Uint32Array(12);
+  crypto.getRandomValues(buf);
+  // Guarantee at least one of each character class
+  return (
+    upper[buf[0] % upper.length] +
+    lower[buf[1] % lower.length] +
+    digits[buf[2] % digits.length] +
+    special[buf[3] % special.length] +
+    Array.from(buf.slice(4), (n) => all[n % all.length]).join('')
+  );
+}
+
 // Helper function to create base user
 const createBaseUser = async (userData: {
   firstName: string;
@@ -44,9 +62,9 @@ const createBaseUser = async (userData: {
   role: UserRole;
   password?: string;
   schoolName?: string; // used for welcome email
+  skipForceChange?: boolean; // set true only for system/integration accounts
 }, tx: Prisma.TransactionClient | typeof db = db) => {
-  // Always fall back to firstName@123 if no password provided
-  const plainPassword = userData.password || `${userData.firstName.toLowerCase()}@123`;
+  const plainPassword = userData.password || generateSecureDefaultPassword();
   const hashedPassword = await hashPassword(plainPassword);
 
   // Sanitize inputs
@@ -59,7 +77,7 @@ const createBaseUser = async (userData: {
     role: userData.role,
     emailVerified: new Date(), // Admin-created users are pre-verified
     passwordHash: hashedPassword,
-    mustChangePassword: userData.role === UserRole.STUDENT, // force reset on first login
+    mustChangePassword: userData.skipForceChange !== true, // all admin-created accounts must change password on first login
   };
 
   // Only include email if provided

@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const sortBy = searchParams.get('sortBy') || 'usage';
     const order = searchParams.get('order') || 'desc';
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = Math.max(parseInt(searchParams.get('page') ?? '1', 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500);
 
     // Calculate plan-based storage limits
     const planLimits = {

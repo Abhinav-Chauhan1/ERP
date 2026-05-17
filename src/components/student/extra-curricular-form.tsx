@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
-import { addExtraCurricular } from "@/lib/actions/student-achievement-actions";
+import { addExtraCurricular } from "@/lib/actions/student-academic-achievement-actions";
 
 // Form schema
 const formSchema = z.object({

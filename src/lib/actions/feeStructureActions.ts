@@ -424,7 +424,7 @@ export const bulkRemoveFeeStructuresFromClass = withSchoolAuthAction(async (scho
     const cls = await db.class.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
     if (!cls) return { success: false, error: "Class not found" };
 
-    const result = await feeStructureService.bulkRemoveFromClass(classId, feeStructureIds);
+    const result = await feeStructureService.bulkRemoveFromClass(classId, feeStructureIds, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     revalidatePath("/admin/finance/bulk-operations");
     return { success: true, data: result };

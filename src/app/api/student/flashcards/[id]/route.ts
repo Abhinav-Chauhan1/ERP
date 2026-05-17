@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getFlashcardDeck, updateFlashcardDeck, deleteFlashcardDeck, getFlashcardStats } from "@/lib/actions/flashcard-actions";
 
 export async function GET(
@@ -6,6 +7,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: deckId } = await params;
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
@@ -45,6 +51,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: deckId } = await params;
     const body = await request.json();
     const { name, description, subject, isPublic } = body;
@@ -81,8 +92,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: deckId } = await params;
-    
+
     if (!deckId) {
       return NextResponse.json(
         { success: false, message: "Deck ID is required" },

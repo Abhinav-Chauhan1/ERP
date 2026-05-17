@@ -52,19 +52,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate report
+    // Generate report scoped to the admin's school
+    const schoolId = session.user.schoolId ?? undefined;
     let report;
     const reportDate = date ? new Date(date) : new Date();
 
     switch (type) {
       case "daily":
-        report = await generateDailyReport(reportDate);
+        report = await generateDailyReport(reportDate, schoolId);
         break;
       case "weekly":
-        report = await generateWeeklyReport(reportDate);
+        report = await generateWeeklyReport(reportDate, schoolId);
         break;
       case "monthly":
-        report = await generateMonthlyReport(reportDate);
+        report = await generateMonthlyReport(reportDate, schoolId);
         break;
       default:
         return NextResponse.json(

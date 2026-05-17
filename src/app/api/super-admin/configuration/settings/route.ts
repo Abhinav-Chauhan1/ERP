@@ -16,6 +16,8 @@ const rateLimitConfig = {
   max: 50, // Restrictive for configuration changes
 };
 
+// TODO: connect to UI — settings are currently stubbed; wire to a real store before shipping.
+
 /**
  * GET /api/super-admin/configuration/settings
  * Get system configuration settings

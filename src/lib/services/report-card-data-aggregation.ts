@@ -1,16 +1,17 @@
 /**
  * Report Card Data Aggregation Service
- * 
+ *
  * This service aggregates all data needed for report card generation including:
  * - Student information (with parent/guardian details)
  * - Exam results with component-wise marks breakdown
  * - Multi-term aggregation for annual CBSE report cards
+ * - Per-exam-type aggregation for focused exam cards
  * - Overall performance calculations with CBSE grade scale
  * - Co-scholastic grades
  * - Attendance data
  * - Teacher and principal remarks
  * - Pass/fail result status
- * 
+ *
  * Requirements: 5.2, 10.1, 10.2, 10.3, 10.4
  */
 
@@ -119,6 +120,8 @@ export interface ReportCardData {
   pdfUrl: string | null;
   isPublished: boolean;
   publishDate: Date | null;
+  /** Populated for exam-type cards; null for full-term cards */
+  examType?: { id: string; name: string } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -223,14 +226,14 @@ export interface CBSEGradeEntry {
 /** Standard CBSE 9-point scale (Classes I–X) */
 const CBSE_GRADE_SCALE: CBSEGradeEntry[] = [
   { grade: "A1", minMarks: 91, maxMarks: 100, gradePoint: 10 },
-  { grade: "A2", minMarks: 81, maxMarks: 90, gradePoint: 9 },
-  { grade: "B1", minMarks: 71, maxMarks: 80, gradePoint: 8 },
-  { grade: "B2", minMarks: 61, maxMarks: 70, gradePoint: 7 },
-  { grade: "C1", minMarks: 51, maxMarks: 60, gradePoint: 6 },
-  { grade: "C2", minMarks: 41, maxMarks: 50, gradePoint: 5 },
-  { grade: "D",  minMarks: 33, maxMarks: 40, gradePoint: 4 },
-  { grade: "E1", minMarks: 21, maxMarks: 32, gradePoint: 0 },
-  { grade: "E2", minMarks: 0,  maxMarks: 20, gradePoint: 0 },
+  { grade: "A2", minMarks: 81, maxMarks: 90,  gradePoint: 9  },
+  { grade: "B1", minMarks: 71, maxMarks: 80,  gradePoint: 8  },
+  { grade: "B2", minMarks: 61, maxMarks: 70,  gradePoint: 7  },
+  { grade: "C1", minMarks: 51, maxMarks: 60,  gradePoint: 6  },
+  { grade: "C2", minMarks: 41, maxMarks: 50,  gradePoint: 5  },
+  { grade: "D",  minMarks: 33, maxMarks: 40,  gradePoint: 4  },
+  { grade: "E1", minMarks: 21, maxMarks: 32,  gradePoint: 0  },
+  { grade: "E2", minMarks: 0,  maxMarks: 20,  gradePoint: 0  },
 ];
 
 /**
@@ -279,7 +282,7 @@ export function getCBSEGradePoint(percentage: number, scale: CBSEGradeEntry[]): 
 
 /**
  * Calculate CBSE result status based on subject-wise performance.
- * 
+ *
  * Rules (CBSE):
  * - PASS:        student scores ≥ 33% in every subject
  * - COMPARTMENT: fails in 1–2 subjects
@@ -325,7 +328,7 @@ export async function aggregateReportCardData(
 
     const overallPerformance = calculateOverallPerformance(examResults, reportCard);
 
-    const reportCardData: ReportCardData = {
+    return {
       student: studentData,
       term: termData,
       academicYear: termData.academicYear,
@@ -341,13 +344,89 @@ export async function aggregateReportCardData(
       pdfUrl: reportCard?.pdfUrl || null,
       isPublished: reportCard?.isPublished || false,
       publishDate: reportCard?.publishDate || null,
+      examType: null,
     };
-
-    return reportCardData;
   } catch (error) {
     console.error("Error aggregating report card data:", error);
     throw new Error(
       `Failed to aggregate report card data: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// NEW — Per-exam-type aggregation
+// ---------------------------------------------------------------------------
+
+/**
+ * Aggregate report card data for a single exam type within a term.
+ * Shows only the results for exams of the specified type (e.g. "Unit Test 1").
+ */
+export async function aggregateExamTypeReportCardData(
+  studentId: string,
+  termId: string,
+  examTypeId: string,
+): Promise<ReportCardData> {
+  try {
+    // Fetch the exam type name for display
+    const examType = await db.examType.findUnique({
+      where: { id: examTypeId },
+      select: { id: true, name: true },
+    });
+
+    if (!examType) {
+      throw new Error(`Exam type with ID ${examTypeId} not found`);
+    }
+
+    const [
+      studentData,
+      termData,
+      examResults,
+      coScholasticGrades,
+      attendanceData,
+      reportCard,
+    ] = await Promise.all([
+      fetchStudentInformation(studentId),
+      fetchTermInformation(termId),
+      fetchExamResults(studentId, termId, examTypeId),
+      fetchCoScholasticGrades(studentId, termId),
+      calculateAttendanceForTerm(studentId, termId),
+      fetchExamTypeReportCard(studentId, termId, examTypeId),
+    ]);
+
+    if (examResults.length === 0) {
+      throw new Error(
+        `No results found for exam type "${examType.name}" in the selected term`
+      );
+    }
+
+    const overallPerformance = calculateOverallPerformance(examResults, reportCard);
+
+    return {
+      student: studentData,
+      term: {
+        ...termData,
+        name: `${termData.name} — ${examType.name}`,
+      },
+      academicYear: termData.academicYear,
+      subjects: examResults,
+      coScholastic: coScholasticGrades,
+      attendance: attendanceData,
+      overallPerformance,
+      remarks: {
+        teacherRemarks: reportCard?.teacherRemarks || null,
+        principalRemarks: reportCard?.principalRemarks || null,
+      },
+      templateId: reportCard?.templateId || null,
+      pdfUrl: reportCard?.pdfUrl || null,
+      isPublished: reportCard?.isPublished || false,
+      publishDate: reportCard?.publishDate || null,
+      examType,
+    };
+  } catch (error) {
+    console.error("Error aggregating exam-type report card data:", error);
+    throw new Error(
+      `Failed to aggregate exam-type report card data: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
@@ -358,20 +437,14 @@ export async function aggregateReportCardData(
 
 /**
  * Aggregate data across all terms for an academic year (annual CBSE card).
- *
- * @param studentId  - The student ID
- * @param academicYearId - The academic year ID
- * @returns Complete multi-term report card data
  */
 export async function aggregateMultiTermReportCardData(
   studentId: string,
   academicYearId: string,
 ): Promise<MultiTermReportCardData> {
   try {
-    // 1. Fetch student + parent info
     const studentData = await fetchStudentParentInfo(studentId);
 
-    // 2. Fetch all terms for this academic year
     const terms = await db.term.findMany({
       where: { academicYear: { id: academicYearId } },
       orderBy: { startDate: "asc" },
@@ -392,7 +465,6 @@ export async function aggregateMultiTermReportCardData(
     const schoolId = studentData.schoolId;
     const gradeScale = await getCBSEGradeScale(schoolId);
 
-    // 3. Build per-term slices in parallel
     const termSlices: TermSlice[] = await Promise.all(
       terms.map(async (term) => {
         const [subjects, coScholastic, attendance] = await Promise.all([
@@ -416,12 +488,10 @@ export async function aggregateMultiTermReportCardData(
       }),
     );
 
-    // 4. Aggregate annual subject results (average across terms)
     const allSubjects = aggregateAnnualSubjects(termSlices, gradeScale);
     const scholasticSubjects = allSubjects.filter((s) => s.subjectCategory === "SCHOLASTIC");
     const additionalSubjects = allSubjects.filter((s) => s.subjectCategory === "ADDITIONAL");
 
-    // 5. Calculate overall performance
     const presentSubjects = scholasticSubjects.filter((s) => !s.isAbsent);
     const totalObtained = presentSubjects.reduce((sum, s) => sum + s.totalMarks, 0);
     const totalMax = presentSubjects.reduce((sum, s) => sum + s.maxMarks, 0);
@@ -431,7 +501,6 @@ export async function aggregateMultiTermReportCardData(
       .map((s) => s.gradePoint!);
     const cgpa = calculateCGPA(gradePoints);
 
-    // 6. Fetch annual report card record
     const reportCard = await fetchAnnualReportCard(studentId, academicYearId);
     const resultStatus = calculateResultStatus(scholasticSubjects);
 
@@ -655,16 +724,19 @@ async function fetchTermInformation(termId: string): Promise<TermInfo> {
 }
 
 /**
- * Fetch exam results — legacy version (backward compat).
- * Returns SubjectResult[] without component marks.
+ * Fetch exam results.
+ * When examTypeId is provided, returns only results for that exam type.
+ * Without examTypeId, returns all exam results for the term (full-term card).
  */
 async function fetchExamResults(
   studentId: string,
-  termId: string
+  termId: string,
+  examTypeId?: string,
 ): Promise<SubjectResult[]> {
   const exams = await db.exam.findMany({
     where: {
       termId,
+      ...(examTypeId ? { examTypeId } : {}),
       results: {
         some: {
           studentId,
@@ -713,6 +785,7 @@ async function fetchExamResults(
   const student = await db.student.findUnique({
     where: { id: studentId },
     select: {
+      schoolId: true,
       enrollments: {
         where: { status: "ACTIVE" },
         select: { classId: true },
@@ -722,8 +795,11 @@ async function fetchExamResults(
   });
 
   const classId = student?.enrollments[0]?.classId;
-  const assessmentRules = classId
-    ? await db.assessmentRule.findMany({ where: { classId } })
+  const schoolId = student?.schoolId;
+  // When filtering by a single exam type, skip assessment rule aggregation —
+  // just sum raw marks directly across subjects
+  const assessmentRules = (classId && schoolId && !examTypeId)
+    ? await db.assessmentRule.findMany({ where: { classId, schoolId } })
     : [];
 
   // Group results by subject
@@ -744,13 +820,18 @@ async function fetchExamResults(
 
     let aggregatedObtained = 0;
     let aggregatedTotal = 0;
+    let theoryObt = 0, theoryMax = 0, hasTheory = false;
+    let practObt = 0, practMax = 0, hasPract = false;
+    let intObt = 0, intMax = 0, hasInt = false;
 
     if (assessmentRules.length > 0) {
       const ruleExamsMap = new Map<string, ExamWithResults[]>();
       const unruledExams: ExamWithResults[] = [];
 
       for (const exam of subjectExams) {
-        const rule = assessmentRules.find((r: AssessmentRuleWithExamTypes) => r.examTypes.includes(exam.examTypeId));
+        const rule = assessmentRules.find(
+          (r: AssessmentRuleWithExamTypes) => r.examTypes.includes(exam.examTypeId)
+        );
         if (rule) {
           if (!ruleExamsMap.has(rule.id)) ruleExamsMap.set(rule.id, []);
           ruleExamsMap.get(rule.id)!.push(exam);
@@ -763,7 +844,7 @@ async function fetchExamResults(
         const rule = assessmentRules.find((r: AssessmentRuleWithExamTypes) => r.id === ruleId)!;
         const marks = examsForRule.map((e: ExamWithResults) => ({
           obtained: e.results[0]?.totalMarks || e.results[0]?.marks || 0,
-          total: e.subjectMarkConfig[0]?.totalMarks || e.totalMarks || 100
+          total: e.subjectMarkConfig[0]?.totalMarks || e.totalMarks || 100,
         }));
         const aggregated = aggregateMarksByRule(marks, rule);
         aggregatedObtained += aggregated.obtained;
@@ -776,8 +857,18 @@ async function fetchExamResults(
       }
     } else {
       for (const exam of subjectExams) {
-        aggregatedObtained += exam.results[0]?.totalMarks || exam.results[0]?.marks || 0;
-        aggregatedTotal += exam.subjectMarkConfig[0]?.totalMarks || exam.totalMarks || 100;
+        const result = exam.results[0];
+        const config = exam.subjectMarkConfig[0];
+        aggregatedObtained += result?.totalMarks || result?.marks || 0;
+        aggregatedTotal += config?.totalMarks || exam.totalMarks || 100;
+
+        // Collect theory/practical/internal for display
+        if (result?.theoryMarks != null) { theoryObt += result.theoryMarks; hasTheory = true; }
+        if (config?.theoryMaxMarks != null) theoryMax += config.theoryMaxMarks;
+        if (result?.practicalMarks != null) { practObt += result.practicalMarks; hasPract = true; }
+        if (config?.practicalMaxMarks != null) practMax += config.practicalMaxMarks;
+        if (result?.internalMarks != null) { intObt += result.internalMarks; hasInt = true; }
+        if (config?.internalMaxMarks != null) intMax += config.internalMaxMarks;
       }
     }
 
@@ -788,12 +879,12 @@ async function fetchExamResults(
       subjectName: firstExam.subject.name,
       subjectCode: firstExam.subject.code,
       subjectType: firstExam.subject.type,
-      theoryMarks: null,
-      theoryMaxMarks: null,
-      practicalMarks: null,
-      practicalMaxMarks: null,
-      internalMarks: null,
-      internalMaxMarks: null,
+      theoryMarks: hasTheory ? theoryObt : null,
+      theoryMaxMarks: hasTheory ? theoryMax : null,
+      practicalMarks: hasPract ? practObt : null,
+      practicalMaxMarks: hasPract ? practMax : null,
+      internalMarks: hasInt ? intObt : null,
+      internalMaxMarks: hasInt ? intMax : null,
       totalMarks: aggregatedObtained,
       maxMarks: aggregatedTotal,
       percentage,
@@ -860,7 +951,6 @@ async function fetchExamResultsWithComponents(
           totalMarks: true,
         },
       },
-      // Fetch defined components
       components: {
         orderBy: { order: "asc" },
         select: {
@@ -880,7 +970,6 @@ async function fetchExamResultsWithComponents(
     },
   });
 
-  // Group by subject
   const subjectMap = new Map<string, typeof exams>();
 
   for (const exam of exams) {
@@ -896,12 +985,10 @@ async function fetchExamResultsWithComponents(
   for (const [subjectId, subjectExams] of subjectMap.entries()) {
     const firstExam = subjectExams[0];
 
-    // Build component marks from all exams for this subject
     const components: ComponentMark[] = [];
     let totalObtained = 0;
     let totalMax = 0;
 
-    // Aggregate theory / practical / internal across exams
     let theoryObt = 0, theoryMax = 0;
     let practObt = 0, practMax = 0;
     let intObt = 0, intMax = 0;
@@ -911,7 +998,6 @@ async function fetchExamResultsWithComponents(
       const result = exam.results[0];
       const config = exam.subjectMarkConfig[0];
 
-      // Component-level marks
       if (exam.components.length > 0) {
         for (const comp of exam.components) {
           const mark = comp.marks[0];
@@ -927,10 +1013,7 @@ async function fetchExamResultsWithComponents(
           totalMax += comp.maxMarks;
         }
       } else {
-        // Fallback: create a synthetic component from the exam type's cbseComponent
         const cbseComp = (exam as any).examType?.cbseComponent;
-        const result = exam.results[0];
-        const config = exam.subjectMarkConfig[0];
         const obtained = result?.totalMarks ?? result?.marks ?? 0;
         const max = config?.totalMarks ?? exam.totalMarks ?? 100;
         if (cbseComp) {
@@ -947,28 +1030,12 @@ async function fetchExamResultsWithComponents(
         totalMax += max;
       }
 
-      // Aggregate theory/practical/internal from ExamResult
-      if (result?.theoryMarks != null) {
-        theoryObt += result.theoryMarks;
-        hasTheory = true;
-      }
-      if (config?.theoryMaxMarks != null) {
-        theoryMax += config.theoryMaxMarks;
-      }
-      if (result?.practicalMarks != null) {
-        practObt += result.practicalMarks;
-        hasPract = true;
-      }
-      if (config?.practicalMaxMarks != null) {
-        practMax += config.practicalMaxMarks;
-      }
-      if (result?.internalMarks != null) {
-        intObt += result.internalMarks;
-        hasInt = true;
-      }
-      if (config?.internalMaxMarks != null) {
-        intMax += config.internalMaxMarks;
-      }
+      if (result?.theoryMarks != null) { theoryObt += result.theoryMarks; hasTheory = true; }
+      if (config?.theoryMaxMarks != null) theoryMax += config.theoryMaxMarks;
+      if (result?.practicalMarks != null) { practObt += result.practicalMarks; hasPract = true; }
+      if (config?.practicalMaxMarks != null) practMax += config.practicalMaxMarks;
+      if (result?.internalMarks != null) { intObt += result.internalMarks; hasInt = true; }
+      if (config?.internalMaxMarks != null) intMax += config.internalMaxMarks;
     }
 
     const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
@@ -1000,14 +1067,11 @@ async function fetchExamResultsWithComponents(
 
 /**
  * Aggregate subject results across terms into annual averages.
- * For each subject, the annual marks = sum of all term marks, and
- * the annual maxMarks = sum of all term maxMarks.
  */
 function aggregateAnnualSubjects(
   termSlices: TermSlice[],
   gradeScale: CBSEGradeEntry[],
 ): TermSubjectResult[] {
-  // Collect all subject IDs across terms
   const subjectMap = new Map<string, {
     info: Pick<TermSubjectResult, "subjectName" | "subjectCode" | "subjectType" | "subjectCategory">;
     totalObtained: number;
@@ -1046,11 +1110,11 @@ function aggregateAnnualSubjects(
       agg.totalMax += subject.maxMarks;
       agg.components.push(...subject.components);
       if (subject.theoryMarks != null) { agg.theoryObt += subject.theoryMarks; agg.hasTheory = true; }
-      if (subject.theoryMaxMarks != null) { agg.theoryMax += subject.theoryMaxMarks; }
+      if (subject.theoryMaxMarks != null) agg.theoryMax += subject.theoryMaxMarks;
       if (subject.practicalMarks != null) { agg.practObt += subject.practicalMarks; agg.hasPract = true; }
-      if (subject.practicalMaxMarks != null) { agg.practMax += subject.practicalMaxMarks; }
+      if (subject.practicalMaxMarks != null) agg.practMax += subject.practicalMaxMarks;
       if (subject.internalMarks != null) { agg.intObt += subject.internalMarks; agg.hasInt = true; }
-      if (subject.internalMaxMarks != null) { agg.intMax += subject.internalMaxMarks; }
+      if (subject.internalMaxMarks != null) agg.intMax += subject.internalMaxMarks;
       if (subject.isAbsent) agg.absentCount++;
       agg.termCount++;
     }
@@ -1091,10 +1155,7 @@ async function fetchCoScholasticGrades(
   termId: string
 ): Promise<CoScholasticResult[]> {
   const coScholasticGrades = await db.coScholasticGrade.findMany({
-    where: {
-      studentId,
-      termId,
-    },
+    where: { studentId, termId },
     select: {
       activity: {
         select: {
@@ -1123,17 +1184,10 @@ async function fetchCoScholasticGrades(
   }));
 }
 
-/**
- * Fetch the term-scoped report card (legacy).
- * Tries both the new compound key and falls back to a manual query
- * if the old `studentId_termId` index doesn't exist.
- */
+/** Fetch the term-scoped report card (full-term, no examTypeId filter). */
 async function fetchReportCard(studentId: string, termId: string) {
-  const reportCard = await db.reportCard.findFirst({
-    where: {
-      studentId,
-      termId,
-    },
+  return db.reportCard.findFirst({
+    where: { studentId, termId, examTypeId: null },
     select: {
       teacherRemarks: true,
       principalRemarks: true,
@@ -1144,20 +1198,33 @@ async function fetchReportCard(studentId: string, termId: string) {
       publishDate: true,
     },
   });
-
-  return reportCard;
 }
 
-/**
- * Fetch the annual report card record (academicYear-scoped, termId = null).
- */
-async function fetchAnnualReportCard(studentId: string, academicYearId: string) {
-  const reportCard = await db.reportCard.findFirst({
-    where: {
-      studentId,
-      academicYearId,
-      termId: null, // annual cards have no term
+/** Fetch a per-exam-type report card record. */
+async function fetchExamTypeReportCard(
+  studentId: string,
+  termId: string,
+  examTypeId: string,
+) {
+  return db.reportCard.findFirst({
+    where: { studentId, termId, examTypeId },
+    select: {
+      id: true,
+      teacherRemarks: true,
+      principalRemarks: true,
+      rank: true,
+      templateId: true,
+      pdfUrl: true,
+      isPublished: true,
+      publishDate: true,
     },
+  });
+}
+
+/** Fetch the annual report card record (academicYear-scoped, termId = null). */
+async function fetchAnnualReportCard(studentId: string, academicYearId: string) {
+  return db.reportCard.findFirst({
+    where: { studentId, academicYearId, termId: null },
     select: {
       teacherRemarks: true,
       principalRemarks: true,
@@ -1169,8 +1236,6 @@ async function fetchAnnualReportCard(studentId: string, academicYearId: string) 
       resultStatus: true,
     },
   });
-
-  return reportCard;
 }
 
 function calculateOverallPerformance(
@@ -1198,8 +1263,8 @@ function calculateOverallPerformance(
   const grade = calculateGrade(percentage);
 
   const gradePoints = presentSubjects
-    .filter(s => s.gradePoint !== null)
-    .map(s => s.gradePoint!);
+    .filter((s) => s.gradePoint !== null)
+    .map((s) => s.gradePoint!);
   const cgpa = calculateCGPA(gradePoints);
 
   return {
@@ -1222,17 +1287,28 @@ export async function batchAggregateReportCardData(
   termId: string
 ): Promise<ReportCardData[]> {
   try {
-    const reportCardDataPromises = studentIds.map((studentId) =>
-      aggregateReportCardData(studentId, termId)
-    );
-
-    const reportCardData = await Promise.all(reportCardDataPromises);
-
-    return reportCardData;
+    return await Promise.all(studentIds.map((id) => aggregateReportCardData(id, termId)));
   } catch (error) {
     console.error("Error batch aggregating report card data:", error);
     throw new Error(
       `Failed to batch aggregate report card data: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+export async function batchAggregateExamTypeReportCardData(
+  studentIds: string[],
+  termId: string,
+  examTypeId: string,
+): Promise<ReportCardData[]> {
+  try {
+    return await Promise.all(
+      studentIds.map((id) => aggregateExamTypeReportCardData(id, termId, examTypeId))
+    );
+  } catch (error) {
+    console.error("Error batch aggregating exam-type report card data:", error);
+    throw new Error(
+      `Failed to batch aggregate exam-type report card data: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
@@ -1245,10 +1321,9 @@ export async function batchAggregateMultiTermData(
   academicYearId: string,
 ): Promise<MultiTermReportCardData[]> {
   try {
-    const results = await Promise.all(
-      studentIds.map((id) => aggregateMultiTermReportCardData(id, academicYearId)),
+    return await Promise.all(
+      studentIds.map((id) => aggregateMultiTermReportCardData(id, academicYearId))
     );
-    return results;
   } catch (error) {
     console.error("Error batch aggregating multi-term report card data:", error);
     throw new Error(

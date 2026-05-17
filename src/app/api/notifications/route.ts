@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') ?? '50');
+    const rawLimit = parseInt(searchParams.get('limit') ?? '50', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const summary = searchParams.get('summary') === 'true';
 

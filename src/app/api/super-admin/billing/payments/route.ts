@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500);
+    const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
 
     let paymentHistory;
     if (schoolId) {

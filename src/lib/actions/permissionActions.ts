@@ -449,6 +449,12 @@ export async function bulkAssignPermissionsToRole(role: UserRole, permissionIds:
       return { success: false, error: 'Unauthorized' };
     }
 
+    // RolePermission is a global table — restricting to SUPER_ADMIN to prevent
+    // one school's admin from altering role permissions for all schools
+    if (session.user.role !== UserRole.SUPER_ADMIN) {
+      return { success: false, error: 'Only super administrators can modify global role permissions' };
+    }
+
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);
     if (!canUpdate) {
       return { success: false, error: 'You do not have permission to assign permissions to roles' };

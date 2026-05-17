@@ -35,20 +35,21 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FileText, Download, Eye, GraduationCap, BookOpen } from 'lucide-react';
+import { Loader2, FileText, Download, Eye, GraduationCap, BookOpen, ClipboardList } from 'lucide-react';
 import {
   generateSingleReportCard,
+  generateSingleExamTypeReportCard,
   previewReportCard,
 } from '@/lib/actions/report-card-generation';
-import { getReportCardTemplates } from '@/lib/actions/reportCardTemplateActions';
 import {
   generateCBSEReportCardAction,
   previewCBSEReportCardAction,
+  getExamTypesForTerm,
 } from '@/lib/actions/reportCardsActions';
 import { getAcademicYearsForDropdown } from '@/lib/actions/termsActions';
 import { getPerformanceColor } from '@/lib/utils/grade-calculator';
 
-type ReportMode = 'term' | 'cbse';
+type ReportMode = 'term' | 'cbse' | 'examtype';
 
 interface GenerateReportCardDialogProps {
   studentId: string;
@@ -78,13 +79,13 @@ export function GenerateReportCardDialog({
   const [loading, setLoading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
-  // Term-based state
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-
   // CBSE state
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>(propYearId ?? '');
+
+  // Exam-type state
+  const [examTypes, setExamTypes] = useState<{ id: string; name: string }[]>([]);
+  const [selectedExamTypeId, setSelectedExamTypeId] = useState('');
 
   // Result state (shared)
   const [generatedPdf, setGeneratedPdf] = useState<{
@@ -95,7 +96,7 @@ export function GenerateReportCardDialog({
 
   const { toast } = useToast();
 
-  // Load templates / academic years when dialog opens
+  // Load academic years / exam types when dialog opens
   const handleOpenChange = useCallback(
     async (isOpen: boolean) => {
       setOpen(isOpen);
@@ -104,15 +105,6 @@ export function GenerateReportCardDialog({
       // Reset
       setGeneratedPdf(null);
       setPreviewData(null);
-
-      if (mode === 'term' && templates.length === 0) {
-        const result = await getReportCardTemplates();
-        if (result.success && result.data) {
-          setTemplates(result.data);
-          const def = result.data.find((t: any) => t.isDefault);
-          if (def) setSelectedTemplate(def.id);
-        }
-      }
 
       if (mode === 'cbse' && academicYears.length === 0) {
         const result = await getAcademicYearsForDropdown();
@@ -124,8 +116,16 @@ export function GenerateReportCardDialog({
           }
         }
       }
+
+      if (mode === 'examtype' && termId && examTypes.length === 0) {
+        const result = await getExamTypesForTerm(termId, studentId);
+        if (result.success && result.data) {
+          setExamTypes(result.data);
+          if (result.data.length > 0) setSelectedExamTypeId(result.data[0].id);
+        }
+      }
     },
-    [mode, templates.length, academicYears.length, selectedYear],
+    [mode, academicYears.length, examTypes.length, selectedYear, termId, studentId],
   );
 
   // Also load data when mode changes while dialog is open
@@ -143,28 +143,40 @@ export function GenerateReportCardDialog({
         }
       });
     }
-    if (mode === 'term' && templates.length === 0) {
-      getReportCardTemplates().then((result) => {
+    if (mode === 'examtype' && termId && examTypes.length === 0) {
+      getExamTypesForTerm(termId, studentId).then((result) => {
         if (result.success && result.data) {
-          setTemplates(result.data);
-          const def = result.data.find((t: any) => t.isDefault);
-          if (def) setSelectedTemplate(def.id);
+          setExamTypes(result.data);
+          if (result.data.length > 0 && !selectedExamTypeId) {
+            setSelectedExamTypeId(result.data[0].id);
+          }
         }
       });
     }
-  }, [mode, open, academicYears.length, templates.length, selectedYear]);
+  }, [mode, open, academicYears.length, examTypes.length, selectedYear, selectedExamTypeId, termId, studentId]);
 
   /* ── Preview ────────────────────────────────────────── */
   const handlePreview = async () => {
     setPreviewing(true);
     try {
       if (mode === 'term') {
-        if (!selectedTemplate || !termId) {
+        if (!termId) {
           toast({
             title: 'Missing Info',
-            description: 'A template and term are required for term-based preview.',
+            description: 'A term is required for term-based preview.',
             variant: 'destructive',
           });
+          return;
+        }
+        const result = await previewReportCard(studentId, termId);
+        if (result.success) {
+          setPreviewData(result.data);
+        } else {
+          toast({ title: 'Preview Failed', description: result.error, variant: 'destructive' });
+        }
+      } else if (mode === 'examtype') {
+        if (!termId || !selectedExamTypeId) {
+          toast({ title: 'Missing Info', description: 'Select an exam type first.', variant: 'destructive' });
           return;
         }
         const result = await previewReportCard(studentId, termId);
@@ -185,7 +197,6 @@ export function GenerateReportCardDialog({
         });
         if (result.success) {
           setPreviewData(result.reportData);
-          // Show inline PDF preview
           if (result.pdfBase64) {
             setGeneratedPdf({
               base64: result.pdfBase64,
@@ -208,18 +219,33 @@ export function GenerateReportCardDialog({
     setLoading(true);
     try {
       if (mode === 'term') {
-        if (!selectedTemplate || !termId) {
+        if (!termId) {
           toast({
             title: 'Missing Info',
-            description: 'A template and term are required.',
+            description: 'A term is required.',
             variant: 'destructive',
           });
           return;
         }
-        const result = await generateSingleReportCard(studentId, termId, selectedTemplate);
+        const result = await generateSingleReportCard(studentId, termId);
         if (result.success && result.data) {
           toast({ title: 'Success', description: 'Report card generated!' });
-          // term-based returns a URL
+          window.open(result.data.pdfUrl, '_blank');
+        } else {
+          toast({ title: 'Failed', description: result.error, variant: 'destructive' });
+        }
+      } else if (mode === 'examtype') {
+        if (!termId || !selectedExamTypeId) {
+          toast({
+            title: 'Missing Info',
+            description: 'Select a term and exam type.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const result = await generateSingleExamTypeReportCard(studentId, termId, selectedExamTypeId);
+        if (result.success && result.data) {
+          toast({ title: 'Success', description: 'Exam-type report card generated!' });
           window.open(result.data.pdfUrl, '_blank');
         } else {
           toast({ title: 'Failed', description: result.error, variant: 'destructive' });
@@ -270,11 +296,17 @@ export function GenerateReportCardDialog({
 
   /* ── Can-act guard ──────────────────────────────────── */
   const canAct =
-    mode === 'term' ? !!selectedTemplate && !!termId : !!selectedYear;
+    mode === 'term'
+      ? !!termId
+      : mode === 'examtype'
+      ? !!termId && !!selectedExamTypeId
+      : !!selectedYear;
 
   const description =
     mode === 'term'
       ? `Generate term report card for ${studentName}${termName ? ` — ${termName}` : ''}`
+      : mode === 'examtype'
+      ? `Generate per-exam-type report card for ${studentName}${termName ? ` — ${termName}` : ''}`
       : `Generate annual CBSE report card for ${studentName}`;
 
   return (
@@ -303,7 +335,7 @@ export function GenerateReportCardDialog({
               setPreviewData(null);
             }}
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="term" className="gap-1.5">
                 <BookOpen className="h-4 w-4" />
                 Term-Based
@@ -312,34 +344,46 @@ export function GenerateReportCardDialog({
                 <GraduationCap className="h-4 w-4" />
                 CBSE Annual
               </TabsTrigger>
+              <TabsTrigger value="examtype" className="gap-1.5">
+                <ClipboardList className="h-4 w-4" />
+                By Exam Type
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {/* Term-specific: Template selection */}
-          {mode === 'term' && (
-            <div className="space-y-2">
-              <Label htmlFor="template">Select Template</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger id="template">
-                  <SelectValue placeholder="Choose a template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                      {t.isDefault && ' (Default)'}
-                      {' - '}
-                      {t.type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Exam-type-specific: Exam type selection */}
+          {mode === 'examtype' && (
+            <div className="space-y-3">
               {!termId && (
                 <p className="text-sm text-amber-600">
                   No term context available. Open this dialog from a term page.
                 </p>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="exam-type">Exam Type</Label>
+                <Select value={selectedExamTypeId} onValueChange={setSelectedExamTypeId} disabled={!termId}>
+                  <SelectTrigger id="exam-type">
+                    <SelectValue placeholder="Choose an exam type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {examTypes.length > 0 ? (
+                      examTypes.map((et) => (
+                        <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No exam types found for this term</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+          )}
+
+          {/* Term-specific: Term context notice */}
+          {mode === 'term' && !termId && (
+            <p className="text-sm text-amber-600">
+              No term context available. Open this dialog from a term page.
+            </p>
           )}
 
           {/* CBSE-specific: Academic year selection */}

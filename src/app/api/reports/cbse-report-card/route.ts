@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { aggregateMultiTermReportCardData } from "@/lib/services/report-card-data-aggregation";
 import {
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (!["ADMIN", "TEACHER"].includes(session.user.role as string)) {
+    if (session.user.role !== UserRole.ADMIN && session.user.role !== UserRole.TEACHER) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const sessionSchoolId = session.user.schoolId as string | undefined;

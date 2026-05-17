@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getStudentAchievements } from "@/lib/actions/student-achievements-actions";
+import { getStudentAchievements } from "@/lib/actions/student-gamification-actions";
 
 export async function GET(request: NextRequest) {
   // C24 FIX: Require authentication

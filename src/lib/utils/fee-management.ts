@@ -5,24 +5,6 @@
  * and helper functions for the parent dashboard fee management system.
  */
 
-// Export error handling utilities
-export {
-  PaymentError,
-  handlePaymentError,
-  createUnauthorizedError,
-  createInvalidChildError,
-  createInvalidFeeStructureError,
-  createPaymentFailedError,
-  createPaymentVerificationError,
-  createReceiptNotFoundError,
-  createInvalidAmountError,
-  createPaymentGatewayError,
-  logPaymentError,
-  formatErrorMessage,
-  isRetryableError,
-  withPaymentErrorHandling,
-} from "./payment-error-handler";
-
 // Export payment helper functions
 export {
   calculateFeeItemStatus,
@@ -38,7 +20,6 @@ export {
   calculateOverdueAmount,
   generateReceiptNumber,
   validatePaymentAmount,
-  formatCurrency,
   formatDate,
   formatDateTime,
   calculatePaymentPercentage,
@@ -46,6 +27,8 @@ export {
   sanitizeTransactionId,
   isValidReceiptNumber,
 } from "./payment-helpers";
+
+export { formatCurrency } from "./export-utils";
 
 // Export validation schemas
 export {

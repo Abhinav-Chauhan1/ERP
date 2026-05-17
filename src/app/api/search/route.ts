@@ -76,53 +76,90 @@ export const GET = withSchoolAuth(async (request, context) => {
     };
 
     // Requirement 23.1: Search across students, teachers, parents, documents, and announcements
-
-    // Search Students
-    const students = await prisma.student.findMany({
-      where: {
-        schoolId: context.schoolId,
-
-        OR: [
-          {
-            user: {
-              firstName: {
-                contains: query, mode: "insensitive"
-              }
-            }
-          },
-          { user: { lastName: { contains: query, mode: "insensitive" } } },
-          { user: { email: { contains: query, mode: "insensitive" } } },
-          { admissionId: { contains: query, mode: "insensitive" } },
-          { rollNumber: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatar: true,
+    // All 5 queries run in parallel to avoid sequential round-trips
+    const [students, teachers, parents, documents, announcements] = await Promise.all([
+      prisma.student.findMany({
+        where: {
+          schoolId: context.schoolId,
+          OR: [
+            { user: { firstName: { contains: query, mode: "insensitive" } } },
+            { user: { lastName: { contains: query, mode: "insensitive" } } },
+            { user: { email: { contains: query, mode: "insensitive" } } },
+            { admissionId: { contains: query, mode: "insensitive" } },
+            { rollNumber: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true, avatar: true } },
+          enrollments: {
+            where: { schoolId: context.schoolId, status: "ACTIVE" },
+            include: {
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+            },
+            take: 1,
           },
         },
-        enrollments: {
-          where: {
-            schoolId: context.schoolId,
-            status: "ACTIVE"
-          },
-          include: {
-            class: {
-              select: { name: true },
-            },
-            section: {
-              select: { name: true },
-            },
-          },
-          take: 1,
+        take: 10,
+      }),
+      prisma.teacher.findMany({
+        where: {
+          schoolId: context.schoolId,
+          OR: [
+            { user: { firstName: { contains: query, mode: "insensitive" } } },
+            { user: { lastName: { contains: query, mode: "insensitive" } } },
+            { user: { email: { contains: query, mode: "insensitive" } } },
+            { employeeId: { contains: query, mode: "insensitive" } },
+          ],
         },
-      },
-      take: 10,
-    });
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true, avatar: true } },
+          subjects: { include: { subject: { select: { name: true } } }, take: 2 },
+        },
+        take: 10,
+      }),
+      prisma.parent.findMany({
+        where: {
+          schoolId: context.schoolId,
+          OR: [
+            { user: { firstName: { contains: query, mode: "insensitive" } } },
+            { user: { lastName: { contains: query, mode: "insensitive" } } },
+            { user: { email: { contains: query, mode: "insensitive" } } },
+          ],
+        },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true, avatar: true } },
+          children: {
+            include: { student: { include: { user: { select: { firstName: true, lastName: true } } } } },
+            take: 2,
+          },
+        },
+        take: 10,
+      }),
+      prisma.document.findMany({
+        where: {
+          schoolId: context.schoolId,
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        include: { user: { select: { firstName: true, lastName: true } } },
+        take: 10,
+      }),
+      prisma.announcement.findMany({
+        where: {
+          schoolId: context.schoolId,
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { content: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        include: { publisher: { include: { user: { select: { firstName: true, lastName: true } } } } },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     results.students = students.map((student) => ({
       id: student.id,
@@ -135,45 +172,6 @@ export const GET = withSchoolAuth(async (request, context) => {
       avatar: student.user.avatar || undefined,
     }));
 
-    // Search Teachers
-    const teachers = await prisma.teacher.findMany({
-      where: {
-        schoolId: context.schoolId,
-
-        OR: [
-          {
-            user: {
-              firstName: {
-                contains: query, mode: "insensitive"
-              }
-            }
-          },
-          { user: { lastName: { contains: query, mode: "insensitive" } } },
-          { user: { email: { contains: query, mode: "insensitive" } } },
-          { employeeId: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        subjects: {
-          include: {
-            subject: {
-              select: { name: true },
-            },
-          },
-          take: 2,
-        },
-      },
-      take: 10,
-    });
-
     results.teachers = teachers.map((teacher) => ({
       id: teacher.id,
       type: "teacher" as const,
@@ -184,51 +182,6 @@ export const GET = withSchoolAuth(async (request, context) => {
       url: `/admin/users/teachers/${teacher.id}`,
       avatar: teacher.user.avatar || undefined,
     }));
-
-    // Search Parents
-    const parents = await prisma.parent.findMany({
-      where: {
-        schoolId: context.schoolId,
-
-        OR: [
-          {
-            user: {
-              firstName: {
-                contains: query, mode: "insensitive"
-              }
-            }
-          },
-          { user: { lastName: { contains: query, mode: "insensitive" } } },
-          { user: { email: { contains: query, mode: "insensitive" } } },
-        ],
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        children: {
-          include: {
-            student: {
-              include: {
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                  },
-                },
-              },
-            },
-          },
-          take: 2,
-        },
-      },
-      take: 10,
-    });
 
     results.parents = parents.map((parent) => ({
       id: parent.id,
@@ -241,31 +194,6 @@ export const GET = withSchoolAuth(async (request, context) => {
       avatar: parent.user.avatar || undefined,
     }));
 
-    // Search Documents
-    const documents = await prisma.document.findMany({
-      where: {
-        schoolId: context.schoolId,
-
-        OR: [
-          {
-            title: {
-              contains: query, mode: "insensitive"
-            }
-          },
-          { description: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      take: 10,
-    });
-
     results.documents = documents.map((doc) => ({
       id: doc.id,
       type: "document" as const,
@@ -273,38 +201,6 @@ export const GET = withSchoolAuth(async (request, context) => {
       subtitle: `${doc.fileType || 'Document'} • Uploaded by ${doc.user.firstName} ${doc.user.lastName}`,
       url: `/admin/documents/${doc.id}`,
     }));
-
-    // Search Announcements
-    const announcements = await prisma.announcement.findMany({
-      where: {
-        schoolId: context.schoolId,
-
-        OR: [
-          {
-            title: {
-              contains: query, mode: "insensitive"
-            }
-          },
-          { content: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      include: {
-        publisher: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
-      take: 10,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
 
     results.announcements = announcements.map((announcement) => ({
       id: announcement.id,

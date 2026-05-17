@@ -21,7 +21,10 @@ async function checkPermission(action: "CREATE" | "UPDATE" | "DELETE" | "VIEW") 
 export async function getAssessmentRules() {
     try {
         await checkPermission("VIEW");
+        const { schoolId } = await requireSchoolAccess();
+        if (!schoolId) return { success: false, error: "School context required" };
         const rules = await db.assessmentRule.findMany({
+            where: { schoolId },
             include: {
                 class: true,
             },
@@ -61,6 +64,13 @@ export async function createAssessmentRule(data: AssessmentRuleFormValues) {
 export async function updateAssessmentRule(data: AssessmentRuleUpdateFormValues) {
     try {
         await checkPermission("UPDATE");
+        const { schoolId } = await requireSchoolAccess();
+        if (!schoolId) return { success: false, error: "School context required" };
+        // Verify ownership before updating
+        const existing = await db.assessmentRule.findUnique({ where: { id: data.id }, select: { schoolId: true } });
+        if (!existing || existing.schoolId !== schoolId) {
+            return { success: false, error: "Rule not found" };
+        }
         const rule = await db.assessmentRule.update({
             where: { id: data.id },
             data: {
@@ -83,6 +93,13 @@ export async function updateAssessmentRule(data: AssessmentRuleUpdateFormValues)
 export async function deleteAssessmentRule(id: string) {
     try {
         await checkPermission("DELETE");
+        const { schoolId } = await requireSchoolAccess();
+        if (!schoolId) return { success: false, error: "School context required" };
+        // Verify ownership before deleting
+        const existing = await db.assessmentRule.findUnique({ where: { id }, select: { schoolId: true } });
+        if (!existing || existing.schoolId !== schoolId) {
+            return { success: false, error: "Rule not found" };
+        }
         await db.assessmentRule.delete({ where: { id } });
         revalidatePath("/admin/assessment/assessment-rules");
         return { success: true };

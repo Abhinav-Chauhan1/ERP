@@ -176,9 +176,11 @@ export function SecureFileUpload({
       });
 
       xhr.addEventListener("load", () => {
+        try {
         if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          
+          let response: any;
+          try { response = JSON.parse(xhr.responseText); } catch { response = { error: 'Invalid server response' }; }
+
           if (response.success) {
             setUploadState({
               status: "success",
@@ -206,8 +208,13 @@ export function SecureFileUpload({
             throw new Error(response.message || "Upload failed");
           }
         } else {
-          const response = JSON.parse(xhr.responseText);
-          throw new Error(response.message || `Upload failed with status ${xhr.status}`);
+          let errResp: any;
+          try { errResp = JSON.parse(xhr.responseText); } catch { errResp = {}; }
+          throw new Error(errResp.message || `Upload failed with status ${xhr.status}`);
+        }
+        } catch (loadError) {
+          const errorMessage = loadError instanceof Error ? loadError.message : "Upload failed";
+          setUploadState({ status: "error", progress: 0, error: errorMessage, file });
         }
       });
 

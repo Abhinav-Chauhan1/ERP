@@ -2,44 +2,63 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 
-// GET /api/students - Get all students for current school
+// GET /api/students - Get paginated students for current school
 export const GET = withSchoolAuth(async (request: NextRequest, context) => {
     try {
-        const students = await db.student.findMany({
-            where: {
-                schoolId: context.schoolId,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        phone: true,
-                        avatar: true,
-                        isActive: true,
+        const { searchParams } = new URL(request.url);
+
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+        const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
+        const skip = (page - 1) * limit;
+
+        const where = { schoolId: context.schoolId };
+
+        const [students, total] = await Promise.all([
+            db.student.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                            avatar: true,
+                            isActive: true,
+                        },
+                    },
+                    enrollments: {
+                        include: {
+                            class: true,
+                            section: true,
+                        },
+                        where: {
+                            status: "ACTIVE",
+                        },
+                        take: 1,
                     },
                 },
-                enrollments: {
-                    include: {
-                        class: true,
-                        section: true,
+                orderBy: {
+                    user: {
+                        firstName: "asc",
                     },
-                    where: {
-                        status: "ACTIVE",
-                    },
-                    take: 1,
                 },
-            },
-            orderBy: {
-                user: {
-                    firstName: "asc",
-                },
+                take: limit,
+                skip,
+            }),
+            db.student.count({ where }),
+        ]);
+
+        return NextResponse.json({
+            data: students,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
             },
         });
-
-        return NextResponse.json(students);
     } catch (error) {
         console.error("Error fetching students:", error);
         return NextResponse.json(

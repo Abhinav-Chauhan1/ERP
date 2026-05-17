@@ -20,7 +20,9 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const folder = formData.get('folder') as string || 'general';
+    // Sanitize folder: allow only safe path segments to prevent path traversal
+    const rawFolder = formData.get('folder') as string || 'general';
+    const folder = rawFolder.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 64) || 'general';
 
     if (!file) {
       return NextResponse.json(
@@ -65,11 +67,11 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Generate unique key
+    // Generate unique key — use school-${schoolId}/ prefix to match the r2-storage-service convention
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(7);
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const key = `${schoolId}/${folder}/${timestamp}-${randomString}-${sanitizedFilename}`;
+    const key = `school-${schoolId}/${folder}/${timestamp}-${randomString}-${sanitizedFilename}`;
 
     // Upload to R2
     const command = new PutObjectCommand({
@@ -87,21 +89,15 @@ export async function POST(request: NextRequest) {
 
     await s3Client.send(command);
 
-    // Generate public URL using R2_CUSTOM_DOMAIN or default to pub-{accountId}.r2.dev
-    let publicUrl: string;
+    // Build public URL only when a custom domain is explicitly configured.
+    // Never fall back to pub-{accountId}.r2.dev — that would expose the account ID.
+    // Without a custom domain, callers must use a presigned URL endpoint to read objects.
+    let url: string | null = null;
     if (process.env.R2_CUSTOM_DOMAIN) {
-      // Use custom domain (remove trailing slash if present)
       const customDomain = process.env.R2_CUSTOM_DOMAIN.replace(/\/$/, '');
-      // Ensure it starts with https://
-      publicUrl = customDomain.startsWith('http') 
-        ? customDomain 
-        : `https://${customDomain}`;
-    } else {
-      // Use R2 public URL format: https://pub-{accountId}.r2.dev
-      publicUrl = `https://pub-${accountId}.r2.dev`;
+      const base = customDomain.startsWith('http') ? customDomain : `https://${customDomain}`;
+      url = `${base}/${key}`;
     }
-    
-    const url = `${publicUrl}/${key}`;
 
     // Return success response
     return NextResponse.json({

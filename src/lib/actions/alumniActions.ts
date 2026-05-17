@@ -16,6 +16,7 @@ import { UserRole, AuditAction } from "@prisma/client";
 import { AlumniService } from "@/lib/services/alumniService";
 import { logAudit } from "@/lib/utils/audit-log";
 import { memoryCache, CACHE_DURATION } from "@/lib/utils/cache";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 import {
   alumniSearchSchema,
   getAlumniProfileSchema,
@@ -180,6 +181,7 @@ export async function searchAlumni(
     // Get required school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    await requirePlanFeature(schoolId, "alumni");
 
     // Validate input
     const validation = alumniSearchSchema.safeParse(input);

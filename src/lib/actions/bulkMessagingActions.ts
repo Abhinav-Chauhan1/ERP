@@ -17,6 +17,7 @@ import {
   NotificationType,
 } from "@/lib/types/communication";
 import { sendBulkNotification } from "@/lib/services/communication-service";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 
 /**
  * Action result type
@@ -65,6 +66,7 @@ export async function sendBulkToClass(data: {
     // Add school isolation
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    await requirePlanFeature(schoolId, "bulk_messaging");
 
     // Check authentication
     const session = await auth();

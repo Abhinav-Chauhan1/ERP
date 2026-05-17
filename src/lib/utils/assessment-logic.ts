@@ -54,14 +54,16 @@ export function aggregateMarksByRule(
         }
 
         case "WEIGHTED_AVERAGE": {
-            // This is usually applied across terms, e.g., Term 1 (40%) + Term 2 (60%)
-            // For simplicity here, we assume the 'weight' in rule applies to the whole set
+            // Weight scales this rule's contribution proportionally, e.g. weight=0.4 means
+            // this rule contributes 40% of the possible marks. Both obtained AND total must
+            // be scaled so the percentage (obtained/total) stays the same but the absolute
+            // contribution to the overall total is reduced correctly.
             const sumObtained = marks.reduce((sum, m) => sum + m.obtained, 0);
             const sumTotal = marks.reduce((sum, m) => sum + m.total, 0);
 
             return {
                 obtained: sumObtained * rule.weight,
-                total: sumTotal // Total doesn't change, just the weight of marks
+                total: sumTotal * rule.weight,
             };
         }
 

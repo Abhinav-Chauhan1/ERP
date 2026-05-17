@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PlusCircle, Calendar, Clock, Building2, GraduationCap, BookOpen, FileText, AlertCircle } from "lucide-react";
-import { getAcademicOverview, getAcademicYears } from "@/lib/actions/academicActions";
+import { getAcademicOverview, getAcademicYears } from "@/lib/actions/academicyearsActions";
 import { formatDate } from "@/lib/utils";
 import { AcademicErrorBoundary } from "@/components/academic/academic-error-boundary";
 
@@ -163,8 +163,8 @@ async function AcademicPageContent() {
                             {year.isCurrent ? 'Current' : new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 align-middle">{'_count' in year ? year._count.terms : year.termsCount}</td>
-                        <td className="py-3 px-4 align-middle">{'_count' in year ? year._count.classes : year.classesCount}</td>
+                        <td className="py-3 px-4 align-middle">{year._count.terms}</td>
+                        <td className="py-3 px-4 align-middle">{year._count.classes}</td>
                         <td className="py-3 px-4 align-middle text-right">
                           <Link href={`/admin/academic/academic-years/${year.id}`}>
                             <Button variant="ghost" size="sm">View</Button>

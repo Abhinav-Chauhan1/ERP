@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
       status: searchParams.get('status') || undefined,
       planId: searchParams.get('planId') || undefined,
       search: searchParams.get('search') || undefined,
-      limit: parseInt(searchParams.get('limit') || '10'),
-      offset: parseInt(searchParams.get('offset') || '0'),
+      limit: Math.min(Math.max(parseInt(searchParams.get('limit') ?? '10', 10) || 10, 1), 500),
+      offset: Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0),
       sortBy: searchParams.get('sortBy') || 'createdAt',
       sortOrder: searchParams.get('sortOrder') || 'desc'
     };

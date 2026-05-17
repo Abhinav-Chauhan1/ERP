@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { updateFlashcard, deleteFlashcard } from "@/lib/actions/flashcard-actions";
 
 export async function PUT(
@@ -6,6 +7,11 @@ export async function PUT(
   { params }: { params: Promise<{ cardId: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { cardId } = await params;
     const body = await request.json();
     const { front, back, difficulty, tags } = body;
@@ -42,6 +48,11 @@ export async function DELETE(
   { params }: { params: Promise<{ cardId: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { cardId } = await params;
     
     if (!cardId) {

@@ -301,13 +301,7 @@ async function processStudentRow(
     // "create" falls through
   }
 
-  // Verify class/section belong to this school
-  const classExists = await db.class.findUnique({ where: { id: classId, schoolId } });
-  if (!classExists) throw new Error(`Class with ID ${classId} not found`);
-
-  const sectionExists = await db.classSection.findUnique({ where: { id: sectionId, schoolId } });
-  if (!sectionExists) throw new Error(`Section with ID ${sectionId} not found`);
-
+  // Class/section already verified before the batch loop — no per-row DB query needed
   const tempPassword = `${validated.firstName.toLowerCase()}@123`;
   const hashedPassword = await hashPassword(tempPassword);
 
@@ -414,10 +408,36 @@ export async function importStudents(
     };
   }
 
-  const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  // Fetch school + pre-verify class/section in parallel (once, not per-row)
+  const [school, classExists, sectionExists] = await Promise.all([
+    db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+    defaultClassId ? db.class.findUnique({ where: { id: defaultClassId, schoolId }, select: { id: true } }) : null,
+    defaultSectionId ? db.classSection.findUnique({ where: { id: defaultSectionId, schoolId }, select: { id: true } }) : null,
+  ]);
   const schoolName = school?.name || "Your School";
 
   const result = initImportResult(data.length);
+
+  if (!defaultClassId) {
+    result.errors.push({ row: 0, field: "classId", message: "Class is required — select from the dropdown" });
+    result.success = false;
+    return result;
+  }
+  if (!classExists) {
+    result.errors.push({ row: 0, field: "classId", message: `Class with ID ${defaultClassId} not found` });
+    result.success = false;
+    return result;
+  }
+  if (!defaultSectionId) {
+    result.errors.push({ row: 0, field: "sectionId", message: "Section is required — select from the dropdown" });
+    result.success = false;
+    return result;
+  }
+  if (!sectionExists) {
+    result.errors.push({ row: 0, field: "sectionId", message: `Section with ID ${defaultSectionId} not found` });
+    result.success = false;
+    return result;
+  }
 
   // Process in batches
   for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
@@ -430,22 +450,9 @@ export async function importStudents(
 
         try {
           const validated = studentImportSchema.parse(row);
-          const classId = defaultClassId;
-          const sectionId = defaultSectionId;
-
-          if (!classId) {
-            result.errors.push({ row: rowNumber, field: "classId", message: "Class is required — select from the dropdown" });
-            result.summary.failed++;
-            return;
-          }
-          if (!sectionId) {
-            result.errors.push({ row: rowNumber, field: "sectionId", message: "Section is required — select from the dropdown" });
-            result.summary.failed++;
-            return;
-          }
 
           const outcome = await processStudentRow(
-            validated, rowNumber, schoolId, schoolName, classId, sectionId, duplicateHandling
+            validated, rowNumber, schoolId, schoolName, defaultClassId, defaultSectionId, duplicateHandling
           );
           result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
         } catch (error) {
@@ -482,34 +489,32 @@ export async function importStudentsBatched(
     };
   }
 
-  const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  // Pre-verify class/section + fetch school in parallel
+  const [school, classExists, sectionExists] = await Promise.all([
+    db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+    defaultClassId ? db.class.findUnique({ where: { id: defaultClassId, schoolId }, select: { id: true } }) : null,
+    defaultSectionId ? db.classSection.findUnique({ where: { id: defaultSectionId, schoolId }, select: { id: true } }) : null,
+  ]);
   const schoolName = school?.name || "Your School";
 
   const batchStart = batchIndex * BATCH_SIZE;
   const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
   const result = initImportResult(data.length);
 
+  if (!defaultClassId || !classExists || !defaultSectionId || !sectionExists) {
+    result.errors.push({ row: 0, message: "Invalid class or section — verify IDs belong to this school" });
+    result.success = false;
+    return { ...result, nextBatch: null };
+  }
+
   await Promise.allSettled(
     batch.map(async (row, idx) => {
       const rowNumber = batchStart + idx + 2;
       try {
         const validated = studentImportSchema.parse(row);
-        const classId = defaultClassId;
-        const sectionId = defaultSectionId;
-
-        if (!classId) {
-          result.errors.push({ row: rowNumber, field: "classId", message: "Class is required — select from the dropdown" });
-          result.summary.failed++;
-          return;
-        }
-        if (!sectionId) {
-          result.errors.push({ row: rowNumber, field: "sectionId", message: "Section is required — select from the dropdown" });
-          result.summary.failed++;
-          return;
-        }
 
         const outcome = await processStudentRow(
-          validated, rowNumber, schoolId, schoolName, classId, sectionId, duplicateHandling
+          validated, rowNumber, schoolId, schoolName, defaultClassId, defaultSectionId, duplicateHandling
         );
         result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
       } catch (error) {

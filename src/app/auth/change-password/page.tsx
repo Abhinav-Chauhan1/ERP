@@ -32,7 +32,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { update } = useSession();
+  const { update, data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -52,7 +52,14 @@ export default function ChangePasswordPage() {
     }
     // Refresh the session so mustChangePassword is cleared in the token
     await update();
-    router.replace("/student");
+    const role = session?.user?.role;
+    switch (role) {
+      case "SUPER_ADMIN": router.replace("/super-admin"); break;
+      case "ADMIN":       router.replace("/admin");       break;
+      case "TEACHER":     router.replace("/teacher");     break;
+      case "PARENT":      router.replace("/parent");      break;
+      default:            router.replace("/student");
+    }
   };
 
   return (

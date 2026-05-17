@@ -22,6 +22,8 @@ const rateLimitConfig = {
   max: 50,
 };
 
+// TODO: connect to UI — feature flags are currently stored in memory (stub); wire to a real store before shipping.
+
 /**
  * GET /api/super-admin/configuration/feature-flags
  * Get all feature flags

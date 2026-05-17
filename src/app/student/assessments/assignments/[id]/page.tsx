@@ -178,7 +178,7 @@ export default async function AssignmentDetailsPage(
                         <div>
                           <h3 className="text-sm font-medium text-gray-500 mb-2">Your Attachments</h3>
                           <div className="space-y-2">
-                            {JSON.parse(assignment.submission.attachments).map((attachment: any, index: number) => (
+                            {(() => { try { return JSON.parse(assignment.submission.attachments); } catch { return []; } })().map((attachment: any, index: number) => (
                               <div key={index} className="flex items-center justify-between p-3 border rounded-md">
                                 <div className="flex items-center">
                                   <FileText className="h-5 w-5 text-blue-600 mr-2" />

@@ -14,6 +14,7 @@ import {
   PaymentStatus,
 } from "@prisma/client";
 import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 
 // ============================================
 // HOSTEL MANAGEMENT
@@ -31,6 +32,7 @@ export async function createHostel(data: {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
+    await requirePlanFeature(schoolId, "hostel");
 
     const hostel = await prisma.hostel.create({
       data: withSchoolId({

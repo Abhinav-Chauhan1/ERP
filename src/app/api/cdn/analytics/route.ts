@@ -181,7 +181,7 @@ export async function DELETE(request: NextRequest) {
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const maxAge = parseInt(searchParams.get('maxAge') || '30');
+    const maxAge = parseInt(searchParams.get('maxAge') ?? '30', 10) || 30;
 
     if (maxAge < 1 || maxAge > 365) {
       return NextResponse.json(

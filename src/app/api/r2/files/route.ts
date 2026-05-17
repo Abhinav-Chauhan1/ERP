@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
           key: searchParams.get('key') || '',
           includeMetadata: searchParams.get('includeMetadata') === 'true',
           generatePresignedUrl: searchParams.get('generatePresignedUrl') === 'true',
-          presignedUrlExpiry: parseInt(searchParams.get('presignedUrlExpiry') || '3600'),
+          presignedUrlExpiry: (() => { const v = parseInt(searchParams.get('presignedUrlExpiry') || '3600', 10); return Number.isFinite(v) && v > 0 ? v : 3600; })(),
         };
 
         const validation = retrieveFileSchema.safeParse(params);
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       case 'list': {
         const params = {
           folder: searchParams.get('folder') || undefined,
-          maxFiles: parseInt(searchParams.get('maxFiles') || '100'),
+          maxFiles: Math.min(Math.max(parseInt(searchParams.get('maxFiles') ?? '100', 10) || 100, 1), 1000),
           continuationToken: searchParams.get('continuationToken') || undefined,
         };
 

@@ -6,14 +6,37 @@ import { generateReportCardPDF } from '@/lib/services/report-card-pdf-generation
 import { aggregateReportCardData } from '@/lib/services/report-card-data-aggregation';
 import JSZip from 'jszip';
 
-// Helper for school info
 async function getSchoolInfo() {
-    // This should fetch from a SystemSettings or SchoolBranding table
-    // For now, return default values matches the one in report-card-generation.ts
-    return {
-        name: 'School Name',
-        address: 'School Address',
-    };
+    try {
+        const { getSystemSettings } = await import('@/lib/actions/settingsActions');
+        const result = await getSystemSettings();
+        if (result.success && result.data) {
+            return {
+                name: result.data.schoolName,
+                address: result.data.schoolAddress || 'School Address',
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching school info for batch download:', error);
+    }
+    return { name: 'School Name', address: 'School Address' };
+}
+
+async function resolveDefaultTemplateId(schoolId: string): Promise<string | null> {
+    try {
+        const template = await db.reportCardTemplate.findFirst({
+            where: { schoolId, isDefault: true, isActive: true },
+            select: { id: true },
+        });
+        if (template) return template.id;
+        const fallback = await db.reportCardTemplate.findFirst({
+            where: { schoolId, isActive: true },
+            select: { id: true },
+        });
+        return fallback?.id ?? null;
+    } catch {
+        return null;
+    }
 }
 
 export async function GET(req: NextRequest) {
@@ -42,10 +65,15 @@ export async function GET(req: NextRequest) {
         const classId = searchParams.get('classId');
         const sectionId = searchParams.get('sectionId');
         const termId = searchParams.get('termId');
-        const templateId = searchParams.get('templateId');
+        const templateIdParam = searchParams.get('templateId');
 
-        if (!classId || !sectionId || !termId || !templateId) {
+        if (!classId || !sectionId || !termId) {
             return new NextResponse('Missing parameters', { status: 400 });
+        }
+
+        const templateId = templateIdParam || await resolveDefaultTemplateId(schoolId);
+        if (!templateId) {
+            return new NextResponse('No report card template configured', { status: 400 });
         }
 
         // Fetch class and section info for naming - CRITICAL: Filter by school

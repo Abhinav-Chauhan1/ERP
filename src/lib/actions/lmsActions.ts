@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db as prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 
 // Course Management Actions
 
@@ -19,6 +20,7 @@ export async function createCourse(data: {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) throw new Error("School context required");
+    await requirePlanFeature(schoolId, "lms");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {

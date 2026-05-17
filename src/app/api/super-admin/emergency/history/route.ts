@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       action: searchParams.get('action') || undefined,
       startDate: searchParams.get('startDate') || undefined,
       endDate: searchParams.get('endDate') || undefined,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0,
+      limit: Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500),
+      offset: Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0),
     });
 
     const result = await emergencyAccessService.getEmergencyAccessHistory(filters);

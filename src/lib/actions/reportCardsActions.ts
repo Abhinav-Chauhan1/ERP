@@ -64,7 +64,7 @@ export const getReportCards = withSchoolAuthAction(
           },
           term: { include: { academicYear: true } },
         },
-        orderBy: { isPublished: "asc" },
+        orderBy: { createdAt: "desc" },
       });
 
       const formattedReportCards = reportCards.map((rc) => {
@@ -205,6 +205,7 @@ export const getReportCardById = withSchoolAuthAction(
           principalRemarks: reportCard.principalRemarks || "",
           isPublished: reportCard.isPublished,
           publishDate: reportCard.publishDate,
+          pdfUrl: reportCard.pdfUrl || null,
           createdAt: reportCard.createdAt,
           subjectResults: Object.values(subjectResults),
           coScholasticData: reportCard.coScholasticData || null,
@@ -230,14 +231,9 @@ export const createReportCard = withSchoolAuthAction(
       });
       const academicYearId = term?.academicYearId;
 
-      const existingReportCard = await db.reportCard.findUnique({
-        where: {
-          studentId_termId_academicYearId: {
-            studentId: data.studentId,
-            termId: data.termId,
-            academicYearId: academicYearId ?? "",
-          },
-        },
+      const existingReportCard = await db.reportCard.findFirst({
+        where: { studentId: data.studentId, termId: data.termId, examTypeId: null },
+        select: { id: true },
       });
 
       if (existingReportCard) {
@@ -309,14 +305,8 @@ export const generateReportCard = withSchoolAuthAction(
         resolvedAcademicYearId = term?.academicYearId;
       }
 
-      const existingReportCard = await db.reportCard.findUnique({
-        where: {
-          studentId_termId_academicYearId: {
-            studentId,
-            termId,
-            academicYearId: resolvedAcademicYearId ?? "",
-          },
-        },
+      const existingReportCard = await db.reportCard.findFirst({
+        where: { studentId, termId, examTypeId: null },
       });
 
       const reportCardData = await aggregateReportCardData(studentId, termId);
@@ -1018,6 +1008,62 @@ export async function previewCBSEReportCardAction(params: {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to preview CBSE report card",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Per-exam-type helpers
+// ---------------------------------------------------------------------------
+
+export async function getExamTypesForTerm(
+  termId: string,
+  studentId?: string,
+): Promise<{ success: boolean; data?: { id: string; name: string }[]; error?: string }> {
+  try {
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Fetch distinct exam types that have at least one exam result in this term
+    const where: any = {
+      exam: { termId, schoolId },
+    };
+    if (studentId) {
+      where.studentId = studentId;
+    }
+
+    const examResults = await db.examResult.findMany({
+      where,
+      select: {
+        exam: {
+          select: {
+            examType: { select: { id: true, name: true } },
+          },
+        },
+      },
+      distinct: ["examId"],
+    });
+
+    // Deduplicate by examType id
+    const seen = new Set<string>();
+    const examTypes: { id: string; name: string }[] = [];
+    for (const r of examResults) {
+      const et = r.exam?.examType;
+      if (et && !seen.has(et.id)) {
+        seen.add(et.id);
+        examTypes.push({ id: et.id, name: et.name });
+      }
+    }
+
+    examTypes.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { success: true, data: examTypes };
+  } catch (error) {
+    console.error("Error fetching exam types for term:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch exam types",
     };
   }
 }

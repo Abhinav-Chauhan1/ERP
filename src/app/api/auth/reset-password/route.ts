@@ -167,11 +167,12 @@ export async function POST(request: NextRequest) {
     // Hash new password (Requirement 11.5)
     const hashedPassword = await hashPassword(password)
 
-    // Update user password (Requirement 11.5)
+    // Update user password and record change timestamp for JWT revocation (Requirement 11.5)
     await db.user.update({
       where: { id: user.id },
       data: {
-        passwordHash: hashedPassword
+        passwordHash: hashedPassword,
+        passwordChangedAt: new Date(),
       }
     })
 

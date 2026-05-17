@@ -6,6 +6,35 @@ import { AcademicYearFormValues, AcademicYearUpdateFormValues } from "../schemaV
 import { invalidateAcademicYearCache } from "../utils/cache-invalidation";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
 
+export const getAcademicOverview = withSchoolAuthAction(async (schoolId: string) => {
+  try {
+    const [
+      academicYearsCount,
+      termsCount,
+      gradeScalesCount,
+      syllabusCount,
+    ] = await Promise.all([
+      db.academicYear.count({ where: { schoolId } }),
+      db.term.count({ where: { schoolId } }),
+      db.gradeScale.count({ where: { schoolId } }),
+      db.syllabus.count({ where: { schoolId } }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        academicYears: academicYearsCount,
+        terms: termsCount,
+        grades: gradeScalesCount,
+        syllabus: syllabusCount,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching academic overview:", error);
+    return { success: false, error: "Failed to fetch academic overview" };
+  }
+});
+
 // Get all academic years
 export const getAcademicYears = withSchoolAuthAction(async (schoolId) => {
   try {

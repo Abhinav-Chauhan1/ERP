@@ -36,7 +36,6 @@ import { Loader2, FileText, Download, Users, Archive, FileCheck } from 'lucide-r
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { generateBatchReportCards } from '@/lib/actions/report-card-generation';
-import { getReportCardTemplates } from '@/lib/actions/reportCardTemplateActions';
 
 interface BatchGenerateReportCardsDialogProps {
   classes: Array<{ id: string; name: string }>;
@@ -55,10 +54,8 @@ export function BatchGenerateReportCardsDialog({
 }: BatchGenerateReportCardsDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSection, setSelectedSection] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [outputFormat, setOutputFormat] = useState<'singlePdf' | 'individualZip'>('singlePdf');
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [totalGenerated, setTotalGenerated] = useState<number>(0);
@@ -70,21 +67,8 @@ export function BatchGenerateReportCardsDialog({
     ? sections.filter((s) => s.classId === selectedClass)
     : [];
 
-  // Load templates when dialog opens
-  const handleOpenChange = async (isOpen: boolean) => {
+  const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
-
-    if (isOpen && templates.length === 0) {
-      const result = await getReportCardTemplates();
-      if (result.success && result.data) {
-        setTemplates(result.data);
-        // Auto-select default template
-        const defaultTemplate = result.data.find((t: any) => t.isDefault);
-        if (defaultTemplate) {
-          setSelectedTemplate(defaultTemplate.id);
-        }
-      }
-    }
   };
 
   // Reset section when class changes
@@ -93,10 +77,10 @@ export function BatchGenerateReportCardsDialog({
   }, [selectedClass]);
 
   const handleGenerate = async () => {
-    if (!selectedClass || !selectedSection || !selectedTemplate) {
+    if (!selectedClass || !selectedSection) {
       toast({
         title: 'Missing Information',
-        description: 'Please select class, section, and template.',
+        description: 'Please select a class and section.',
         variant: 'destructive',
       });
       return;
@@ -104,7 +88,13 @@ export function BatchGenerateReportCardsDialog({
 
     // For ZIP download, we skip the progress bar and server action call as it's handled by the download handler directly
     if (outputFormat === 'individualZip') {
-      handleDownload();
+      setLoading(true);
+      try {
+        handleDownload();
+      } finally {
+        // Brief delay to prevent immediate re-click, then re-enable
+        setTimeout(() => setLoading(false), 2000);
+      }
       return;
     }
 
@@ -128,7 +118,6 @@ export function BatchGenerateReportCardsDialog({
         selectedClass,
         selectedSection,
         termId,
-        selectedTemplate
       );
 
       clearInterval(progressInterval);
@@ -166,7 +155,6 @@ export function BatchGenerateReportCardsDialog({
         classId: selectedClass,
         sectionId: selectedSection,
         termId: termId,
-        templateId: selectedTemplate,
       });
 
       const url = `/api/reports/batch-download?${params.toString()}`;
@@ -252,26 +240,6 @@ export function BatchGenerateReportCardsDialog({
             )}
           </div>
 
-          {/* Template Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="template">Select Template</Label>
-            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger id="template">
-                <SelectValue placeholder="Choose a template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
-                    {template.isDefault && ' (Default)'}
-                    {' - '}
-                    {template.type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Output Format Selection */}
           <div className="space-y-3">
             <Label>Output Format</Label>
@@ -353,12 +321,7 @@ export function BatchGenerateReportCardsDialog({
         <DialogFooter>
           <Button
             onClick={handleGenerate}
-            disabled={
-              !selectedClass ||
-              !selectedSection ||
-              !selectedTemplate ||
-              loading
-            }
+            disabled={!selectedClass || !selectedSection || loading}
           >
             {loading ? (
               <>

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getUsersOverview, getRecentUsers } from "@/lib/actions/userActions";
+import { getUsersOverview, getRecentUsers } from "@/lib/actions/userDashboardActions";
 import { getFilterOptions } from "@/lib/actions/students-filters";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 import { RecentUsersTable } from "@/components/users/recent-users-table";

@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const operation = searchParams.get('operation') as 'GET' | 'PUT';
-    const expiresIn = parseInt(searchParams.get('expiresIn') || '3600');
+    const rawExpiry = parseInt(searchParams.get('expiresIn') || '3600', 10);
+    const expiresIn = Number.isFinite(rawExpiry) && rawExpiry > 0 ? Math.min(rawExpiry, 86400) : 3600;
 
     if (operation === 'GET') {
       // Generate presigned URL for existing file download

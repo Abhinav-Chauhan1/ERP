@@ -1,5 +1,7 @@
-import { PaymentStatus, PaymentMethod } from "@prisma/client";
+import { PaymentStatus, PaymentMethod, UserRole } from "@prisma/client";
 import { FeeItemStatus } from "@/lib/types/fees";
+import { currentUser } from "@/lib/auth-helpers";
+import { db } from "@/lib/db";
 
 /**
  * Calculates fee item status based on payment information
@@ -184,18 +186,6 @@ export function validatePaymentAmount(
 }
 
 /**
- * Formats currency for display
- */
-export function formatCurrency(amount: number, currency: string = "INR"): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-/**
  * Formats date for display
  */
 export function formatDate(date: Date): string {
@@ -272,4 +262,19 @@ export function isValidReceiptNumber(receiptNumber: string): boolean {
   // Format: RCP + YYYY + MM + XXXX (e.g., RCP202411001)
   const pattern = /^RCP\d{4}(0[1-9]|1[0-2])\d{4}$/;
   return pattern.test(receiptNumber);
+}
+
+export async function getCurrentParent() {
+  const clerkUser = await currentUser();
+  if (!clerkUser) return null;
+
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const dbUser = await db.user.findFirst({
+    where: { id: clerkUser.id }
+  });
+  if (!dbUser || dbUser.role !== UserRole.PARENT) return null;
+
+  return db.parent.findFirst({ where: { userId: dbUser.id, schoolId } });
 }

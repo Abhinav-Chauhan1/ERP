@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       isPublished: searchParams.get('isPublished') === 'true' ? true : 
                    searchParams.get('isPublished') === 'false' ? false : undefined,
       search: searchParams.get('search') || undefined,
-      limit: parseInt(searchParams.get('limit') || '50'),
-      offset: parseInt(searchParams.get('offset') || '0'),
+      limit: Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500),
+      offset: Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0),
     };
 
     const result = await supportService.getKnowledgeBaseArticles(filters);

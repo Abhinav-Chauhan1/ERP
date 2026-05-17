@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { routeSchema, routeUpdateSchema, studentRouteSchema, type RouteFormValues, type RouteUpdateFormValues, type StudentRouteFormValues } from "@/lib/schemas/route-schemas";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 import { RouteWithDetails } from "@/types/transport";
 
 // Get all routes with pagination and filters
@@ -16,11 +17,12 @@ export async function getRoutes(params?: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
-    
+
     if (!schoolId) {
       throw new Error("School context required");
     }
-    
+    await requirePlanFeature(schoolId, "transport");
+
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;

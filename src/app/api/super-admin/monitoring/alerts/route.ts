@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
       isResolved: searchParams.get('isResolved') === 'true' ? true : 
                   searchParams.get('isResolved') === 'false' ? false : undefined,
       alertType: searchParams.get('alertType') || undefined,
-      limit: parseInt(searchParams.get('limit') || '50'),
-      offset: parseInt(searchParams.get('offset') || '0'),
+      limit: Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 500),
+      offset: Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0),
     };
 
     const alertsResult = await monitoringService.getAlerts(filters);

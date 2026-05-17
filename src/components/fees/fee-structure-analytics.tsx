@@ -22,6 +22,7 @@ import {
 import { Loader2, TrendingUp, Users, DollarSign, FileText, Download } from "lucide-react";
 import { getFeeStructureAnalytics } from "@/lib/actions/feeStructureActions";
 import type { FeeStructureAnalytics, AnalyticsFilters } from "@/lib/services/fee-structure-analytics-service";
+import { formatCurrency } from "@/lib/utils/export-utils";
 import toast from "react-hot-toast";
 
 interface FeeStructureAnalyticsProps {
@@ -65,14 +66,6 @@ export function FeeStructureAnalyticsComponent({
       ...prev,
       [key]: value === "" ? undefined : value,
     }));
-  }
-
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
   }
 
   if (loading) {

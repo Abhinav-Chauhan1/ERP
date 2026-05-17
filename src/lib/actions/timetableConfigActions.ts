@@ -8,9 +8,11 @@ import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 // Get the current timetable configuration
 export async function getTimetableConfig() {
   try {
+    const schoolId = await getRequiredSchoolId();
+
     // Get the active configuration or create a default one if none exists
     let config = await db.timetableConfig.findFirst({
-      where: { isActive: true },
+      where: { isActive: true, schoolId },
       include: {
         periods: {
           orderBy: {
@@ -85,6 +87,14 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
     // If updating an existing config
     if (data.id) {
       try {
+        // Verify the config belongs to this school before modifying it
+        const existingConfig = await db.timetableConfig.findUnique({
+          where: { id: data.id, schoolId }
+        });
+        if (!existingConfig) {
+          return { success: false, error: "Configuration not found" };
+        }
+
         // First, delete all existing periods
         await db.timetablePeriod.deleteMany({
           where: { configId: data.id }
@@ -120,15 +130,11 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
     // Creating a new config
     else {
       try {
-        // First set all existing configs to inactive
+        // Deactivate only THIS school's existing active configs
         await db.timetableConfig.updateMany({
-          where: { isActive: true },
+          where: { isActive: true, schoolId },
           data: { isActive: false }
         });
-        
-        // Get required school context
-        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-        const schoolId = await getRequiredSchoolId();
         
         // Create new config
         const config = await db.timetableConfig.create({

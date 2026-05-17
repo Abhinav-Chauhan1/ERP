@@ -378,7 +378,7 @@ export default async function TeacherAttendancePage() {
                 </table>
               </div>
               <div className="flex justify-center mt-6">
-                <Link href="/teacher/students/attendance-report">
+                <Link href="/teacher/attendance/reports">
                   <Button variant="outline">
                     <FileText className="mr-2 h-4 w-4" /> Detailed Student Reports
                   </Button>
@@ -409,7 +409,7 @@ export default async function TeacherAttendancePage() {
               <span className="text-sm font-medium">Attendance Reports</span>
             </div>
           </Link>
-          <Link href="/teacher/students/attendance-analysis">
+          <Link href="/teacher/attendance/reports">
             <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center">
               <div className="p-2 rounded-full bg-primary/10 text-primary">
                 <BarChart2 className="h-5 w-5" />

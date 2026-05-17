@@ -199,9 +199,12 @@ export class FeeStructureService {
 
     // Handle class associations update
     if (data.classIds) {
-      // Delete existing associations
+      // Delete existing associations — scope by schoolId when available to prevent cross-tenant deletion
       await db.feeStructureClass.deleteMany({
-        where: { feeStructureId: id },
+        where: {
+          feeStructureId: id,
+          ...(schoolId ? { feeStructure: { schoolId } } : {}),
+        },
       });
 
       // Create new associations
@@ -216,9 +219,12 @@ export class FeeStructureService {
 
     // Handle items update
     if (data.items) {
-      // Delete existing items
+      // Delete existing items — scope by schoolId when available to prevent cross-tenant deletion
       await db.feeStructureItem.deleteMany({
-        where: { feeStructureId: id },
+        where: {
+          feeStructureId: id,
+          ...(schoolId ? { feeStructure: { schoolId } } : {}),
+        },
       });
 
       // Create new items
@@ -650,13 +656,15 @@ export class FeeStructureService {
    */
   async bulkRemoveFromClass(
     classId: string,
-    feeStructureIds: string[]
+    feeStructureIds: string[],
+    schoolId: string
   ): Promise<BulkRemovalResult> {
-    // Delete associations
+    // Delete associations — always scope by schoolId to prevent cross-tenant deletion
     const result = await db.feeStructureClass.deleteMany({
       where: {
         classId,
         feeStructureId: { in: feeStructureIds },
+        feeStructure: { schoolId },
       },
     });
 

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 
 // Validation schemas
 const transportAttendanceSchema = z.object({
@@ -38,11 +39,12 @@ export type BulkTransportAttendanceFormValues = z.infer<typeof bulkTransportAtte
 export async function recordTransportAttendance(data: TransportAttendanceFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
-    
+
     if (!schoolId) {
       throw new Error("School access required");
     }
-    
+    await requirePlanFeature(schoolId, "transport");
+
     // Validate input
     const validated = transportAttendanceSchema.parse(data);
 

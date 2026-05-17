@@ -33,7 +33,6 @@ export async function getStudentWithDetails(studentId: string) {
       }
     }
 
-    console.log(`Fetching student details for ID: ${studentId}`);
 
     const student = await db.student.findFirst({
       where: { id: studentId, schoolId },
@@ -83,9 +82,7 @@ export async function getStudentWithDetails(studentId: string) {
     });
 
     if (!student) {
-      console.log(`No student found with ID: ${studentId}`);
     } else {
-      console.log(`Found student: ${student.user.firstName} ${student.user.lastName}`);
     }
 
     return student;
