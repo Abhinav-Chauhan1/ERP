@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 import { getReportCardById, publishReportCard } from "@/lib/actions/reportCardsActions";
+import { getReportCardPresignedUrl } from "@/lib/actions/report-card-actions";
 import { GenerateReportCardDialog } from "@/components/admin/report-cards";
 
 export default function ReportCardDetailPage() {
@@ -32,6 +33,7 @@ export default function ReportCardDetailPage() {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [sendNotification, setSendNotification] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const fetchReportCard = useCallback(async () => {
     setLoading(true);
@@ -59,6 +61,24 @@ export default function ReportCardDetailPage() {
   useEffect(() => {
     fetchReportCard();
   }, [fetchReportCard]);
+
+  async function handleDownloadPdf() {
+    const id = params.id as string;
+    setDownloadingPdf(true);
+    try {
+      const result = await getReportCardPresignedUrl(id);
+      if (result.success && result.data) {
+        window.open(result.data, "_blank");
+      } else {
+        toast.error(result.error || "Failed to generate download link");
+      }
+    } catch (err) {
+      console.error("Error downloading report card PDF:", err);
+      toast.error("Failed to download PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   async function handlePublish() {
     try {
@@ -148,11 +168,18 @@ export default function ReportCardDetailPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {reportCard.pdfUrl ? (
-            <Button variant="outline" className="w-full sm:w-auto" asChild>
-              <a href={reportCard.pdfUrl} target="_blank" rel="noopener noreferrer">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
                 <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </a>
+              )}
+              Download PDF
             </Button>
           ) : (
             <GenerateReportCardDialog

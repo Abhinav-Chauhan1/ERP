@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth"
+import { UserRole } from "@prisma/client"
 
 export const authConfig = {
     // Required when running behind a reverse proxy / CDN (Vercel, Cloudflare, etc.)
@@ -15,10 +16,22 @@ export const authConfig = {
     },
 
     callbacks: {
-        // jwt and session callbacks are intentionally absent here.
-        // auth.ts defines the authoritative versions and they override any
-        // callback defined in this config via the ...authConfig.callbacks spread.
-        // Keeping them here would cause a redundant DB hit on every session update.
+        // This session callback runs in the middleware (via NextAuth(authConfig)).
+        // It must map token fields to session.user so that req.auth.user.id and
+        // req.auth.user.role are available for route protection checks.
+        // The full version in auth.ts spreads these callbacks and overrides this one
+        // for actual page/API requests — so there is no double DB hit.
+        async session({ session, token }) {
+            if (token && session.user) {
+                session.user.id = token.id as string
+                session.user.role = (token.role ?? UserRole.STUDENT) as UserRole
+                session.user.schoolId = (token.schoolId as string | null) ?? null
+                session.user.schoolCode = (token.schoolCode as string | null) ?? null
+                session.user.isSuperAdmin = token.role === UserRole.SUPER_ADMIN
+                session.user.mustChangePassword = (token.mustChangePassword as boolean) ?? false
+            }
+            return session
+        },
 
         async redirect({ url, baseUrl }) {
             if (url.startsWith("/")) return `${baseUrl}${url}`

@@ -14,11 +14,13 @@ import {
   getParentChildrenReportCards,
   getAvailableTerms,
   getAvailableAcademicYears,
+  getReportCardPresignedUrl,
   type ReportCardListItem,
 } from "@/lib/actions/report-card-actions";
 import { useSession } from "next-auth/react";
 import { ReportCardErrorBoundary } from "@/components/shared/report-card-error-boundary";
 import { getPerformanceColor } from "@/lib/utils/grade-calculator";
+import toast from "react-hot-toast";
 
 interface ChildInfo {
   id: string;
@@ -143,8 +145,23 @@ function ParentReportCardsPageContent() {
     });
   };
 
-  const handleDownload = (pdfUrl: string) => {
-    window.open(pdfUrl, "_blank");
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
+
+  const handleDownload = async (reportCardId: string) => {
+    setDownloadingPdf(reportCardId);
+    try {
+      const result = await getReportCardPresignedUrl(reportCardId);
+      if (result.success && result.data) {
+        window.open(result.data, "_blank");
+      } else {
+        toast.error(result.error || "Failed to generate download link");
+      }
+    } catch (error) {
+      console.error("Error downloading report card:", error);
+      toast.error("Failed to download report card");
+    } finally {
+      setDownloadingPdf(null);
+    }
   };
 
   const handleViewDetails = (reportCardId: string) => {
@@ -322,7 +339,7 @@ export default function ParentReportCardsPage() {
 interface ReportCardsGridProps {
   reportCards: ReportCardListItem[];
   childName: string;
-  onDownload: (pdfUrl: string) => void;
+  onDownload: (reportCardId: string) => void;
   onViewDetails: (reportCardId: string) => void;
 }
 
@@ -417,7 +434,7 @@ function ReportCardsGrid({ reportCards, childName, onDownload, onViewDetails }: 
                   variant="default"
                   size="sm"
                   className="flex-1"
-                  onClick={() => onDownload(reportCard.pdfUrl!)}
+                  onClick={() => onDownload(reportCard.id)}
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download

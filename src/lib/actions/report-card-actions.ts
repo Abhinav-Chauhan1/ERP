@@ -450,3 +450,88 @@ export const getAvailableAcademicYears = withSchoolAuthAction(async (
     };
   }
 });
+
+/**
+ * Generate a short-lived presigned URL for downloading a report card PDF.
+ * The stored pdfUrl is a direct R2 CDN URL which requires the bucket to be
+ * public. Since the bucket is private, we extract the object key from the
+ * stored URL and generate a presigned GET URL valid for 15 minutes.
+ *
+ * @param reportCardId - The ID of the report card
+ * @returns Presigned URL string, or falls back to the stored URL if R2 is not configured
+ */
+export const getReportCardPresignedUrl = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  reportCardId: string
+): Promise<ActionResult<string>> => {
+  try {
+    // Fetch the report card and verify access
+    const reportCard = await db.reportCard.findFirst({
+      where: { id: reportCardId, schoolId },
+      select: {
+        pdfUrl: true,
+        isPublished: true,
+        student: {
+          select: {
+            userId: true,
+            parents: {
+              select: { parent: { select: { userId: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!reportCard) {
+      return { success: false, error: "Report card not found" };
+    }
+
+    if (!reportCard.isPublished && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+      return { success: false, error: "Report card is not published" };
+    }
+
+    const isStudent = reportCard.student.userId === userId;
+    const isParent = reportCard.student.parents.some((p) => p.parent.userId === userId);
+    if (!isStudent && !isParent && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+      return { success: false, error: "Access denied" };
+    }
+
+    if (!reportCard.pdfUrl) {
+      return { success: false, error: "No PDF available for this report card" };
+    }
+
+    // Extract the R2 object key from the stored CDN URL.
+    // Stored URL format: https://<domain>/<key>  where key = school-<id>/report-cards/<filename>
+    let key: string;
+    try {
+      const url = new URL(reportCard.pdfUrl);
+      // pathname starts with '/', strip the leading slash
+      key = url.pathname.replace(/^\//, "");
+    } catch {
+      return { success: false, error: "Invalid PDF URL stored for this report card" };
+    }
+
+    // Validate the key belongs to this school
+    if (!key.startsWith(`school-${schoolId}/`)) {
+      return { success: false, error: "Access denied: PDF does not belong to this school" };
+    }
+
+    // Generate presigned URL via R2StorageService
+    const { R2StorageService } = await import("@/lib/services/r2-storage-service");
+    const r2 = new R2StorageService();
+
+    // If R2 is not configured fall back to the stored URL (dev/local environments)
+    const { getR2Config } = await import("@/lib/config/r2-config");
+    if (!getR2Config().isConfigured) {
+      return { success: true, data: reportCard.pdfUrl };
+    }
+
+    const presignedUrl = await r2.generatePresignedUrl(schoolId, key, "GET", 900); // 15 min
+    return { success: true, data: presignedUrl };
+  } catch (error) {
+    console.error("Error generating presigned URL for report card:", error);
+    return { success: false, error: "Failed to generate download URL" };
+  }
+});

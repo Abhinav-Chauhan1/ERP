@@ -13,11 +13,13 @@ import {
   getStudentReportCards,
   getAvailableTerms,
   getAvailableAcademicYears,
+  getReportCardPresignedUrl,
   type ReportCardListItem,
 } from "@/lib/actions/report-card-actions";
 import { useSession } from "next-auth/react";
 import { useAuth } from "@/lib/auth-context";
 import { ReportCardErrorBoundary } from "@/components/shared/report-card-error-boundary";
+import toast from "react-hot-toast";
 
 function StudentReportCardsPageContent() {
   const router = useRouter();
@@ -31,6 +33,7 @@ function StudentReportCardsPageContent() {
   const [selectedTerm, setSelectedTerm] = useState<string>("all");
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("all");
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -116,8 +119,21 @@ function StudentReportCardsPageContent() {
     return true;
   });
 
-  const handleDownload = (pdfUrl: string) => {
-    window.open(pdfUrl, "_blank");
+  const handleDownload = async (reportCardId: string) => {
+    setDownloadingPdf(reportCardId);
+    try {
+      const result = await getReportCardPresignedUrl(reportCardId);
+      if (result.success && result.data) {
+        window.open(result.data, "_blank");
+      } else {
+        toast.error(result.error || "Failed to generate download link");
+      }
+    } catch (error) {
+      console.error("Error downloading report card:", error);
+      toast.error("Failed to download report card");
+    } finally {
+      setDownloadingPdf(null);
+    }
   };
 
   const handleViewDetails = (reportCardId: string) => {
@@ -282,10 +298,11 @@ function StudentReportCardsPageContent() {
                       variant="default"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDownload(reportCard.pdfUrl!)}
+                      onClick={() => handleDownload(reportCard.id)}
+                      disabled={downloadingPdf === reportCard.id}
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      {downloadingPdf === reportCard.id ? "Loading..." : "Download"}
                     </Button>
                   )}
                 </div>

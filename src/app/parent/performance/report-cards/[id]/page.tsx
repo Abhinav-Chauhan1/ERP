@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReportCardDetailView } from "@/components/student/report-card-detail-view";
-import { getReportCardDetails } from "@/lib/actions/report-card-actions";
+import { getReportCardDetails, getReportCardPresignedUrl } from "@/lib/actions/report-card-actions";
 import type { ReportCardData } from "@/lib/services/report-card-data-aggregation";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 
 export default function ParentReportCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function ParentReportCardDetailPage({ params }: { params: Promise
   const [loading, setLoading] = useState(true);
   const [reportCard, setReportCard] = useState<ReportCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     const fetchReportCard = async () => {
@@ -46,9 +48,22 @@ export default function ParentReportCardDetailPage({ params }: { params: Promise
     fetchReportCard();
   }, [reportCardId, userId, router]);
 
-  const handleDownload = () => {
-    if (reportCard?.pdfUrl) {
-      window.open(reportCard.pdfUrl, "_blank");
+  const handleDownload = async () => {
+    if (!reportCard?.pdfUrl) return;
+
+    setDownloadingPdf(true);
+    try {
+      const result = await getReportCardPresignedUrl(reportCardId);
+      if (result.success && result.data) {
+        window.open(result.data, "_blank");
+      } else {
+        toast.error(result.error || "Failed to generate download link");
+      }
+    } catch (error) {
+      console.error("Error downloading report card:", error);
+      toast.error("Failed to download report card");
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
