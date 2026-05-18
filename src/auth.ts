@@ -9,6 +9,9 @@ import { authConfig } from "./auth.config"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  // Required when running behind a reverse proxy / CDN (Vercel, Cloudflare, etc.)
+  // Without this, NextAuth rejects the host header and the session cookie is never read.
+  trustHost: true,
   adapter: PrismaAdapter(db),
   providers: [
     Credentials({

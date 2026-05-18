@@ -1,6 +1,9 @@
 import type { NextAuthConfig } from "next-auth"
 
 export const authConfig = {
+    // Required when running behind a reverse proxy / CDN (Vercel, Cloudflare, etc.)
+    // Without this, NextAuth rejects the forwarded host header and can't read the session cookie.
+    trustHost: true,
     session: {
         strategy: "jwt",
         maxAge: 24 * 60 * 60, // 24 hours
