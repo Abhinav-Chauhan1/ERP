@@ -8,16 +8,16 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  DollarSign, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  DollarSign,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
   RefreshCw,
-  Download,
   Eye,
   MoreHorizontal
 } from "lucide-react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -26,12 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { PaymentHistoryChart } from "@/components/super-admin/billing/payment-history-chart";
 import { getBillingDashboardData } from "@/lib/actions/billing-actions";
 import { toast } from "sonner";
@@ -75,6 +70,7 @@ interface BillingData {
   }>;
   recentPayments: Array<{
     id: string;
+    schoolId: string | null;
     schoolName: string;
     amount: number;
     status: string;
@@ -406,23 +402,17 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
                           {new Date(payment.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download Invoice
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {payment.schoolId ? (
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/super-admin/schools/${payment.schoolId}/billing`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" disabled>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -437,16 +427,87 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
           {data && <PaymentHistoryChart data={data.monthlyRevenueData} />}
         </TabsContent>
 
-        <TabsContent value="subscriptions">
+        <TabsContent value="subscriptions" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Status Breakdown</CardTitle>
+                <CardDescription>Subscriptions by current status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full" />
+                    ))}
+                  </div>
+                ) : data ? (
+                  <div className="space-y-3">
+                    {data.subscriptionsByStatus.map((s) => (
+                      <div key={s.status} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full bg-${s.color}-500`} />
+                          <span className="font-medium">{s.status}</span>
+                        </div>
+                        <Badge variant="outline" className="text-base font-semibold px-3">
+                          {s.count}
+                        </Badge>
+                      </div>
+                    ))}
+                    {data.subscriptionsByStatus.every((s) => s.count === 0) && (
+                      <p className="text-center text-muted-foreground py-4">No subscriptions found.</p>
+                    )}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Plan Distribution</CardTitle>
+                <CardDescription>Active subscriptions by plan tier</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full" />
+                    ))}
+                  </div>
+                ) : data ? (
+                  <div className="space-y-3">
+                    {data.revenueByPlan.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">No active subscriptions.</p>
+                    ) : (
+                      data.revenueByPlan.map((plan) => (
+                        <div key={plan.plan} className="flex items-center justify-between p-3 border rounded-lg">
+                          <Badge variant="outline">{plan.plan}</Badge>
+                          <div className="text-right">
+                            <div className="font-semibold">{plan.subscriptions} schools</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatCurrency(plan.revenue)} / mo (proj.)
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle>Subscription Management</CardTitle>
-              <CardDescription>Manage all subscriptions across schools</CardDescription>
+              <CardTitle>Manage Subscriptions</CardTitle>
+              <CardDescription>View and manage individual school subscriptions</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Subscription management interface will be implemented here.
-              </p>
+              <Button asChild>
+                <Link href="/super-admin/schools">
+                  View All Schools & Subscriptions
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -495,23 +556,17 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
                           {new Date(payment.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download Invoice
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {payment.schoolId ? (
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/super-admin/schools/${payment.schoolId}/billing`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" disabled>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

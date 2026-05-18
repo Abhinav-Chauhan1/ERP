@@ -336,7 +336,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
 
   const getPlanBadgeVariant = (plan: string) => {
     switch (plan.toUpperCase()) {
-      case "ENTERPRISE":
+      case "DOMINATE":
         return "default";
       case "GROWTH":
         return "secondary";
@@ -438,7 +438,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                 <SelectItem value="ALL">All Plans</SelectItem>
                 <SelectItem value="STARTER">Starter</SelectItem>
                 <SelectItem value="GROWTH">Growth</SelectItem>
-                <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                <SelectItem value="DOMINATE">Dominate</SelectItem>
               </SelectContent>
             </Select>
             <Select value={onboardingFilter} onValueChange={handleOnboardingFilter}>

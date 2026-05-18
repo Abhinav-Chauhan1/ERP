@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface KnowledgeBaseArticle {
   id: string;
@@ -38,32 +39,17 @@ interface KnowledgeBaseArticle {
   tags: string[];
   isPublished: boolean;
   viewCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   author: {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
   };
 }
 
-interface KBMetrics {
-  totalArticles: number;
-  publishedArticles: number;
-  draftArticles: number;
-  totalViews: number;
-  averageViews: number;
-  categoryCounts: Record<string, number>;
-  topArticles: Array<{
-    id: string;
-    title: string;
-    viewCount: number;
-  }>;
-}
-
 export function KnowledgeBaseManagement() {
   const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
-  const [metrics, setMetrics] = useState<KBMetrics | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,199 +68,37 @@ export function KnowledgeBaseManagement() {
     isPublished: false
   });
 
-  // Mock data - in real implementation, this would come from API
   useEffect(() => {
     loadArticles();
-    loadMetrics();
   }, []);
 
   const loadArticles = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockArticles: KnowledgeBaseArticle[] = [
-      {
-        id: "article_1",
-        title: "How to Reset Student Passwords",
-        content: `# How to Reset Student Passwords
-
-This guide explains how to reset student passwords in the system.
-
-## Steps:
-
-1. Navigate to the Students section
-2. Find the student whose password needs to be reset
-3. Click on the student's profile
-4. Click "Reset Password" button
-5. A temporary password will be generated and sent to the student's email
-
-## Important Notes:
-
-- Students will be required to change their password on first login
-- Temporary passwords expire after 24 hours
-- Make sure the student's email address is correct before resetting
-
-## Troubleshooting:
-
-If the password reset email is not received:
-- Check the spam folder
-- Verify the email address is correct
-- Contact IT support if the issue persists`,
-        category: "User Management",
-        tags: ["password", "students", "reset", "troubleshooting"],
-        isPublished: true,
-        viewCount: 245,
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        author: {
-          id: "admin_1",
-          name: "Sarah Johnson",
-          email: "sarah.johnson@company.com"
-        }
-      },
-      {
-        id: "article_2",
-        title: "Setting Up Grade Calculations",
-        content: `# Setting Up Grade Calculations
-
-Learn how to configure grade calculations for different subjects and assessment types.
-
-## Overview:
-
-The grade calculation system supports multiple grading schemes including:
-- Percentage-based grading
-- Point-based grading
-- Letter grades
-- Custom grading scales
-
-## Configuration Steps:
-
-1. Go to Academic Settings
-2. Select "Grade Calculations"
-3. Choose your grading scheme
-4. Set up weight distributions for different assessment types
-5. Configure grade boundaries if using letter grades
-
-## Best Practices:
-
-- Always test your grade calculations with sample data
-- Communicate grading policies clearly to students and parents
-- Regular backup of grade calculation settings`,
-        category: "Academic Management",
-        tags: ["grades", "calculations", "setup", "academic"],
-        isPublished: true,
-        viewCount: 189,
-        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        author: {
-          id: "admin_2",
-          name: "Mike Wilson",
-          email: "mike.wilson@company.com"
-        }
-      },
-      {
-        id: "article_3",
-        title: "Billing and Payment Troubleshooting",
-        content: `# Billing and Payment Troubleshooting
-
-Common billing issues and their solutions.
-
-## Common Issues:
-
-### Payment Failed
-- Check if the credit card is expired
-- Verify billing address matches card details
-- Ensure sufficient funds are available
-
-### Invoice Not Generated
-- Check if the billing cycle is configured correctly
-- Verify school subscription status
-- Contact billing support if issue persists
-
-### Refund Requests
-- Refunds can be processed within 30 days of payment
-- Partial refunds are available for mid-cycle cancellations
-- Processing time is 5-7 business days`,
-        category: "Billing",
-        tags: ["billing", "payment", "troubleshooting", "refunds"],
-        isPublished: false,
-        viewCount: 67,
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        author: {
-          id: "admin_1",
-          name: "Sarah Johnson",
-          email: "sarah.johnson@company.com"
-        }
-      },
-      {
-        id: "article_4",
-        title: "System Maintenance Schedule",
-        content: `# System Maintenance Schedule
-
-Information about regular system maintenance and updates.
-
-## Scheduled Maintenance:
-
-- **Weekly**: Every Sunday 2:00 AM - 4:00 AM EST
-- **Monthly**: First Saturday of each month 10:00 PM - 2:00 AM EST
-- **Quarterly**: Major updates and feature releases
-
-## What to Expect:
-
-During maintenance windows:
-- System may be temporarily unavailable
-- Data backup and integrity checks
-- Security updates and patches
-- Performance optimizations
-
-## Notifications:
-
-- Email notifications sent 48 hours in advance
-- In-app notifications 24 hours before maintenance
-- Status page updates during maintenance`,
-        category: "System Information",
-        tags: ["maintenance", "schedule", "updates", "notifications"],
-        isPublished: true,
-        viewCount: 156,
-        createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        author: {
-          id: "admin_3",
-          name: "Lisa Chen",
-          email: "lisa.chen@company.com"
-        }
-      }
-    ];
-
-    setArticles(mockArticles);
-    setIsLoading(false);
+    try {
+      const res = await fetch("/api/super-admin/support/knowledge-base?limit=100");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setArticles(data.articles ?? []);
+    } catch {
+      toast.error("Failed to load knowledge base articles");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const loadMetrics = async () => {
-    // Simulate API call
-    const mockMetrics: KBMetrics = {
-      totalArticles: 24,
-      publishedArticles: 18,
-      draftArticles: 6,
-      totalViews: 3456,
-      averageViews: 144,
-      categoryCounts: {
-        "User Management": 8,
-        "Academic Management": 6,
-        "Billing": 4,
-        "System Information": 3,
-        "Technical Support": 3
-      },
-      topArticles: [
-        { id: "article_1", title: "How to Reset Student Passwords", viewCount: 245 },
-        { id: "article_2", title: "Setting Up Grade Calculations", viewCount: 189 },
-        { id: "article_4", title: "System Maintenance Schedule", viewCount: 156 }
-      ]
-    };
-
-    setMetrics(mockMetrics);
+  // Compute metrics from real articles data
+  const metrics = {
+    totalArticles: articles.length,
+    publishedArticles: articles.filter(a => a.isPublished).length,
+    draftArticles: articles.filter(a => !a.isPublished).length,
+    totalViews: articles.reduce((s, a) => s + (a.viewCount || 0), 0),
+    averageViews: articles.length > 0
+      ? Math.round(articles.reduce((s, a) => s + (a.viewCount || 0), 0) / articles.length)
+      : 0,
+    topArticles: [...articles]
+      .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+      .slice(0, 3)
+      .map(a => ({ id: a.id, title: a.title, viewCount: a.viewCount || 0 })),
   };
 
   const categories = [
@@ -300,47 +124,45 @@ During maintenance windows:
   });
 
   const handleCreateArticle = async () => {
-    // Simulate API call
-    console.log("Creating article:", formData);
-    
-    // Reset form
-    setFormData({
-      title: "",
-      content: "",
-      category: "",
-      tags: "",
-      isPublished: false
-    });
-    
-    setShowCreateDialog(false);
-    await loadArticles();
-    await loadMetrics();
+    if (!formData.title || !formData.category || !formData.content) {
+      toast.error("Title, category, and content are required.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/super-admin/support/knowledge-base", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          tags: formData.tags.split(",").map(t => t.trim()).filter(Boolean),
+          isPublished: formData.isPublished,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      toast.success("Article created");
+      setFormData({ title: "", content: "", category: "", tags: "", isPublished: false });
+      setShowCreateDialog(false);
+      await loadArticles();
+    } catch {
+      toast.error("Failed to create article");
+    }
   };
 
   const handleEditArticle = async () => {
     if (!selectedArticle) return;
-    
-    // Simulate API call
-    console.log("Updating article:", selectedArticle.id, formData);
-    
+    toast.info("Article editing requires additional API routes — coming soon.");
     setIsEditing(false);
     setShowArticleDialog(false);
-    await loadArticles();
-    await loadMetrics();
   };
 
   const handleDeleteArticle = async (articleId: string) => {
-    // Simulate API call
-    console.log("Deleting article:", articleId);
-    await loadArticles();
-    await loadMetrics();
+    toast.info("Article deletion requires additional API routes — coming soon.");
   };
 
   const handleTogglePublish = async (articleId: string, isPublished: boolean) => {
-    // Simulate API call
-    console.log(`${isPublished ? 'Publishing' : 'Unpublishing'} article:`, articleId);
-    await loadArticles();
-    await loadMetrics();
+    toast.info("Publish toggle requires additional API routes — coming soon.");
   };
 
   const openEditDialog = (article: KnowledgeBaseArticle) => {
@@ -376,7 +198,7 @@ During maintenance windows:
           <Button
             variant="outline"
             size="sm"
-            onClick={loadArticles}
+            onClick={() => loadArticles()}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -464,7 +286,7 @@ During maintenance windows:
       </div>
 
       {/* Metrics Overview */}
-      {metrics && (
+      {articles.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -521,7 +343,7 @@ During maintenance windows:
       )}
 
       {/* Top Articles */}
-      {metrics && (
+      {metrics.topArticles.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Top Performing Articles</CardTitle>
@@ -641,7 +463,7 @@ During maintenance windows:
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {format(article.createdAt, 'MMM dd, yyyy')}
+                          {format(new Date(article.createdAt), 'MMM dd, yyyy')}
                         </div>
                         <div className="flex items-center gap-1">
                           <Eye className="h-3 w-3" />
@@ -816,7 +638,7 @@ During maintenance windows:
                       </div>
                       <div>
                         <Label>Last Updated</Label>
-                        <div>{format(selectedArticle.updatedAt, 'MMM dd, yyyy HH:mm')}</div>
+                        <div>{format(new Date(selectedArticle.updatedAt), 'MMM dd, yyyy HH:mm')}</div>
                       </div>
                     </div>
 

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { ArrowLeft, CreditCard, Calendar, AlertCircle, CheckCircle, Clock, Layers } from "lucide-react";
 import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
 import { ChangePlanDialog } from "@/components/super-admin/schools/change-plan-dialog";
+import { CancelSubscriptionButton } from "@/components/super-admin/schools/cancel-subscription-button";
 
 const FEATURE_LABELS: Record<string, string> = {
   library: "Library", transport: "Transport", admissions: "Admissions Portal",
@@ -186,7 +187,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
                         studentCount={studentCount}
                       />
                       {!currentSub.cancelAtPeriodEnd && (
-                        <Button variant="destructive">Cancel Subscription</Button>
+                        <CancelSubscriptionButton subscriptionId={currentSub.id} />
                       )}
                     </div>
                   </>

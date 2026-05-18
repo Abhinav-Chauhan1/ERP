@@ -1,9 +1,5 @@
-import { RegisterForm } from "@/components/auth/register-form";
+import { redirect } from "next/navigation";
 
 export default function RegisterPage() {
-  return (
-    <div className="flex justify-center p-6">
-      <RegisterForm />
-    </div>
-  );
+  redirect("/login");
 }

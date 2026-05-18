@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -362,27 +363,44 @@ export function SystemConfiguration() {
 
   const handleSaveChanges = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsLoading(false);
-    setHasChanges(false);
+    try {
+      // Group changed settings by category and save each category
+      const changedByCategory = configurations
+        .filter(c => c.value !== c.defaultValue)
+        .reduce((acc, c) => {
+          if (!acc[c.category]) acc[c.category] = {};
+          acc[c.category][c.id] = c.type === "password" ? undefined : c.value;
+          return acc;
+        }, {} as Record<string, Record<string, any>>);
+
+      const savePromises = Object.entries(changedByCategory).map(([category, settings]) =>
+        fetch("/api/super-admin/configuration/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, settings }),
+        })
+      );
+
+      await Promise.all(savePromises);
+      toast.success("Configuration saved");
+      setHasChanges(false);
+    } catch {
+      toast.error("Failed to save configuration");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetToDefaults = async (category?: string) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setConfigurations(prev => 
-      prev.map(config => 
-        (!category || config.category === category) 
+    setConfigurations(prev =>
+      prev.map(config =>
+        !category || config.category === category
           ? { ...config, value: config.defaultValue }
           : config
       )
     );
-    
-    setIsLoading(false);
     setHasChanges(true);
+    toast.info("Values reset to defaults — click Save Changes to persist.");
   };
 
   const togglePasswordVisibility = (configId: string) => {

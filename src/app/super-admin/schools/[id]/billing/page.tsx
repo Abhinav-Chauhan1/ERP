@@ -162,13 +162,14 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                 </Badge>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Amount</p>
+                <p className="text-sm text-muted-foreground">Billing</p>
                 <p className="text-2xl font-bold">
-                  ${(currentSubscription.plan.amount / 100).toFixed(2)}
+                  Per-student
                   <span className="text-sm font-normal text-muted-foreground">
                     /{currentSubscription.plan.interval}
                   </span>
                 </p>
+                <p className="text-xs text-muted-foreground">See Subscription tab for pricing</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Next Billing</p>
@@ -202,7 +203,9 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
               <p className="text-muted-foreground mb-4">
                 This school does not have an active subscription.
               </p>
-              <Button>Create Subscription</Button>
+              <Button asChild>
+                <Link href={`/super-admin/schools/${school.id}/subscription`}>Assign Plan</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -237,9 +240,11 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                     View and manage invoices for this school
                   </CardDescription>
                 </div>
-                <Button variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                <Button variant="outline" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/billing`}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
@@ -263,7 +268,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                           {invoice.id.slice(-8)}
                         </TableCell>
                         <TableCell>
-                          ${(invoice.amount / 100).toFixed(2)} {invoice.currency.toUpperCase()}
+                          {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(invoice.amount / 100)}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -314,9 +319,11 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                     View payment transactions and methods
                   </CardDescription>
                 </div>
-                <Button variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                <Button variant="outline" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/billing`}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
@@ -339,7 +346,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                           {payment.id.slice(-8)}
                         </TableCell>
                         <TableCell>
-                          ${(payment.amount / 100).toFixed(2)} {payment.currency.toUpperCase()}
+                          {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(payment.amount / 100)}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -408,8 +415,8 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                         {subscription.currentPeriodStart.toLocaleDateString()} - {subscription.currentPeriodEnd.toLocaleDateString()}
                       </div>
                       <div>
-                        <span>Amount: </span>
-                        ${(subscription.plan.amount / 100).toFixed(2)}/{subscription.plan.interval}
+                        <span>Billing: </span>
+                        Per-student/{subscription.plan.interval}
                       </div>
                     </div>
                   </div>

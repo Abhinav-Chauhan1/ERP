@@ -99,7 +99,7 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
           paymentMethod: true,
           subscription: {
             select: {
-              school: { select: { name: true, plan: true } },
+              school: { select: { id: true, name: true, plan: true } },
             },
           },
         },
@@ -167,6 +167,7 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
     // Recent payments list from real Payment records
     const recentPaymentsList = recentPayments.map((p) => ({
       id: p.id,
+      schoolId: p.subscription?.school?.id ?? null,
       schoolName: p.subscription?.school?.name ?? "Unknown",
       amount: p.amount, // paise
       status: p.status,

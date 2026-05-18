@@ -1,19 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Server, 
-  Database,
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Server,
   Wifi,
   HardDrive,
   Cpu,
@@ -25,251 +24,258 @@ import {
   TrendingDown,
   Minus,
   Zap,
-  Shield,
-  Globe,
-  Monitor
 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Legend,
+} from "recharts";
 
-interface Alert {
+// ── API response types ──────────────────────────────────────────────────────
+
+interface ComponentHealth {
+  component: string;
+  status: "HEALTHY" | "DEGRADED" | "DOWN";
+  responseTime?: number;
+  errorRate?: number;
+  lastChecked: string;
+}
+
+interface HealthData {
+  overall: "HEALTHY" | "DEGRADED" | "DOWN";
+  components: ComponentHealth[];
+  uptime: number; // seconds
+  responseTime: number; // ms
+}
+
+interface AlertItem {
   id: string;
+  alertType: string;
+  severity: "INFO" | "WARNING" | "ERROR" | "CRITICAL";
   title: string;
   description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
-  timestamp: Date;
-  source: string;
-  category: string;
+  isResolved: boolean;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
 }
 
-interface SystemMetric {
-  name: string;
-  value: number;
-  unit: string;
-  status: 'GOOD' | 'WARNING' | 'CRITICAL';
-  threshold: {
-    warning: number;
-    critical: number;
-  };
-  trend: 'UP' | 'DOWN' | 'STABLE';
-  history: Array<{ timestamp: Date; value: number }>;
+interface PerfMetrics {
+  averageResponseTime: number;
+  throughput: number;
+  errorRate: number;
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
 }
+
+interface TrendPoint {
+  timestamp: string;
+  value: number;
+}
+
+interface PerfData {
+  metrics: PerfMetrics;
+  trends: {
+    responseTime: TrendPoint[];
+    throughput: TrendPoint[];
+    errorRate: TrendPoint[];
+  };
+  bottlenecks: Array<{
+    component: string;
+    type: string;
+    severity: string;
+    description: string;
+  }>;
+}
+
+// ── Defaults ─────────────────────────────────────────────────────────────────
+
+const DEFAULT_HEALTH: HealthData = {
+  overall: "HEALTHY",
+  components: [],
+  uptime: 0,
+  responseTime: 0,
+};
+
+const DEFAULT_PERF: PerfData = {
+  metrics: {
+    averageResponseTime: 0,
+    throughput: 0,
+    errorRate: 0,
+    cpuUsage: 0,
+    memoryUsage: 0,
+    diskUsage: 0,
+  },
+  trends: { responseTime: [], throughput: [], errorRate: [] },
+  bottlenecks: [],
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function getTimeRangeDates(range: string): { startDate: Date; endDate: Date } {
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  if (range === "6h") startDate.setHours(startDate.getHours() - 6);
+  else if (range === "24h") startDate.setDate(startDate.getDate() - 1);
+  else if (range === "7d") startDate.setDate(startDate.getDate() - 7);
+  else startDate.setHours(startDate.getHours() - 1);
+  return { startDate, endDate };
+}
+
+function metricStatus(value: number, warn: number, crit: number) {
+  if (value >= crit) return "CRITICAL";
+  if (value >= warn) return "WARNING";
+  return "GOOD";
+}
+
+function metricStatusColor(status: string) {
+  if (status === "CRITICAL") return "text-red-600";
+  if (status === "WARNING") return "text-yellow-600";
+  return "text-green-600";
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function MonitoringDashboard() {
   const [selectedTimeRange, setSelectedTimeRange] = useState("1h");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [health, setHealth] = useState<HealthData>(DEFAULT_HEALTH);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [perf, setPerf] = useState<PerfData>(DEFAULT_PERF);
 
-  // Mock data - in real implementation, this would come from API
-  const alerts: Alert[] = [
-    {
-      id: "alert_1",
-      title: "High CPU Usage",
-      description: "CPU usage has exceeded 85% for the last 5 minutes",
-      severity: "HIGH",
-      status: "ACTIVE",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      source: "server-01",
-      category: "Performance"
-    },
-    {
-      id: "alert_2",
-      title: "Database Connection Pool Full",
-      description: "Database connection pool is at 95% capacity",
-      severity: "CRITICAL",
-      status: "ACTIVE",
-      timestamp: new Date(Date.now() - 10 * 60 * 1000),
-      source: "database",
-      category: "Database"
-    },
-    {
-      id: "alert_3",
-      title: "Failed Login Attempts",
-      description: "Multiple failed login attempts detected from IP 192.168.1.100",
-      severity: "MEDIUM",
-      status: "ACKNOWLEDGED",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      source: "auth-service",
-      category: "Security"
-    },
-    {
-      id: "alert_4",
-      title: "Disk Space Low",
-      description: "Disk space on /var/log is below 10%",
-      severity: "HIGH",
-      status: "RESOLVED",
-      timestamp: new Date(Date.now() - 60 * 60 * 1000),
-      source: "server-01",
-      category: "Storage"
+  const fetchAll = useCallback(async (range: string) => {
+    setIsLoading(true);
+    try {
+      const { startDate, endDate } = getTimeRangeDates(range);
+      const [healthRes, alertsRes, perfRes] = await Promise.all([
+        fetch("/api/super-admin/monitoring/health"),
+        fetch("/api/super-admin/monitoring/alerts?isResolved=false&limit=20"),
+        fetch(
+          `/api/super-admin/monitoring/performance?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        ),
+      ]);
+      if (healthRes.ok) setHealth(await healthRes.json());
+      if (alertsRes.ok) {
+        const d = await alertsRes.json();
+        setAlerts(d.alerts ?? []);
+      }
+      if (perfRes.ok) {
+        const d = await perfRes.json();
+        if (d.success && d.data) setPerf(d.data);
+      }
+    } catch (err) {
+      console.error("Monitoring fetch error:", err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  }, []);
 
-  const systemMetrics: SystemMetric[] = [
+  useEffect(() => {
+    fetchAll(selectedTimeRange);
+  }, [fetchAll, selectedTimeRange]);
+
+  const handleRefreshData = () => fetchAll(selectedTimeRange);
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+
+  const systemMetrics = [
     {
       name: "CPU Usage",
-      value: 68,
+      value: Math.round(perf.metrics.cpuUsage),
       unit: "%",
-      status: "WARNING",
-      threshold: { warning: 70, critical: 85 },
-      trend: "UP",
-      history: [
-        { timestamp: new Date(Date.now() - 60 * 60 * 1000), value: 45 },
-        { timestamp: new Date(Date.now() - 50 * 60 * 1000), value: 52 },
-        { timestamp: new Date(Date.now() - 40 * 60 * 1000), value: 58 },
-        { timestamp: new Date(Date.now() - 30 * 60 * 1000), value: 62 },
-        { timestamp: new Date(Date.now() - 20 * 60 * 1000), value: 65 },
-        { timestamp: new Date(Date.now() - 10 * 60 * 1000), value: 68 },
-      ]
+      warn: 70,
+      crit: 85,
+      icon: <Cpu className="h-4 w-4" />,
     },
     {
       name: "Memory Usage",
-      value: 72,
+      value: Math.round(perf.metrics.memoryUsage),
       unit: "%",
-      status: "WARNING",
-      threshold: { warning: 75, critical: 90 },
-      trend: "STABLE",
-      history: [
-        { timestamp: new Date(Date.now() - 60 * 60 * 1000), value: 70 },
-        { timestamp: new Date(Date.now() - 50 * 60 * 1000), value: 71 },
-        { timestamp: new Date(Date.now() - 40 * 60 * 1000), value: 72 },
-        { timestamp: new Date(Date.now() - 30 * 60 * 1000), value: 73 },
-        { timestamp: new Date(Date.now() - 20 * 60 * 1000), value: 71 },
-        { timestamp: new Date(Date.now() - 10 * 60 * 1000), value: 72 },
-      ]
+      warn: 75,
+      crit: 90,
+      icon: <MemoryStick className="h-4 w-4" />,
     },
     {
       name: "Disk Usage",
-      value: 45,
+      value: Math.round(perf.metrics.diskUsage),
       unit: "%",
-      status: "GOOD",
-      threshold: { warning: 80, critical: 95 },
-      trend: "DOWN",
-      history: [
-        { timestamp: new Date(Date.now() - 60 * 60 * 1000), value: 48 },
-        { timestamp: new Date(Date.now() - 50 * 60 * 1000), value: 47 },
-        { timestamp: new Date(Date.now() - 40 * 60 * 1000), value: 46 },
-        { timestamp: new Date(Date.now() - 30 * 60 * 1000), value: 46 },
-        { timestamp: new Date(Date.now() - 20 * 60 * 1000), value: 45 },
-        { timestamp: new Date(Date.now() - 10 * 60 * 1000), value: 45 },
-      ]
+      warn: 80,
+      crit: 95,
+      icon: <HardDrive className="h-4 w-4" />,
     },
     {
-      name: "Network Latency",
-      value: 12,
+      name: "Response Time",
+      value: Math.round(perf.metrics.averageResponseTime),
       unit: "ms",
-      status: "GOOD",
-      threshold: { warning: 50, critical: 100 },
-      trend: "STABLE",
-      history: [
-        { timestamp: new Date(Date.now() - 60 * 60 * 1000), value: 11 },
-        { timestamp: new Date(Date.now() - 50 * 60 * 1000), value: 12 },
-        { timestamp: new Date(Date.now() - 40 * 60 * 1000), value: 13 },
-        { timestamp: new Date(Date.now() - 30 * 60 * 1000), value: 12 },
-        { timestamp: new Date(Date.now() - 20 * 60 * 1000), value: 11 },
-        { timestamp: new Date(Date.now() - 10 * 60 * 1000), value: 12 },
-      ]
-    }
-  ];
+      warn: 500,
+      crit: 1000,
+      icon: <Wifi className="h-4 w-4" />,
+    },
+  ].map((m) => ({ ...m, status: metricStatus(m.value, m.warn, m.crit) }));
 
-  const performanceData = [
-    { time: '00:00', cpu: 45, memory: 70, disk: 48, network: 11 },
-    { time: '00:10', cpu: 52, memory: 71, disk: 47, network: 12 },
-    { time: '00:20', cpu: 58, memory: 72, disk: 46, network: 13 },
-    { time: '00:30', cpu: 62, memory: 73, disk: 46, network: 12 },
-    { time: '00:40', cpu: 65, memory: 71, disk: 45, network: 11 },
-    { time: '00:50', cpu: 68, memory: 72, disk: 45, network: 12 },
-  ];
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'LOW':
-        return 'default';
-      case 'MEDIUM':
-        return 'secondary';
-      case 'HIGH':
-        return 'destructive';
-      case 'CRITICAL':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'destructive';
-      case 'ACKNOWLEDGED':
-        return 'secondary';
-      case 'RESOLVED':
-        return 'default';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getMetricStatusColor = (status: string) => {
-    switch (status) {
-      case 'GOOD':
-        return 'text-green-600';
-      case 'WARNING':
-        return 'text-yellow-600';
-      case 'CRITICAL':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'UP':
-        return <TrendingUp className="h-3 w-3 text-red-600" />;
-      case 'DOWN':
-        return <TrendingDown className="h-3 w-3 text-green-600" />;
-      default:
-        return <Minus className="h-3 w-3 text-gray-600" />;
-    }
-  };
-
-  const getMetricIcon = (name: string) => {
-    switch (name) {
-      case 'CPU Usage':
-        return <Cpu className="h-4 w-4" />;
-      case 'Memory Usage':
-        return <MemoryStick className="h-4 w-4" />;
-      case 'Disk Usage':
-        return <HardDrive className="h-4 w-4" />;
-      case 'Network Latency':
-        return <Wifi className="h-4 w-4" />;
-      default:
-        return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const handleRefreshData = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-  };
+  // Build chart data from performance trends (align all three by responseTime timestamps)
+  const chartData = perf.trends.responseTime.map((pt, i) => ({
+    time: new Date(pt.timestamp).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    responseTime: pt.value,
+    throughput: perf.trends.throughput[i]?.value ?? 0,
+    errorRate: perf.trends.errorRate[i]?.value ?? 0,
+  }));
 
   const alertStats = {
     total: alerts.length,
-    active: alerts.filter(a => a.status === 'ACTIVE').length,
-    critical: alerts.filter(a => a.severity === 'CRITICAL').length,
-    acknowledged: alerts.filter(a => a.status === 'ACKNOWLEDGED').length,
+    active: alerts.filter((a) => !a.isResolved).length,
+    critical: alerts.filter((a) => a.severity === "CRITICAL").length,
+    warning: alerts.filter((a) => a.severity === "WARNING" || a.severity === "ERROR").length,
   };
 
-  const systemHealth = {
-    overall: 'WARNING', // Based on metrics
-    uptime: '99.97%',
-    responseTime: '145ms',
-    throughput: '1,250 req/min',
+  const healthColor =
+    health.overall === "HEALTHY"
+      ? "from-green-600 to-green-700"
+      : health.overall === "DEGRADED"
+      ? "from-orange-600 to-orange-700"
+      : "from-red-600 to-red-700";
+
+  const severityBadgeVariant = (sev: string): "default" | "secondary" | "destructive" | "outline" => {
+    if (sev === "CRITICAL" || sev === "ERROR") return "destructive";
+    if (sev === "WARNING") return "secondary";
+    return "outline";
+  };
+
+  const severityIconColor = (sev: string) => {
+    if (sev === "CRITICAL") return "text-red-600";
+    if (sev === "ERROR") return "text-red-500";
+    if (sev === "WARNING") return "text-yellow-600";
+    return "text-blue-500";
+  };
+
+  const componentStatusBadge = (status: string): "default" | "secondary" | "destructive" => {
+    if (status === "HEALTHY") return "default";
+    if (status === "DEGRADED") return "secondary";
+    return "destructive";
   };
 
   return (
     <div className="space-y-8">
-      {/* Premium Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
@@ -299,27 +305,30 @@ export function MonitoringDashboard() {
             disabled={isLoading}
             className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+          >
             <Settings className="h-4 w-4 mr-2" />
             Configure
           </Button>
         </div>
       </div>
 
-      {/* Premium System Health Overview */}
+      {/* Health Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-orange-600 to-orange-700 text-white border-0 shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/90 to-orange-700/90" />
+        <Card className={`relative overflow-hidden bg-gradient-to-br ${healthColor} text-white border-0 shadow-xl`}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
           <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm font-medium">System Health</p>
-                <p className="text-3xl font-bold">{systemHealth.overall}</p>
-                <p className="text-orange-200 text-xs mt-1">Overall system status</p>
+                <p className="text-white/80 text-sm font-medium">System Health</p>
+                <p className="text-3xl font-bold">{health.overall}</p>
+                <p className="text-white/60 text-xs mt-1">Overall system status</p>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
                 <Activity className="h-6 w-6" />
@@ -329,14 +338,15 @@ export function MonitoringDashboard() {
         </Card>
 
         <Card className="relative overflow-hidden bg-gradient-to-br from-green-600 to-green-700 text-white border-0 shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-600/90 to-green-700/90" />
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
           <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm font-medium">Uptime</p>
-                <p className="text-3xl font-bold">{systemHealth.uptime}</p>
-                <p className="text-green-200 text-xs mt-1">Last 30 days</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? "—" : formatUptime(health.uptime)}
+                </p>
+                <p className="text-green-200 text-xs mt-1">Since last restart</p>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
                 <CheckCircle className="h-6 w-6" />
@@ -346,14 +356,15 @@ export function MonitoringDashboard() {
         </Card>
 
         <Card className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 text-white border-0 shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 to-blue-700/90" />
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
           <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Response Time</p>
-                <p className="text-3xl font-bold">{systemHealth.responseTime}</p>
-                <p className="text-blue-200 text-xs mt-1">Average response time</p>
+                <p className="text-blue-100 text-sm font-medium">Avg Response</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? "—" : `${Math.round(health.responseTime)}ms`}
+                </p>
+                <p className="text-blue-200 text-xs mt-1">Across all components</p>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
                 <Zap className="h-6 w-6" />
@@ -363,14 +374,13 @@ export function MonitoringDashboard() {
         </Card>
 
         <Card className="relative overflow-hidden bg-gradient-to-br from-red-600 to-red-700 text-white border-0 shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-600/90 to-red-700/90" />
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
           <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-red-100 text-sm font-medium">Active Alerts</p>
-                <p className="text-3xl font-bold">{alertStats.active}</p>
-                <p className="text-red-200 text-xs mt-1">{alertStats.critical} critical alerts</p>
+                <p className="text-3xl font-bold">{isLoading ? "—" : alertStats.active}</p>
+                <p className="text-red-200 text-xs mt-1">{alertStats.critical} critical</p>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
                 <AlertTriangle className="h-6 w-6" />
@@ -380,7 +390,7 @@ export function MonitoringDashboard() {
         </Card>
       </div>
 
-      {/* Main Monitoring Content */}
+      {/* Tabs */}
       <Tabs defaultValue="metrics" className="space-y-4">
         <TabsList>
           <TabsTrigger value="metrics">System Metrics</TabsTrigger>
@@ -389,86 +399,75 @@ export function MonitoringDashboard() {
           <TabsTrigger value="services">Services</TabsTrigger>
         </TabsList>
 
+        {/* ── Metrics Tab ── */}
         <TabsContent value="metrics" className="space-y-4">
-          {/* System Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {systemMetrics.map((metric) => (
               <Card key={metric.name}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
                   <div className="flex items-center gap-1">
-                    {getMetricIcon(metric.name)}
-                    {getTrendIcon(metric.trend)}
+                    {metric.icon}
+                    {metric.status === "CRITICAL" || metric.status === "WARNING" ? (
+                      <TrendingUp className="h-3 w-3 text-red-500" />
+                    ) : (
+                      <Minus className="h-3 w-3 text-gray-400" />
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${getMetricStatusColor(metric.status)}`}>
-                    {metric.value}{metric.unit}
+                  <div className={`text-2xl font-bold ${metricStatusColor(metric.status)}`}>
+                    {metric.value === 0 && isLoading ? "—" : `${metric.value}${metric.unit}`}
                   </div>
                   <div className="mt-2">
-                    <Progress 
-                      value={metric.value} 
-                      className="h-2"
-                    />
+                    <Progress value={metric.unit === "ms" ? Math.min((metric.value / metric.crit) * 100, 100) : metric.value} className="h-2" />
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>Warning: {metric.threshold.warning}{metric.unit}</span>
-                    <span>Critical: {metric.threshold.critical}{metric.unit}</span>
+                    <span>Warn: {metric.warn}{metric.unit}</span>
+                    <span>Crit: {metric.crit}{metric.unit}</span>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Metrics Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>System Metrics Trend</CardTitle>
-              <CardDescription>Real-time system performance metrics</CardDescription>
+              <CardTitle>Performance Trends</CardTitle>
+              <CardDescription>
+                {chartData.length > 0
+                  ? "Response time, throughput, and error rate over the selected period"
+                  : "No performance data recorded for this period"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" fontSize={12} />
-                  <YAxis fontSize={12} />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="cpu" 
-                    stroke="#ef4444" 
-                    strokeWidth={2}
-                    name="CPU %"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="memory" 
-                    stroke="#f59e0b" 
-                    strokeWidth={2}
-                    name="Memory %"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="disk" 
-                    stroke="#10b981" 
-                    strokeWidth={2}
-                    name="Disk %"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="network" 
-                    stroke="#3b82f6" 
-                    strokeWidth={2}
-                    name="Network ms"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <div className="text-center">
+                    <Activity className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p>No metrics data for this time window.</p>
+                  </div>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" fontSize={12} />
+                    <YAxis fontSize={12} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="responseTime" stroke="#3b82f6" strokeWidth={2} name="Response Time (ms)" />
+                    <Line type="monotone" dataKey="throughput" stroke="#10b981" strokeWidth={2} name="Throughput (req/s)" />
+                    <Line type="monotone" dataKey="errorRate" stroke="#ef4444" strokeWidth={2} name="Error Rate (%)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Alerts Tab ── */}
         <TabsContent value="alerts" className="space-y-4">
-          {/* Alert Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -479,7 +478,6 @@ export function MonitoringDashboard() {
                 <div className="text-2xl font-bold">{alertStats.total}</div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active</CardTitle>
@@ -489,7 +487,6 @@ export function MonitoringDashboard() {
                 <div className="text-2xl font-bold text-red-600">{alertStats.active}</div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Critical</CardTitle>
@@ -499,60 +496,181 @@ export function MonitoringDashboard() {
                 <div className="text-2xl font-bold text-red-600">{alertStats.critical}</div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Acknowledged</CardTitle>
-                <CheckCircle className="h-4 w-4 text-yellow-600" />
+                <CardTitle className="text-sm font-medium">Warning / Error</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{alertStats.acknowledged}</div>
+                <div className="text-2xl font-bold text-yellow-600">{alertStats.warning}</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Alerts List */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Alerts</CardTitle>
-              <CardDescription>System alerts and notifications</CardDescription>
+              <CardTitle>Active Alerts</CardTitle>
+              <CardDescription>
+                {alerts.length > 0
+                  ? `${alerts.length} unresolved alert${alerts.length !== 1 ? "s" : ""}`
+                  : "No active alerts — system is operating normally"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                    <div className="flex-shrink-0">
-                      <AlertTriangle className={`h-5 w-5 ${
-                        alert.severity === 'CRITICAL' ? 'text-red-600' :
-                        alert.severity === 'HIGH' ? 'text-red-500' :
-                        alert.severity === 'MEDIUM' ? 'text-yellow-600' :
-                        'text-blue-600'
-                      }`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{alert.title}</h4>
-                        <Badge variant={getSeverityColor(alert.severity) as any}>
-                          {alert.severity}
-                        </Badge>
-                        <Badge variant={getStatusColor(alert.status) as any}>
-                          {alert.status}
-                        </Badge>
+              {alerts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No active alerts.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                      <div className="flex-shrink-0">
+                        <AlertTriangle className={`h-5 w-5 ${severityIconColor(alert.severity)}`} />
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {alert.description}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>Source: {alert.source}</span>
-                        <span>Category: {alert.category}</span>
-                        <span>Time: {alert.timestamp.toLocaleString()}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{alert.title}</h4>
+                          <Badge variant={severityBadgeVariant(alert.severity)}>
+                            {alert.severity}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{alert.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Type: {alert.alertType}</span>
+                          <span>
+                            {new Date(alert.createdAt).toLocaleString("en-IN")}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <Button variant="outline" size="sm">
-                        {alert.status === 'ACTIVE' ? 'Acknowledge' : 'View'}
-                      </Button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Performance Tab ── */}
+        <TabsContent value="performance" className="space-y-4">
+          {/* Bottlenecks */}
+          {perf.bottlenecks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  Detected Bottlenecks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {perf.bottlenecks.map((b, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 border rounded-lg">
+                      <Badge variant={b.severity === "CRITICAL" || b.severity === "HIGH" ? "destructive" : "secondary"}>
+                        {b.severity}
+                      </Badge>
+                      <div>
+                        <p className="font-medium text-sm">{b.component} — {b.type}</p>
+                        <p className="text-xs text-muted-foreground">{b.description}</p>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Response Time Trend</CardTitle>
+                <CardDescription>API response time over the selected period</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {chartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                    No data for this window
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <AreaChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="responseTime"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        fillOpacity={0.2}
+                        name="Response Time (ms)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Throughput & Error Rate</CardTitle>
+                <CardDescription>Request throughput and error rate over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {chartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                    No data for this window
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="throughput"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        name="Throughput (req/s)"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="errorRate"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        name="Error Rate (%)"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Summary metrics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Period Summary</CardTitle>
+              <CardDescription>Average metrics for the selected time range</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { label: "Avg Response Time", value: `${Math.round(perf.metrics.averageResponseTime)} ms` },
+                  { label: "Throughput", value: `${perf.metrics.throughput.toFixed(1)} req/s` },
+                  { label: "Error Rate", value: `${perf.metrics.errorRate.toFixed(2)}%` },
+                  { label: "CPU Usage", value: `${Math.round(perf.metrics.cpuUsage)}%` },
+                  { label: "Memory Usage", value: `${Math.round(perf.metrics.memoryUsage)}%` },
+                  { label: "Disk Usage", value: `${Math.round(perf.metrics.diskUsage)}%` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="p-3 border rounded-lg">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="text-lg font-semibold mt-1">{value}</p>
                   </div>
                 ))}
               </div>
@@ -560,120 +678,55 @@ export function MonitoringDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>CPU & Memory Usage</CardTitle>
-                <CardDescription>System resource utilization over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" fontSize={12} />
-                    <YAxis fontSize={12} />
-                    <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="cpu" 
-                      stackId="1"
-                      stroke="#ef4444" 
-                      fill="#ef4444"
-                      fillOpacity={0.6}
-                      name="CPU %"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="memory" 
-                      stackId="2"
-                      stroke="#f59e0b" 
-                      fill="#f59e0b"
-                      fillOpacity={0.6}
-                      name="Memory %"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Network & Disk Performance</CardTitle>
-                <CardDescription>I/O performance metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" fontSize={12} />
-                    <YAxis fontSize={12} />
-                    <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="disk" 
-                      stroke="#10b981" 
-                      strokeWidth={2}
-                      name="Disk %"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="network" 
-                      stroke="#3b82f6" 
-                      strokeWidth={2}
-                      name="Network ms"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
+        {/* ── Services Tab ── */}
         <TabsContent value="services" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { name: 'Web Server', status: 'RUNNING', uptime: '15d 4h 23m', cpu: 12, memory: 256 },
-              { name: 'Database', status: 'RUNNING', uptime: '15d 4h 23m', cpu: 25, memory: 1024 },
-              { name: 'Redis Cache', status: 'RUNNING', uptime: '15d 4h 23m', cpu: 3, memory: 128 },
-              { name: 'Message Queue', status: 'RUNNING', uptime: '15d 4h 23m', cpu: 8, memory: 64 },
-              { name: 'File Storage', status: 'WARNING', uptime: '2d 1h 15m', cpu: 5, memory: 32 },
-              { name: 'Backup Service', status: 'STOPPED', uptime: '0m', cpu: 0, memory: 0 },
-            ].map((service) => (
-              <Card key={service.name}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{service.name}</CardTitle>
-                  <Server className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Status:</span>
-                      <Badge variant={
-                        service.status === 'RUNNING' ? 'default' :
-                        service.status === 'WARNING' ? 'secondary' :
-                        'destructive'
-                      }>
-                        {service.status}
-                      </Badge>
+          {health.components.length === 0 ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center text-muted-foreground">
+                  <Server className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p>{isLoading ? "Loading services…" : "No component health data available."}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {health.components.map((comp) => (
+                <Card key={comp.component}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{comp.component}</CardTitle>
+                    <Server className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Status</span>
+                        <Badge variant={componentStatusBadge(comp.status)}>{comp.status}</Badge>
+                      </div>
+                      {comp.responseTime !== undefined && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Response Time</span>
+                          <span className="text-sm font-mono">{comp.responseTime}ms</span>
+                        </div>
+                      )}
+                      {comp.errorRate !== undefined && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Error Rate</span>
+                          <span className="text-sm">{comp.errorRate.toFixed(2)}%</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Last Checked</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comp.lastChecked).toLocaleTimeString("en-IN")}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Uptime:</span>
-                      <span className="text-sm font-mono">{service.uptime}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">CPU:</span>
-                      <span className="text-sm">{service.cpu}%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Memory:</span>
-                      <span className="text-sm">{service.memory}MB</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

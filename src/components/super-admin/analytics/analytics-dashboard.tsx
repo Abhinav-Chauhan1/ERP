@@ -24,6 +24,18 @@ import {
   Calendar,
   Clock
 } from "lucide-react";
+import {
+  LineChart as ReLineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { getDashboardAnalytics } from "@/lib/actions/analytics-actions";
 import { toast } from "sonner";
 
@@ -50,6 +62,7 @@ interface DashboardData {
     averageRevenuePerUser: number;
     customerLifetimeValue: number;
     conversionRate: number;
+    hasPaymentData?: boolean;
   };
   userGrowthData: Array<{
     month: string;
@@ -244,12 +257,8 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                   {formatCurrency(data.kpiData.totalRevenue)}
                 </div>
                 <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    +12.5%
-                  </Badge>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    MRR: {formatCurrency(data.kpiData.monthlyRecurringRevenue)}
+                    Projected MRR: {formatCurrency(data.kpiData.monthlyRecurringRevenue)}
                   </p>
                 </div>
               </CardContent>
@@ -415,20 +424,37 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
             <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <LineChart className="h-5 w-5 text-blue-600" />
-                  <span>Revenue Trends</span>
+                  <Users className="h-5 w-5 text-teal-600" />
+                  <span>User Growth (12 months)</span>
                 </CardTitle>
-                <CardDescription>Monthly revenue and growth patterns</CardDescription>
+                <CardDescription>Cumulative registered users over time</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <Skeleton className="h-64 w-full" />
+                ) : data && data.userGrowthData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={256}>
+                    <ReLineChart data={data.userGrowthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="month" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12 }}
+                        formatter={(v) => [(v as number).toLocaleString("en-IN"), "Users"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="users"
+                        stroke="#14b8a6"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Users"
+                      />
+                    </ReLineChart>
+                  </ResponsiveContainer>
                 ) : (
-                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg">
-                    <div className="text-center">
-                      <LineChart className="h-12 w-12 text-blue-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Revenue chart will be displayed here</p>
-                    </div>
+                  <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+                    No user growth data available
                   </div>
                 )}
               </CardContent>
@@ -437,20 +463,30 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
             <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-teal-600" />
-                  <span>User Growth</span>
+                  <Building className="h-5 w-5 text-blue-600" />
+                  <span>Schools by Plan</span>
                 </CardTitle>
-                <CardDescription>User acquisition and growth trends</CardDescription>
+                <CardDescription>Distribution of active schools across plans</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <Skeleton className="h-64 w-full" />
+                ) : data && data.schoolDistribution.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={256}>
+                    <BarChart data={data.schoolDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="plan" fontSize={12} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12 }}
+                        formatter={(v) => [v as number, "Schools"]}
+                      />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Schools" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 ) : (
-                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-teal-50 to-pink-50 dark:from-teal-950/20 dark:to-pink-950/20 rounded-lg">
-                    <div className="text-center">
-                      <BarChart3 className="h-12 w-12 text-teal-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-600 dark:text-slate-400">User growth chart will be displayed here</p>
-                    </div>
+                  <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+                    No school distribution data available
                   </div>
                 )}
               </CardContent>
@@ -534,57 +570,172 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
         </TabsContent>
 
         <TabsContent value="revenue">
-          <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-            <CardContent className="p-8">
-              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg">
-                <div className="text-center">
-                  <DollarSign className="h-16 w-16 text-green-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Revenue Analytics</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Detailed revenue charts and analysis will be displayed here</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {data && [
+                { label: "Projected MRR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue), note: "Based on active schools × per-student rate" },
+                { label: "Projected ARR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue * 12), note: "Annualised from MRR" },
+                { label: "Collected Revenue", value: data.kpiData.hasPaymentData ? formatCurrency(data.kpiData.totalRevenue) : "₹0", note: data.kpiData.hasPaymentData ? "All-time from Payment records" : "No payments processed via Razorpay yet" },
+              ].map(({ label, value, note }) => (
+                <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{note}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>Revenue by Plan (Projected)</CardTitle>
+                <CardDescription>Projected monthly revenue contribution per plan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? <Skeleton className="h-64 w-full" /> : data && data.schoolDistribution.length > 0 ? (
+                  <div className="space-y-4">
+                    {data.schoolDistribution.map((item) => (
+                      <div key={item.plan} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{item.plan}</span>
+                          <span>{item.count} schools ({item.percentage}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-emerald-500 h-2 rounded-full"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No plan data available</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="users">
-          <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-            <CardContent className="p-8">
-              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-teal-50 to-pink-50 dark:from-teal-950/20 dark:to-pink-950/20 rounded-lg">
-                <div className="text-center">
-                  <Users className="h-16 w-16 text-teal-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">User Analytics</h3>
-                  <p className="text-slate-600 dark:text-slate-400">User growth and engagement metrics will be displayed here</p>
-                </div>
+          <div className="space-y-6">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>User Growth — Last 12 Months</CardTitle>
+                <CardDescription>Cumulative registered users across all schools</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? <Skeleton className="h-80 w-full" /> : data && data.userGrowthData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <ReLineChart data={data.userGrowthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="month" fontSize={11} tickLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12 }}
+                        formatter={(v) => [(v as number).toLocaleString("en-IN"), "Total users"]}
+                      />
+                      <Line type="monotone" dataKey="users" stroke="#14b8a6" strokeWidth={2} dot={{ r: 3 }} name="Users" />
+                    </ReLineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-80 flex items-center justify-center text-muted-foreground">No user data available</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {data && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: "Students", value: data.kpiData.totalStudents },
+                  { label: "Teachers", value: data.kpiData.totalTeachers },
+                  { label: "Admins", value: data.kpiData.totalAdmins },
+                  { label: "Total Users", value: data.kpiData.totalUsers },
+                ].map(({ label, value }) => (
+                  <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold">{formatNumber(value)}</div>
+                      <div className="text-sm text-muted-foreground">{label}</div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="schools">
-          <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-            <CardContent className="p-8">
-              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg">
-                <div className="text-center">
-                  <Building className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">School Analytics</h3>
-                  <p className="text-slate-600 dark:text-slate-400">School distribution and performance metrics will be displayed here</p>
-                </div>
+          <div className="space-y-6">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>School Distribution by Plan</CardTitle>
+                <CardDescription>Number of schools on each subscription plan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? <Skeleton className="h-64 w-full" /> : data && data.schoolDistribution.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={256}>
+                    <BarChart data={data.schoolDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="plan" fontSize={12} tickLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v) => [v as number, "Schools"]} />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Schools" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">No school data</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {data && (
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "Total Schools", value: data.kpiData.totalSchools },
+                  { label: "Active", value: data.kpiData.activeSchools },
+                  { label: "Suspended", value: data.kpiData.suspendedSchools },
+                ].map(({ label, value }) => (
+                  <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold">{value}</div>
+                      <div className="text-sm text-muted-foreground">{label}</div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="performance">
-          <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-            <CardContent className="p-8">
-              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 rounded-lg">
-                <div className="text-center">
-                  <Activity className="h-16 w-16 text-orange-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Performance Metrics</h3>
-                  <p className="text-slate-600 dark:text-slate-400">System performance and health metrics will be displayed here</p>
+          <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle>System Performance</CardTitle>
+              <CardDescription>
+                Real-time system metrics are available in the{" "}
+                <a href="/super-admin/monitoring" className="text-blue-500 underline">Monitoring dashboard</a>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[
+                    { label: "Active Subscriptions", value: data.kpiData.activeSubscriptions },
+                    { label: "Conversion Rate", value: `${data.kpiData.conversionRate.toFixed(1)}%` },
+                    { label: "New Schools (period)", value: data.kpiData.recentSchools },
+                  ].map(({ label, value }) => (
+                    <Card key={label}>
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold">{value}</div>
+                        <div className="text-sm text-muted-foreground">{label}</div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -7,17 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  BarChart3, 
-  Users, 
-  TrendingUp, 
+import {
+  ArrowLeft,
+  BarChart3,
+  Users,
+  TrendingUp,
   Activity,
-  Calendar,
-  MessageSquare,
   FileText,
-  Clock
+  GraduationCap,
+  BookOpen
 } from "lucide-react";
+import { PLAN_LIMITS, type PlanType } from "@/lib/config/plan-features";
+import { format } from "date-fns";
 
 interface SchoolAnalyticsPageProps {
   params: Promise<{ id: string }>;
@@ -71,6 +72,28 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
     );
   }
 
+  // Fetch real usage data from UsageCounter for current month
+  const currentMonth = format(new Date(), "yyyy-MM");
+  const usageCounter = await db.usageCounter.findUnique({
+    where: { schoolId_month: { schoolId: id, month: currentMonth } },
+  }).catch(() => null);
+
+  const planLimits = PLAN_LIMITS[school.plan as PlanType];
+  const smsUsed = usageCounter?.smsUsed ?? 0;
+  const smsLimit = usageCounter?.smsLimit ?? planLimits?.sms ?? 500;
+  const waUsed = usageCounter?.whatsappUsed ?? 0;
+  const waLimit = usageCounter?.whatsappLimit ?? planLimits?.whatsapp ?? 0;
+  const storageMB = usageCounter?.storageUsedMB ?? 0;
+  const storageLimitMB = usageCounter?.storageLimitMB ?? (planLimits?.storageGB ?? 1) * 1024;
+  const storageGB = storageMB / 1024;
+  const storageLimitGB = storageLimitMB / 1024;
+
+  const smsPct = smsLimit > 0 ? Math.min(100, Math.round((smsUsed / smsLimit) * 100)) : 0;
+  const waPct = waLimit > 0 ? Math.min(100, Math.round((waUsed / waLimit) * 100)) : 0;
+  const storagePct = storageLimitMB > 0 ? Math.min(100, Math.round((storageMB / storageLimitMB) * 100)) : 0;
+
+  const barColor = (pct: number) => pct >= 90 ? "bg-red-600" : pct >= 70 ? "bg-yellow-500" : "bg-blue-600";
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -91,7 +114,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Overview
@@ -99,10 +122,6 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
           <TabsTrigger value="usage" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Usage
-          </TabsTrigger>
-          <TabsTrigger value="engagement" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Engagement
           </TabsTrigger>
           <TabsTrigger value="reports" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -126,7 +145,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-green-600" />
+                  <GraduationCap className="h-4 w-4 text-green-600" />
                   <div>
                     <p className="text-2xl font-bold">{school._count.teachers}</p>
                     <p className="text-xs text-muted-foreground">Total Teachers</p>
@@ -137,7 +156,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-teal-600" />
+                  <BookOpen className="h-4 w-4 text-teal-600" />
                   <div>
                     <p className="text-2xl font-bold">{school._count.classes}</p>
                     <p className="text-xs text-muted-foreground">Total Classes</p>
@@ -163,17 +182,25 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Growth Trends
+                  School Summary
                 </CardTitle>
-                <CardDescription>
-                  User growth and engagement trends over time
-                </CardDescription>
+                <CardDescription>Key school statistics</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center border rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground">
-                    Growth chart will be displayed here
-                  </p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Students", value: school._count.students },
+                    { label: "Teachers", value: school._count.teachers },
+                    { label: "Admins", value: school._count.administrators },
+                    { label: "Parents", value: school._count.parents },
+                    { label: "Classes", value: school._count.classes },
+                    { label: "Subjects", value: school._count.Subject },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm">{label}</span>
+                      <span className="text-sm font-semibold">{value}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -182,34 +209,37 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5" />
-                  Activity Summary
+                  Plan & Subscription
                 </CardTitle>
-                <CardDescription>
-                  Recent activity and system usage
-                </CardDescription>
+                <CardDescription>Current plan tier and capacity</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm">Last Login</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">2 hours ago</span>
+                    <span className="text-sm">Plan</span>
+                    <Badge>{school.plan}</Badge>
                   </div>
                   <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Messages Sent</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">156 today</span>
+                    <span className="text-sm">Storage Limit</span>
+                    <span className="text-sm font-semibold">{planLimits?.storageGB ?? 1} GB</span>
                   </div>
                   <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-teal-600" />
-                      <span className="text-sm">Reports Generated</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">12 this week</span>
+                    <span className="text-sm">SMS / month</span>
+                    <span className="text-sm font-semibold">
+                      {planLimits?.sms === -1 ? "Unlimited" : (planLimits?.sms ?? 500)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <span className="text-sm">WhatsApp / month</span>
+                    <span className="text-sm font-semibold">
+                      {(planLimits?.whatsapp ?? 0) === 0 ? "Not included" : planLimits?.whatsapp === -1 ? "Unlimited" : planLimits?.whatsapp}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <span className="text-sm">Registered</span>
+                    <span className="text-sm font-semibold">
+                      {new Date(school.createdAt).toLocaleDateString("en-IN")}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -222,10 +252,11 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Resource Usage
+                Resource Usage — {currentMonth}
               </CardTitle>
               <CardDescription>
-                Track resource consumption and limits
+                Current month usage tracked from UsageCounter
+                {!usageCounter && " · No usage data recorded yet for this month"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -233,51 +264,53 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>SMS Messages</span>
-                    <span>750 / 1000</span>
+                    <span>
+                      {smsUsed} / {smsLimit === -1 ? "Unlimited" : smsLimit}
+                      {smsLimit > 0 && ` (${smsPct}%)`}
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: '75%' }}></div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className={`${barColor(smsPct)} h-2 rounded-full transition-all`}
+                      style={{ width: `${smsPct}%` }}
+                    />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>WhatsApp Messages</span>
-                    <span>450 / 500</span>
+                    <span>
+                      {waLimit === 0
+                        ? "Not included in plan"
+                        : `${waUsed} / ${waLimit === -1 ? "Unlimited" : waLimit}${waLimit > 0 ? ` (${waPct}%)` : ""}`}
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-green-600 h-2 rounded-full" style={{ width: '90%' }}></div>
-                  </div>
+                  {waLimit > 0 && (
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className={`${barColor(waPct)} h-2 rounded-full transition-all`}
+                        style={{ width: `${waPct}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Storage Used</span>
-                    <span>2.3 GB / 5 GB</span>
+                    <span>
+                      {storageGB.toFixed(2)} GB / {storageLimitGB.toFixed(1)} GB
+                      {` (${storagePct}%)`}
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-teal-600 h-2 rounded-full" style={{ width: '46%' }}></div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className={`${barColor(storagePct)} h-2 rounded-full transition-all`}
+                      style={{ width: `${storagePct}%` }}
+                    />
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="engagement" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                User Engagement
-              </CardTitle>
-              <CardDescription>
-                Track user activity and engagement metrics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center border rounded-lg bg-muted/50">
-                <p className="text-sm text-muted-foreground">
-                  Engagement analytics will be displayed here
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -288,32 +321,36 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Custom Reports
+                Reports & Logs
               </CardTitle>
-              <CardDescription>
-                Generate and download custom reports
-              </CardDescription>
+              <CardDescription>Access activity logs and audit reports</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/activity`}>
+                    <Activity className="h-6 w-6 mb-2" />
+                    <span>Activity & Audit Logs</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/users`}>
                     <Users className="h-6 w-6 mb-2" />
-                    <span>User Activity Report</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+                    <span>User Report</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/subscription`}>
                     <BarChart3 className="h-6 w-6 mb-2" />
-                    <span>Usage Analytics Report</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
-                    <TrendingUp className="h-6 w-6 mb-2" />
-                    <span>Performance Report</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
-                    <Clock className="h-6 w-6 mb-2" />
-                    <span>Historical Data Report</span>
-                  </Button>
-                </div>
+                    <span>Subscription Details</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/billing`}>
+                    <FileText className="h-6 w-6 mb-2" />
+                    <span>Billing History</span>
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
