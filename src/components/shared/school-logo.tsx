@@ -1,6 +1,7 @@
 "use client";
 
 import { useBranding } from "@/lib/contexts/branding-context";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 import Image from "next/image";
 
 interface SchoolLogoProps {
@@ -26,7 +27,7 @@ export function SchoolLogo({ className = "", showName = true }: SchoolLogoProps)
     <div className={`flex items-center gap-2 ${className}`}>
       {branding.schoolLogo ? (
         <Image
-          src={branding.schoolLogo}
+          src={resolveR2Url(branding.schoolLogo) ?? ''}
           alt={`${branding.schoolName} logo`}
           width={40}
           height={40}

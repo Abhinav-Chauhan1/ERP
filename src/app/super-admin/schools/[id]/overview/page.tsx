@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { db } from "@/lib/db";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,8 +119,8 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
         <div className="flex-1">
           <div className="flex items-center gap-3">
             {school.logo && (
-              <img 
-                src={school.logo} 
+              <img
+                src={resolveR2Url(school.logo) ?? school.logo}
                 alt={`${school.name} logo`}
                 className="w-12 h-12 rounded-lg object-cover"
               />

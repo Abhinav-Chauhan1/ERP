@@ -18,6 +18,7 @@ import { ReactNode } from "react";
 import { MobileBottomNavigation, MobileBottomNavigationSpacer } from "@/components/navigation/mobile-bottom-navigation";
 import { ResponsiveSidebarNavigation, SidebarContentWrapper } from "@/components/navigation/responsive-sidebar-navigation";
 import { prisma } from "@/lib/db";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 
 export default async function StudentLayout({
   children
@@ -73,7 +74,7 @@ export default async function StudentLayout({
         <ResponsiveSidebarNavigation
           className={studentClass}
           schoolName={school?.name}
-          schoolLogo={school?.logo}
+          schoolLogo={resolveR2Url(school?.logo)}
         />
 
         <SidebarContentWrapper className={studentClass}>
@@ -82,7 +83,7 @@ export default async function StudentLayout({
             <div className="flex items-center gap-3 p-4">
               {school?.logo && (
                 <img
-                  src={school.logo}
+                  src={resolveR2Url(school.logo) ?? school.logo}
                   alt={`${school.name || 'School'} logo`}
                   className="h-10 w-10 object-contain flex-shrink-0"
                 />

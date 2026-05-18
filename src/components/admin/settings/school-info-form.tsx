@@ -18,6 +18,7 @@ import { School, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { updateSchoolInfo } from "@/lib/actions/settingsActions";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 import { R2UploadWidget, type UploadResult } from "@/components/upload/r2-upload-widget";
 
 interface SchoolInfoFormProps {
@@ -304,7 +305,7 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
                 <div className="p-4 border rounded-md bg-muted/50">
                   <div className="relative h-32 w-32">
                     <Image
-                      src={schoolLogo}
+                      src={resolveR2Url(schoolLogo) ?? schoolLogo}
                       alt="School logo"
                       fill
                       className="object-contain"

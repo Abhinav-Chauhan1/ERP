@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 
 interface TemplateSectionConfig {
     id: string;
@@ -391,7 +392,7 @@ export function TemplatePreview({
                             {schoolLogo ? (
                                 <div className="relative w-8 h-8 rounded bg-white/20 p-1">
                                     <Image
-                                        src={schoolLogo}
+                                        src={resolveR2Url(schoolLogo) ?? schoolLogo}
                                         alt="Logo"
                                         fill
                                         className="object-contain"
@@ -449,7 +450,7 @@ export function TemplatePreview({
                                 {schoolLogo ? (
                                     <div className="relative w-8 h-8">
                                         <Image
-                                            src={schoolLogo}
+                                            src={resolveR2Url(schoolLogo) ?? schoolLogo}
                                             alt="Logo"
                                             fill
                                             className="object-contain"

@@ -40,6 +40,7 @@ import {
 } from "@/lib/actions/reportCardTemplateActions";
 import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 import { TemplatePreview } from "./template-preview";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 
 const templateSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -500,7 +501,7 @@ export function TemplateEditorForm({ template, mode }: TemplateEditorFormProps) 
                     {schoolLogo ? (
                       <div className="relative h-24 w-full">
                         <Image
-                          src={schoolLogo}
+                          src={resolveR2Url(schoolLogo) ?? schoolLogo}
                           alt="Logo"
                           fill
                           className="object-contain rounded"

@@ -89,15 +89,9 @@ export async function POST(request: NextRequest) {
 
     await s3Client.send(command);
 
-    // Build public URL only when a custom domain is explicitly configured.
-    // Never fall back to pub-{accountId}.r2.dev — that would expose the account ID.
-    // Without a custom domain, callers must use a presigned URL endpoint to read objects.
-    let url: string | null = null;
-    if (process.env.R2_CUSTOM_DOMAIN) {
-      const customDomain = process.env.R2_CUSTOM_DOMAIN.replace(/\/$/, '');
-      const base = customDomain.startsWith('http') ? customDomain : `https://${customDomain}`;
-      url = `${base}/${key}`;
-    }
+    // Always serve through the authenticated proxy so private-bucket objects
+    // remain accessible regardless of bucket visibility settings.
+    const url = `/api/r2/image?key=${encodeURIComponent(key)}`;
 
     // Return success response
     return NextResponse.json({
