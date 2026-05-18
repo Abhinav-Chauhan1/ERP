@@ -60,10 +60,12 @@ export async function GET(req: NextRequest) {
       const resolvedCode    = school?.schoolCode || undefined;
 
       // Logo: prefer school.logo (R2 upload), fall back to SchoolSettings.schoolLogo
-      let logoUrl = school?.logo ?? ss?.schoolLogo ?? undefined;
-      if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
-        const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-        logoUrl = `${base}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+      // Fetch via S3 SDK directly so private-bucket logos work without HTTP auth
+      let logoUrl: string | undefined = undefined;
+      const rawLogo = school?.logo ?? ss?.schoolLogo ?? undefined;
+      if (rawLogo) {
+        const { fetchLogoAsBase64ForReport } = await import("@/lib/actions/report-card-generation");
+        logoUrl = (await fetchLogoAsBase64ForReport(rawLogo)) ?? undefined;
       }
       return {
         schoolName:    resolvedName,

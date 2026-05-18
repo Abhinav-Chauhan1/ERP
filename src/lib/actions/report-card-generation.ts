@@ -512,7 +512,9 @@ export async function generateSingleExamTypeReportCard(
 
     // Fetch exam type name to show in report label
     const examTypeInfo = await db.examType.findUnique({ where: { id: examTypeId }, select: { name: true } });
-    const reportLabel = examTypeInfo ? `${examTypeInfo.name} Report Card  –  ${reportCardData.term.name}` : undefined;
+    const reportLabel = examTypeInfo
+      ? buildExamTypeLabel(examTypeInfo.name, reportCardData.term.name)
+      : undefined;
 
     const pdfBuffer = await generateTermReportCardPDF(reportCardData, {
       schoolName: schoolInfo.name,
@@ -621,7 +623,9 @@ export async function generateBatchExamTypeReportCardsZip(
       const student = enrollment.student;
       try {
         const reportCardData = await aggregateExamTypeReportCardData(studentId, termId, examTypeId);
-        const label = examTypeInfo ? `${examTypeInfo.name} Report Card  –  ${reportCardData.term.name}` : undefined;
+        const label = examTypeInfo
+          ? buildExamTypeLabel(examTypeInfo.name, reportCardData.term.name)
+          : undefined;
         const pdfBuf = await generateTermReportCardPDF(reportCardData, {
           schoolName: schoolInfo.name,
           schoolAddress: schoolInfo.address,
@@ -807,6 +811,99 @@ async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<
 }
 
 /**
+ * Extracts the R2 object key from a stored logo URL.
+ * Handles both the proxy format (/api/r2/image?key=...) and legacy pub-*.r2.dev URLs.
+ */
+function extractR2Key(url: string): string | null {
+  // Proxy URL: /api/r2/image?key=<encoded-key>
+  if (url.includes('/api/r2/image')) {
+    try {
+      const u = new URL(url, 'http://localhost');
+      return u.searchParams.get('key');
+    } catch { return null; }
+  }
+  // Legacy public URL: https://pub-*.r2.dev/<key>
+  try {
+    const u = new URL(url);
+    if (u.hostname.match(/^pub-[^.]+\.r2\.dev$/)) {
+      return u.pathname.replace(/^\//, '');
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/**
+ * Fetches a school logo and returns it as a base64 data URI suitable for jsPDF.
+ * For R2 objects (private bucket), reads via S3 SDK directly instead of HTTP.
+ * Falls back to a plain HTTP fetch for non-R2 URLs (e.g. external CDN logos).
+ */
+/**
+ * Builds the report card title-bar label for exam-type cards.
+ * Produces "ExamType - TermName" without the redundant "Report Card" suffix
+ * and without the exam type being repeated in the term name portion.
+ *
+ * e.g. examTypeName="Periodic Test", combinedTermName="Half Yearly — Periodic Test"
+ * → "Periodic Test - Half Yearly"
+ */
+function buildExamTypeLabel(examTypeName: string, combinedTermName: string): string {
+  // combinedTermName is built as `${term.name} — ${examType.name}` in the aggregation layer
+  const plainTermName = combinedTermName
+    .replace(new RegExp(`\\s*[—–-]+\\s*${examTypeName}\\s*$`, 'i'), '')
+    .trim();
+  return `${examTypeName} - ${plainTermName}`;
+}
+
+export async function fetchLogoAsBase64ForReport(url: string): Promise<string | null> {
+  return fetchLogoAsBase64(url);
+}
+
+async function fetchLogoAsBase64(url: string): Promise<string | null> {
+  if (!url || url.startsWith('data:')) return url;
+
+  const key = extractR2Key(url);
+  if (key) {
+    // Fetch directly from R2 via S3 SDK — no auth header needed
+    try {
+      const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const accountId      = process.env.R2_ACCOUNT_ID;
+      const accessKeyId    = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucketName     = process.env.R2_BUCKET_NAME;
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) return null;
+
+      const s3 = new S3Client({
+        region: 'auto',
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId, secretAccessKey },
+      });
+      const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
+      const buf = Buffer.concat(chunks);
+      const ct  = res.ContentType || 'image/png';
+      return `data:${ct};base64,${buf.toString('base64')}`;
+    } catch (err) {
+      console.error('Failed to fetch R2 logo for report card:', err);
+      return null;
+    }
+  }
+
+  // Non-R2 URL — resolve to absolute and fetch via HTTP
+  let absUrl = url;
+  if (!url.startsWith('http')) {
+    const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    absUrl = `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+  try {
+    const res = await fetch(absUrl, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const ct  = res.headers.get('content-type') || 'image/png';
+    return `data:${ct};base64,${Buffer.from(buf).toString('base64')}`;
+  } catch { return null; }
+}
+
+/**
  * Get school information for PDF branding — fetches name, address, logo, phone, email.
  */
 async function getSchoolInfo(schoolId: string): Promise<{
@@ -834,19 +931,8 @@ async function getSchoolInfo(schoolId: string): Promise<{
     const email   = school?.email   || schoolSettings?.schoolEmail   || undefined;
 
     let logo = school?.logo || schoolSettings?.schoolLogo || undefined;
-    if (logo && !logo.startsWith('http') && !logo.startsWith('data:')) {
-      const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
-      logo = `${base}${logo.startsWith('/') ? '' : '/'}${logo}`;
-    }
-    if (logo?.startsWith('http')) {
-      try {
-        const res = await fetch(logo);
-        if (res.ok) {
-          const buf = await res.arrayBuffer();
-          const ct = res.headers.get('content-type') || 'image/png';
-          logo = `data:${ct};base64,${Buffer.from(buf).toString('base64')}`;
-        }
-      } catch { logo = undefined; }
+    if (logo) {
+      logo = await fetchLogoAsBase64(logo) ?? undefined;
     }
 
     return { name, address, phone, email, logo };

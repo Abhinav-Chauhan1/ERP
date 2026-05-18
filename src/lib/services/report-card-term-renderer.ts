@@ -63,6 +63,30 @@ function getBorderBase64(): string | null {
 
 
 async function fetchImageAsBase64(url: string): Promise<string | null> {
+  if (!url || url.startsWith("data:")) return url;
+  // For R2 objects (proxy URL or legacy pub URL), fetch via S3 SDK to bypass auth
+  const key = extractR2Key(url);
+  if (key) {
+    try {
+      const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
+      const accountId       = process.env.R2_ACCOUNT_ID;
+      const accessKeyId     = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucketName      = process.env.R2_BUCKET_NAME;
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) return null;
+      const s3 = new S3Client({
+        region: "auto",
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId, secretAccessKey },
+      });
+      const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
+      const buf = Buffer.concat(chunks);
+      const ct  = res.ContentType || "image/png";
+      return `data:${ct};base64,${buf.toString("base64")}`;
+    } catch { return null; }
+  }
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
@@ -70,6 +94,20 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
     const ct = res.headers.get("content-type") || "image/jpeg";
     return `data:${ct};base64,${Buffer.from(buf).toString("base64")}`;
   } catch { return null; }
+}
+
+function extractR2Key(url: string): string | null {
+  if (url.includes("/api/r2/image")) {
+    try {
+      const u = new URL(url, "http://localhost");
+      return u.searchParams.get("key");
+    } catch { return null; }
+  }
+  try {
+    const u = new URL(url);
+    if (u.hostname.match(/^pub-[^.]+\.r2\.dev$/)) return u.pathname.replace(/^\//, "");
+  } catch { /* ignore */ }
+  return null;
 }
 
 function detectFormat(src: string): "PNG" | "JPEG" | "WEBP" {
@@ -117,7 +155,7 @@ export async function generateTermReportCardPDF(
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   let schoolLogo = options.schoolLogo;
-  if (schoolLogo?.startsWith("http")) {
+  if (schoolLogo && !schoolLogo.startsWith("data:")) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
   let studentAvatar = data.student.avatar ?? undefined;
@@ -147,7 +185,7 @@ export async function generateBatchTermReportCardsPDF(
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   let schoolLogo = options.schoolLogo;
-  if (schoolLogo?.startsWith("http")) {
+  if (schoolLogo && !schoolLogo.startsWith("data:")) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
   const opts = { ...options, schoolLogo };
@@ -191,9 +229,8 @@ function drawHeader(
 ): number {
   let y = startY;
   const logoW = 22, logoH = 22;
-  const textX = MARGIN.left + logoW + 3;
-  const textW = CW - logoW - 3;
-  const cx = textX + textW / 2;
+  // Center text on the full content width, not the post-logo area
+  const cx = MARGIN.left + CW / 2;
 
   // School logo (left)
   if (opts.schoolLogo) {
@@ -248,8 +285,10 @@ function drawHeader(
   doc.setLineWidth(0.3);
   doc.rect(MARGIN.left, y, CW, barH, "FD");
 
-  const label = opts.reportLabel ?? `Term Report Card  –  ${data.term.name}`;
-  const session = `(Session ${data.academicYear})`;
+  const label = opts.reportLabel ?? `${data.term.name} Report Card`;
+  // Shorten "2026-2027" → "2026-27"
+  const shortYear = data.academicYear.replace(/^(\d{4})-\d{2}(\d{2})$/, '$1-$2');
+  const session = `(Session ${shortYear})`;
 
   doc.setTextColor(...rgb(C.black));
   doc.setFontSize(9.5);
@@ -340,9 +379,10 @@ function drawScholasticTable(doc: jsPDF, data: ReportCardData, startY: number): 
   doc.text("SCHOLASTIC AREAS", MARGIN.left + 3, y + 5);
   y += 9;
 
-  const hasTheory    = data.subjects.some(s => s.theoryMaxMarks !== null);
-  const hasPractical = data.subjects.some(s => s.practicalMaxMarks !== null);
-  const hasInternal  = data.subjects.some(s => s.internalMaxMarks !== null);
+  // Only show breakdown columns when at least one subject has a positive max marks for that component
+  const hasTheory    = data.subjects.some(s => s.theoryMaxMarks !== null && s.theoryMaxMarks > 0);
+  const hasPractical = data.subjects.some(s => s.practicalMaxMarks !== null && s.practicalMaxMarks > 0);
+  const hasInternal  = data.subjects.some(s => s.internalMaxMarks !== null && s.internalMaxMarks > 0);
 
   const head: string[] = ["Subject"];
   if (hasTheory)    head.push("Theory");
