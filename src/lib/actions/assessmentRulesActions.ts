@@ -27,6 +27,7 @@ export async function getAssessmentRules() {
             where: { schoolId },
             include: {
                 class: true,
+                term: true,
             },
             orderBy: { createdAt: "desc" },
         });
@@ -47,6 +48,7 @@ export async function createAssessmentRule(data: AssessmentRuleFormValues) {
                 name: data.name,
                 classId: data.classId || undefined,
                 subjectId: data.subjectId || undefined,
+                termId: data.termId || undefined,
                 ruleType: data.ruleType,
                 examTypes: data.examTypes,
                 count: data.count || undefined,
@@ -77,6 +79,7 @@ export async function updateAssessmentRule(data: AssessmentRuleUpdateFormValues)
                 name: data.name,
                 classId: data.classId,
                 subjectId: data.subjectId,
+                termId: data.termId || null,
                 ruleType: data.ruleType,
                 examTypes: data.examTypes,
                 count: data.count,

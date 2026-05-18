@@ -27,6 +27,8 @@ import { aggregateMarksByRule, type AssessmentRule as AssessmentRuleBase } from 
 interface AssessmentRuleWithExamTypes extends AssessmentRuleBase {
   id: string;
   examTypes: string[];
+  termId?: string | null;
+  classId?: string | null;
 }
 
 interface ExamWithResults {
@@ -445,6 +447,12 @@ export async function aggregateMultiTermReportCardData(
   try {
     const studentData = await fetchStudentParentInfo(studentId);
 
+    const activeEnrollment = await db.enrollment.findFirst({
+      where: { studentId, status: "ACTIVE" },
+      select: { classId: true },
+    });
+    const classId = activeEnrollment?.classId;
+
     const terms = await db.term.findMany({
       where: { academicYear: { id: academicYearId } },
       orderBy: { startDate: "asc" },
@@ -468,7 +476,7 @@ export async function aggregateMultiTermReportCardData(
     const termSlices: TermSlice[] = await Promise.all(
       terms.map(async (term) => {
         const [subjects, coScholastic, attendance] = await Promise.all([
-          fetchExamResultsWithComponents(studentId, term.id, gradeScale),
+          fetchExamResultsWithComponents(studentId, term.id, gradeScale, classId, studentData.schoolId),
           fetchCoScholasticGrades(studentId, term.id),
           calculateAttendanceForTerm(studentId, term.id),
         ]);
@@ -906,8 +914,11 @@ async function fetchExamResultsWithComponents(
   studentId: string,
   termId: string,
   gradeScale: CBSEGradeEntry[],
+  classId?: string | null,
+  schoolId?: string | null,
 ): Promise<TermSubjectResult[]> {
-  const exams = await db.exam.findMany({
+  const [exams, assessmentRules] = await Promise.all([
+  db.exam.findMany({
     where: {
       termId,
       results: { some: { studentId } },
@@ -968,7 +979,17 @@ async function fetchExamResultsWithComponents(
         },
       },
     },
-  });
+  }),
+  (classId && schoolId)
+    ? db.assessmentRule.findMany({
+        where: {
+          schoolId,
+          classId,
+          OR: [{ termId }, { termId: null }],
+        },
+      })
+    : Promise.resolve([] as AssessmentRuleWithExamTypes[]),
+  ]);
 
   const subjectMap = new Map<string, typeof exams>();
 
@@ -994,7 +1015,47 @@ async function fetchExamResultsWithComponents(
     let intObt = 0, intMax = 0;
     let hasTheory = false, hasPract = false, hasInt = false;
 
+    // Partition exams into rule-governed groups vs unruled
+    const ruleExamsMap = new Map<string, typeof subjectExams>();
+    const unruledExams: typeof subjectExams = [];
+
     for (const exam of subjectExams) {
+      const rule = (assessmentRules as AssessmentRuleWithExamTypes[]).find(
+        (r) => r.examTypes.includes(exam.examTypeId),
+      );
+      if (rule) {
+        if (!ruleExamsMap.has(rule.id)) ruleExamsMap.set(rule.id, []);
+        ruleExamsMap.get(rule.id)!.push(exam);
+      } else {
+        unruledExams.push(exam);
+      }
+    }
+
+    // Process rule-governed exams — aggregate into a single component per rule
+    for (const [ruleId, ruleExams] of ruleExamsMap.entries()) {
+      const rule = (assessmentRules as AssessmentRuleWithExamTypes[]).find((r) => r.id === ruleId)!;
+      const cbseComp = ruleExams[0].examType?.cbseComponent;
+      const marks = ruleExams.map((e) => ({
+        obtained: e.results[0]?.totalMarks ?? e.results[0]?.marks ?? 0,
+        total: e.subjectMarkConfig[0]?.totalMarks ?? e.totalMarks ?? 100,
+      }));
+      const aggregated = aggregateMarksByRule(marks, rule);
+      if (cbseComp) {
+        components.push({
+          componentId: ruleExams.map((e) => e.id).join("_"),
+          componentName: cbseComp,
+          shortName: cbseComp,
+          maxMarks: aggregated.total,
+          obtainedMarks: aggregated.obtained,
+          isAbsent: ruleExams.every((e) => e.results[0]?.isAbsent ?? false),
+        });
+      }
+      totalObtained += aggregated.obtained;
+      totalMax += aggregated.total;
+    }
+
+    // Process unruled exams with existing per-exam logic
+    for (const exam of unruledExams) {
       const result = exam.results[0];
       const config = exam.subjectMarkConfig[0];
 

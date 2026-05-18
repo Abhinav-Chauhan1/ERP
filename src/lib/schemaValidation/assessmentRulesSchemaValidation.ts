@@ -4,6 +4,7 @@ export const assessmentRuleSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters"),
     classId: z.string().optional().nullable(),
     subjectId: z.string().optional().nullable(),
+    termId: z.string().optional().nullable(),
     ruleType: z.enum(["BEST_OF", "AVERAGE", "WEIGHTED_AVERAGE", "SUM"]),
     examTypes: z.array(z.string()).min(1, "Select at least one exam type"),
     count: z.coerce.number().optional().nullable(),

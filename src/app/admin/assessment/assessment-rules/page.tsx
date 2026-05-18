@@ -52,11 +52,13 @@ import { assessmentRuleSchema, AssessmentRuleFormValues, AssessmentRuleUpdateFor
 import { getAssessmentRules, createAssessmentRule, updateAssessmentRule, deleteAssessmentRule } from "@/lib/actions/assessmentRulesActions";
 import { getClasses } from "@/lib/actions/classesActions";
 import { getExamTypes } from "@/lib/actions/examTypesActions";
+import { getTerms } from "@/lib/actions/termsActions";
 
 export default function AssessmentRulesPage() {
     const [rules, setRules] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [examTypes, setExamTypes] = useState<any[]>([]);
+    const [terms, setTerms] = useState<any[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingRule, setEditingRule] = useState<any>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -70,6 +72,7 @@ export default function AssessmentRulesPage() {
             name: "",
             classId: null,
             subjectId: null,
+            termId: null,
             ruleType: "BEST_OF",
             examTypes: [],
             count: 2,
@@ -84,15 +87,17 @@ export default function AssessmentRulesPage() {
     async function fetchData() {
         setLoading(true);
         try {
-            const [rulesRes, classesRes, examTypesRes] = await Promise.all([
+            const [rulesRes, classesRes, examTypesRes, termsRes] = await Promise.all([
                 getAssessmentRules(),
                 getClasses(),
                 getExamTypes(),
+                getTerms(),
             ]);
 
             if (rulesRes.success) setRules(rulesRes.data || []);
             if (classesRes.success) setClasses(classesRes.data || []);
             if (examTypesRes.success) setExamTypes(examTypesRes.data || []);
+            if (termsRes.success) setTerms(termsRes.data || []);
 
             if (!rulesRes.success) setError(rulesRes.error || "Failed to fetch rules");
         } catch (err) {
@@ -130,6 +135,7 @@ export default function AssessmentRulesPage() {
             name: "",
             classId: null,
             subjectId: null,
+            termId: null,
             ruleType: "BEST_OF",
             examTypes: [],
             count: 2,
@@ -144,6 +150,7 @@ export default function AssessmentRulesPage() {
             name: rule.name,
             classId: rule.classId,
             subjectId: rule.subjectId,
+            termId: rule.termId,
             ruleType: rule.ruleType,
             examTypes: rule.examTypes,
             count: rule.count,
@@ -226,6 +233,7 @@ export default function AssessmentRulesPage() {
                                             <CardTitle className="text-lg">{rule.name}</CardTitle>
                                             <CardDescription className="mt-1">
                                                 {rule.class?.name || "All Classes"}
+                                                {rule.term && <span className="ml-1">· {rule.term.name}</span>}
                                             </CardDescription>
                                         </div>
                                         <DropdownMenu>
@@ -328,28 +336,53 @@ export default function AssessmentRulesPage() {
 
                                 <FormField
                                     control={form.control}
-                                    name="ruleType"
+                                    name="termId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Aggregation Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormLabel>Term (Optional)</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value || "all"}>
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue />
+                                                        <SelectValue placeholder="All Terms" />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="BEST_OF">Best of X</SelectItem>
-                                                    <SelectItem value="AVERAGE">Average</SelectItem>
-                                                    <SelectItem value="WEIGHTED_AVERAGE">Weighted Average</SelectItem>
-                                                    <SelectItem value="SUM">Sum</SelectItem>
+                                                    <SelectItem value="all">All Terms</SelectItem>
+                                                    {terms.map((term) => (
+                                                        <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
+                                            <FormDescription>Scope this rule to a specific term.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
                             </div>
+
+                            <FormField
+                                control={form.control}
+                                name="ruleType"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Aggregation Type</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="BEST_OF">Best of X</SelectItem>
+                                                <SelectItem value="AVERAGE">Average</SelectItem>
+                                                <SelectItem value="WEIGHTED_AVERAGE">Weighted Average</SelectItem>
+                                                <SelectItem value="SUM">Sum</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}
