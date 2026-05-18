@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createStudentSchema, CreateStudentFormData } from "@/lib/schemaValidation/usersSchemaValidation";
 import { createStudent } from "@/lib/actions/usersAction";
+import { enrollStudentInClass } from "@/lib/actions/classesActions";
 import { UserRole } from "@prisma/client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,31 +145,15 @@ export default function CreateStudentPage() {
 
       // Create enrollment if class and section are selected
       if (selectedClassId && selectedSectionId && result.id) {
-        try {
-          const enrollmentResponse = await fetch('/api/students/enroll', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              studentId: result.id,
-              classId: selectedClassId,
-              sectionId: selectedSectionId,
-            }),
-          });
+        const enrollmentResult = await enrollStudentInClass({
+          studentId: result.id,
+          classId: selectedClassId,
+          sectionId: selectedSectionId,
+          status: "ACTIVE",
+        });
 
-          if (!enrollmentResponse.ok) {
-            let errorMessage = 'Unknown error';
-            try {
-              const errorData = await enrollmentResponse.json();
-              errorMessage = errorData.error || 'Unknown error';
-            } catch (e) {
-              errorMessage = enrollmentResponse.statusText || 'Unknown error';
-            }
-            toast.error(`Student created but enrollment failed: ${errorMessage}`);
-          } else {
-            toast.success('Student enrolled successfully');
-          }
-        } catch (enrollError) {
-          toast.error('Student created but enrollment failed due to network error');
+        if (!enrollmentResult.success) {
+          toast.error(`Student created but enrollment failed: ${enrollmentResult.error}`);
         }
       }
 

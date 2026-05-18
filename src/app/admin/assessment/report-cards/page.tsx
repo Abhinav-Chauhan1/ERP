@@ -44,7 +44,6 @@ export default function ReportCardsPage() {
   const [filterClassId, setFilterClassId] = useState<string>("");
   const [filterSectionId, setFilterSectionId] = useState<string>("");
   const [filterAcademicYearId, setFilterAcademicYearId] = useState<string>("");
-  const [filterTermId, setFilterTermId] = useState<string>("");
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [selectedTermId, setSelectedTermId] = useState<string>("");
@@ -122,12 +121,12 @@ export default function ReportCardsPage() {
   }, [mode, selectedTermId]);
 
   async function handleCalculateRanks() {
-    if (!filterTermId || filterTermId === "all" || !filterClassId || filterClassId === "all") {
-      toast.error("Select both a term and a class to calculate ranks");
+    if (!selectedTermId || !filterClassId || filterClassId === "all") {
+      toast.error("Select a class and a term to calculate ranks");
       return;
     }
     try {
-      const result = await calculateClassRanks(filterTermId, filterClassId);
+      const result = await calculateClassRanks(selectedTermId, filterClassId);
       if (result.success) {
         toast.success("Class ranks calculated successfully");
       } else {
@@ -275,9 +274,8 @@ export default function ReportCardsPage() {
                       value={filterAcademicYearId}
                       onValueChange={(v) => {
                         setFilterAcademicYearId(v);
-                        if (mode === "cbse") setSelectedAcademicYearId(v === "all" ? "" : v);
+                        setSelectedAcademicYearId(v === "all" ? "" : v);
                         setSelectedTermId("");
-                        setFilterTermId("");
                         setSelectedStudentId("");
                       }}
                     >
@@ -334,21 +332,6 @@ export default function ReportCardsPage() {
                     </div>
                   </div>
 
-                  {/* Term filter — used for Calculate Ranks */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Term (for rank calculation)</Label>
-                    <Select value={filterTermId} onValueChange={setFilterTermId}>
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select term" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All terms</SelectItem>
-                        {filteredTerms.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 {/* Student Selection */}
@@ -432,30 +415,6 @@ export default function ReportCardsPage() {
                     <p className="text-xs text-muted-foreground">
                       Choose an exam type inside the generation dialog.
                     </p>
-                  </div>
-                )}
-
-                {/* Academic Year Selection — CBSE mode */}
-                {mode === "cbse" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="cbse-year">Academic Year</Label>
-                    <Select value={selectedAcademicYearId} onValueChange={setSelectedAcademicYearId}>
-                      <SelectTrigger id="cbse-year">
-                        <SelectValue placeholder="Select academic year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {academicYears.map((y) => (
-                          <SelectItem key={y.id} value={y.id}>
-                            {y.name}{y.isCurrent ? " (Current)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedYear && (
-                      <p className="text-xs text-muted-foreground">
-                        Includes all terms in {selectedYear.name}
-                      </p>
-                    )}
                   </div>
                 )}
 

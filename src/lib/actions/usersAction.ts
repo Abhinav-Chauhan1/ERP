@@ -72,7 +72,7 @@ const createBaseUser = async (userData: {
     name: `${userData.firstName} ${userData.lastName}`,
     firstName: sanitizeText(userData.firstName),
     lastName: sanitizeText(userData.lastName),
-    mobile: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
+    phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,
     emailVerified: new Date(), // Admin-created users are pre-verified

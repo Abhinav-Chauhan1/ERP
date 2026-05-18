@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { School, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import { updateSchoolInfo } from "@/lib/actions/settingsActions";
 import { R2UploadWidget, type UploadResult } from "@/components/upload/r2-upload-widget";
 
@@ -42,6 +43,7 @@ interface SchoolInfoFormProps {
 }
 
 export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [schoolName, setSchoolName] = useState(initialData.schoolName || "");
   const [schoolEmail, setSchoolEmail] = useState(initialData.schoolEmail || "");
@@ -112,6 +114,7 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
 
       if (result.success) {
         toast.success("School information saved successfully");
+        router.refresh();
       } else {
         toast.error(result.error || "Failed to save settings");
       }

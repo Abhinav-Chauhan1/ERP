@@ -41,6 +41,7 @@ import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { studentEnrollmentSchema, StudentEnrollmentFormValues } from "@/lib/schemaValidation/classesSchemaValidation";
 import { enrollStudentInClass } from "@/lib/actions/classesActions";
+import { deleteUser } from "@/lib/actions/usersAction";
 import { getFeePayments, getPaymentReceiptHTML, getConsolidatedReceiptHTML } from "@/lib/actions/feePaymentActions";
 import { PaymentsTable } from "@/components/admin/finance-tables";
 import { Download } from "lucide-react";
@@ -268,10 +269,13 @@ function DetailItem({ label, value, icon: Icon }: { label: string; value: string
 
 export default function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
 
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
 
@@ -460,6 +464,21 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
 
 
+  async function handleDeleteStudent() {
+    if (!student) return;
+    setIsDeleting(true);
+    try {
+      await deleteUser(student.user.id);
+      toast.success("Student deleted successfully");
+      router.push("/admin/users/students");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete student");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -510,7 +529,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               Edit
             </Button>
           </Link>
-          <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-500 border-red-200 hover:bg-red-50"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </Button>
@@ -1172,6 +1196,27 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Student</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-semibold">{student.user.firstName} {student.user.lastName}</span>? This will permanently remove the student and all associated data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteStudent} disabled={isDeleting}>
+              {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete Student
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

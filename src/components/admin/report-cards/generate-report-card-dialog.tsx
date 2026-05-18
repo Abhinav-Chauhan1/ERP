@@ -220,33 +220,32 @@ export function GenerateReportCardDialog({
     try {
       if (mode === 'term') {
         if (!termId) {
-          toast({
-            title: 'Missing Info',
-            description: 'A term is required.',
-            variant: 'destructive',
-          });
+          toast({ title: 'Missing Info', description: 'A term is required.', variant: 'destructive' });
           return;
         }
         const result = await generateSingleReportCard(studentId, termId);
-        if (result.success && result.data) {
+        if (result.success && result.data?.pdfBase64) {
+          setGeneratedPdf({
+            base64: result.data.pdfBase64,
+            fileName: `Report_Card_${studentName.replace(/\s+/g, '_')}${termName ? `_${termName.replace(/\s+/g, '_')}` : ''}.pdf`,
+          });
           toast({ title: 'Success', description: 'Report card generated!' });
-          window.open(result.data.pdfUrl, '_blank');
         } else {
           toast({ title: 'Failed', description: result.error, variant: 'destructive' });
         }
       } else if (mode === 'examtype') {
         if (!termId || !selectedExamTypeId) {
-          toast({
-            title: 'Missing Info',
-            description: 'Select a term and exam type.',
-            variant: 'destructive',
-          });
+          toast({ title: 'Missing Info', description: 'Select a term and exam type.', variant: 'destructive' });
           return;
         }
         const result = await generateSingleExamTypeReportCard(studentId, termId, selectedExamTypeId);
-        if (result.success && result.data) {
+        if (result.success && result.data?.pdfBase64) {
+          const examTypeName = examTypes.find(e => e.id === selectedExamTypeId)?.name || 'ExamType';
+          setGeneratedPdf({
+            base64: result.data.pdfBase64,
+            fileName: `Report_Card_${studentName.replace(/\s+/g, '_')}_${examTypeName.replace(/\s+/g, '_')}.pdf`,
+          });
           toast({ title: 'Success', description: 'Exam-type report card generated!' });
-          window.open(result.data.pdfUrl, '_blank');
         } else {
           toast({ title: 'Failed', description: result.error, variant: 'destructive' });
         }

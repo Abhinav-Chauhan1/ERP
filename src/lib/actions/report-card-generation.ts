@@ -16,9 +16,9 @@ import { auth } from "@/auth";
 import { requireSchoolAccess } from '@/lib/auth/tenant';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import {
-  generateReportCardPDF,
-  generateBatchReportCardsPDF
-} from '@/lib/services/report-card-pdf-generation';
+  generateTermReportCardPDF,
+  generateBatchTermReportCardsPDF,
+} from '@/lib/services/report-card-term-renderer';
 import {
   aggregateReportCardData,
   batchAggregateReportCardData,
@@ -48,7 +48,7 @@ export async function generateSingleReportCard(
   studentId: string,
   termId: string,
   _templateId?: string,
-): Promise<ActionResult<{ pdfUrl: string; reportCardId: string }>> {
+): Promise<ActionResult<{ pdfUrl: string; reportCardId: string; pdfBase64: string }>> {
   try {
     // Verify authentication and get school context from session (not userSchools[0])
     const context = await requireSchoolAccess();
@@ -69,8 +69,6 @@ export async function generateSingleReportCard(
       return { success: false, error: 'Insufficient permissions' };
     }
 
-    const templateId = await resolveTemplateId(schoolId);
-
     // Resolve academicYearId from term
     const term = await db.term.findUnique({
       where: { id: termId },
@@ -84,23 +82,17 @@ export async function generateSingleReportCard(
     // Fetch school information for branding
     const schoolInfo = await getSchoolInfo(schoolId);
 
-    // Generate PDF
-    const pdfResult = await generateReportCardPDF({
-      templateId,
-      data: reportCardData,
+    // Generate PDF using standalone renderer (no template required)
+    const pdfBuffer = await generateTermReportCardPDF(reportCardData, {
       schoolName: schoolInfo.name,
       schoolAddress: schoolInfo.address,
+      schoolPhone: schoolInfo.phone,
+      schoolEmail: schoolInfo.email,
+      schoolLogo: schoolInfo.logo,
     });
 
-    if (!pdfResult.success || !pdfResult.pdfBuffer) {
-      return { success: false, error: pdfResult.error || 'Failed to generate PDF' };
-    }
-
     // Upload PDF to R2 storage
-    const pdfUrl = await uploadPDFToStorage(
-      pdfResult.pdfBuffer,
-      `report-card-${studentId}-${termId}`
-    );
+    const pdfUrl = await uploadPDFToStorage(pdfBuffer, `report-card-${studentId}-${termId}`);
 
     // Update or create term-based report card (examTypeId IS NULL)
     const existingTermCard = await db.reportCard.findFirst({
@@ -112,7 +104,7 @@ export async function generateSingleReportCard(
     if (existingTermCard) {
       reportCard = await db.reportCard.update({
         where: { id: existingTermCard.id },
-        data: { templateId, pdfUrl, updatedAt: new Date() },
+        data: { pdfUrl, updatedAt: new Date() },
         select: { id: true },
       });
     } else {
@@ -121,7 +113,6 @@ export async function generateSingleReportCard(
           studentId,
           termId,
           academicYearId,
-          templateId,
           pdfUrl,
           schoolId: schoolId,
           totalMarks: reportCardData.overallPerformance.obtainedMarks,
@@ -143,7 +134,7 @@ export async function generateSingleReportCard(
       action: 'CREATE',
       resource: 'REPORT_CARD',
       resourceId: reportCard.id,
-      changes: { studentId, termId, templateId, pdfUrl },
+      changes: { studentId, termId, pdfUrl },
     });
 
     return {
@@ -151,6 +142,7 @@ export async function generateSingleReportCard(
       data: {
         pdfUrl,
         reportCardId: reportCard.id,
+        pdfBase64: pdfBuffer.toString('base64'),
       },
     };
   } catch (error) {
@@ -197,8 +189,6 @@ export async function generateBatchReportCards(
       return { success: false, error: 'Insufficient permissions' };
     }
 
-    const templateId = await resolveTemplateId(schoolId);
-
     // Fetch all students in the class and section
     const enrollments = await db.classEnrollment.findMany({
       where: {
@@ -224,23 +214,18 @@ export async function generateBatchReportCards(
     // Fetch school information for branding
     const schoolInfo = await getSchoolInfo(schoolId);
 
-    // Generate batch PDF
-    const pdfResult = await generateBatchReportCardsPDF(
-      templateId,
-      reportCardsData,
-      {
-        schoolName: schoolInfo.name,
-        schoolAddress: schoolInfo.address,
-      }
-    );
-
-    if (!pdfResult.success || !pdfResult.pdfBuffer) {
-      return { success: false, error: pdfResult.error || 'Failed to generate batch PDF' };
-    }
+    // Generate batch PDF using standalone renderer
+    const batchPdfBuffer = await generateBatchTermReportCardsPDF(reportCardsData, {
+      schoolName: schoolInfo.name,
+      schoolAddress: schoolInfo.address,
+      schoolPhone: schoolInfo.phone,
+      schoolEmail: schoolInfo.email,
+      schoolLogo: schoolInfo.logo,
+    });
 
     // Upload batch PDF to R2 storage
     const pdfUrl = await uploadPDFToStorage(
-      pdfResult.pdfBuffer,
+      batchPdfBuffer,
       `report-cards-batch-${classId}-${sectionId}-${termId}`
     );
 
@@ -260,7 +245,7 @@ export async function generateBatchReportCards(
       if (existing) {
         return db.reportCard.update({
           where: { id: existing.id },
-          data: { templateId, pdfUrl, updatedAt: new Date() },
+          data: { pdfUrl, updatedAt: new Date() },
         });
       }
       return db.reportCard.create({
@@ -268,7 +253,6 @@ export async function generateBatchReportCards(
           studentId: data.student.id,
           termId,
           academicYearId: batchAcademicYearId,
-          templateId,
           pdfUrl,
           schoolId: schoolId,
           totalMarks: data.overallPerformance.obtainedMarks,
@@ -339,7 +323,6 @@ export async function generateBatchReportCardsZip(
     // Get school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
-    const templateId = await resolveTemplateId(schoolId);
 
     // Fetch class and section info for naming
     const classInfo = await db.class.findUnique({
@@ -389,18 +372,14 @@ export async function generateBatchReportCardsZip(
       // Aggregate report card data
       const reportCardData = await aggregateReportCardData(studentId, termId);
 
-      // Generate PDF
-      const pdfResult = await generateReportCardPDF({
-        templateId,
-        data: reportCardData,
+      // Generate PDF using standalone renderer
+      const pdfBuf = await generateTermReportCardPDF(reportCardData, {
         schoolName: schoolInfo.name,
         schoolAddress: schoolInfo.address,
+        schoolPhone: schoolInfo.phone,
+        schoolEmail: schoolInfo.email,
+        schoolLogo: schoolInfo.logo,
       });
-
-      if (!pdfResult.success || !pdfResult.pdfBuffer) {
-        console.error(`Failed to generate PDF for student ${studentId}`);
-        return null;
-      }
 
       // Create filename from student info
       const rollNo = student.rollNumber || 'NoRoll';
@@ -409,7 +388,7 @@ export async function generateBatchReportCardsZip(
 
       return {
         filename,
-        buffer: pdfResult.pdfBuffer,
+        buffer: pdfBuf,
         studentId,
         reportCardData,
       };
@@ -464,7 +443,7 @@ export async function generateBatchReportCardsZip(
       if (existing) {
         return db.reportCard.update({
           where: { id: existing.id },
-          data: { templateId, updatedAt: new Date() },
+          data: { updatedAt: new Date() },
         });
       }
       return db.reportCard.create({
@@ -472,7 +451,6 @@ export async function generateBatchReportCardsZip(
           studentId: pdf.studentId,
           termId,
           academicYearId: zipAcademicYearId,
-          templateId,
           schoolId: schoolId,
           totalMarks: pdf.reportCardData.overallPerformance.obtainedMarks,
           averageMarks: pdf.reportCardData.overallPerformance.obtainedMarks / Math.max(pdf.reportCardData.subjects.filter(s => !s.isAbsent).length, 1),
@@ -517,7 +495,7 @@ export async function generateSingleExamTypeReportCard(
   termId: string,
   examTypeId: string,
   _templateId?: string,
-): Promise<ActionResult<{ pdfUrl: string; reportCardId: string }>> {
+): Promise<ActionResult<{ pdfUrl: string; reportCardId: string; pdfBase64: string }>> {
   try {
     const context = await requireSchoolAccess();
     const schoolId = context.schoolId;
@@ -529,27 +507,24 @@ export async function generateSingleExamTypeReportCard(
       return { success: false, error: 'Insufficient permissions' };
     }
 
-    const templateId = await resolveTemplateId(schoolId);
     const reportCardData = await aggregateExamTypeReportCardData(studentId, termId, examTypeId);
     const schoolInfo = await getSchoolInfo(schoolId);
 
-    const pdfResult = await generateReportCardPDF({
-      templateId,
-      data: reportCardData,
+    // Fetch exam type name to show in report label
+    const examTypeInfo = await db.examType.findUnique({ where: { id: examTypeId }, select: { name: true } });
+    const reportLabel = examTypeInfo ? `${examTypeInfo.name} Report Card  –  ${reportCardData.term.name}` : undefined;
+
+    const pdfBuffer = await generateTermReportCardPDF(reportCardData, {
       schoolName: schoolInfo.name,
       schoolAddress: schoolInfo.address,
+      schoolPhone: schoolInfo.phone,
+      schoolEmail: schoolInfo.email,
+      schoolLogo: schoolInfo.logo,
+      reportLabel,
     });
 
-    if (!pdfResult.success || !pdfResult.pdfBuffer) {
-      return { success: false, error: pdfResult.error || 'Failed to generate PDF' };
-    }
+    const pdfUrl = await uploadPDFToStorage(pdfBuffer, `report-card-${studentId}-${termId}-${examTypeId}`);
 
-    const pdfUrl = await uploadPDFToStorage(
-      pdfResult.pdfBuffer,
-      `report-card-${studentId}-${termId}-${examTypeId}`,
-    );
-
-    // Use findFirst + create/update since partial unique index can't be used with upsert
     const existing = await db.reportCard.findFirst({
       where: { studentId, termId, examTypeId },
       select: { id: true },
@@ -559,7 +534,7 @@ export async function generateSingleExamTypeReportCard(
     if (existing) {
       reportCard = await db.reportCard.update({
         where: { id: existing.id },
-        data: { templateId, pdfUrl, updatedAt: new Date() },
+        data: { pdfUrl, updatedAt: new Date() },
         select: { id: true },
       });
     } else {
@@ -570,7 +545,6 @@ export async function generateSingleExamTypeReportCard(
           termId,
           examTypeId,
           academicYearId: term?.academicYearId,
-          templateId,
           pdfUrl,
           schoolId,
           totalMarks: reportCardData.overallPerformance.obtainedMarks,
@@ -592,10 +566,10 @@ export async function generateSingleExamTypeReportCard(
       action: 'CREATE',
       resource: 'REPORT_CARD',
       resourceId: reportCard.id,
-      changes: { studentId, termId, examTypeId, templateId, pdfUrl },
+      changes: { studentId, termId, examTypeId, pdfUrl },
     });
 
-    return { success: true, data: { pdfUrl, reportCardId: reportCard.id } };
+    return { success: true, data: { pdfUrl, reportCardId: reportCard.id, pdfBase64: pdfBuffer.toString('base64') } };
   } catch (error) {
     console.error('Error generating exam-type report card:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -623,7 +597,6 @@ export async function generateBatchExamTypeReportCardsZip(
       return { success: false, error: 'Insufficient permissions' };
     }
 
-    const templateId = await resolveTemplateId(schoolId);
     const classInfo = await db.class.findUnique({ where: { id: classId }, select: { name: true } });
     const sectionInfo = await db.classSection.findUnique({ where: { id: sectionId }, select: { name: true } });
     const examTypeInfo = await db.examType.findUnique({ where: { id: examTypeId }, select: { name: true } });
@@ -648,19 +621,21 @@ export async function generateBatchExamTypeReportCardsZip(
       const student = enrollment.student;
       try {
         const reportCardData = await aggregateExamTypeReportCardData(studentId, termId, examTypeId);
-        const pdfResult = await generateReportCardPDF({
-          templateId,
-          data: reportCardData,
+        const label = examTypeInfo ? `${examTypeInfo.name} Report Card  –  ${reportCardData.term.name}` : undefined;
+        const pdfBuf = await generateTermReportCardPDF(reportCardData, {
           schoolName: schoolInfo.name,
           schoolAddress: schoolInfo.address,
+          schoolPhone: schoolInfo.phone,
+          schoolEmail: schoolInfo.email,
+          schoolLogo: schoolInfo.logo,
+          reportLabel: label,
         });
-        if (!pdfResult.success || !pdfResult.pdfBuffer) return null;
 
         const rollNo = student.rollNumber || 'NoRoll';
         const studentName = `${student.user.firstName}_${student.user.lastName}`.replace(/\s+/g, '_');
         return {
           filename: `${rollNo}_${studentName}.pdf`,
-          buffer: pdfResult.pdfBuffer,
+          buffer: pdfBuf,
           studentId,
           reportCardData,
         };
@@ -703,7 +678,7 @@ export async function generateBatchExamTypeReportCardsZip(
         if (existing) {
           return db.reportCard.update({
             where: { id: existing.id },
-            data: { templateId, updatedAt: new Date() },
+            data: { updatedAt: new Date() },
           });
         }
         return db.reportCard.create({
@@ -712,7 +687,6 @@ export async function generateBatchExamTypeReportCardsZip(
             termId,
             examTypeId,
             academicYearId,
-            templateId,
             schoolId,
             totalMarks: pdf.reportCardData.overallPerformance.obtainedMarks,
             averageMarks: pdf.reportCardData.overallPerformance.obtainedMarks / Math.max(pdf.reportCardData.subjects.filter(s => !s.isAbsent).length, 1),
@@ -833,45 +807,51 @@ async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<
 }
 
 /**
- * Resolve the default template for a school.
- * Prefers the template marked isDefault, falls back to any active template.
+ * Get school information for PDF branding — fetches name, address, logo, phone, email.
  */
-async function resolveTemplateId(schoolId: string): Promise<string> {
-  const template = await db.reportCardTemplate.findFirst({
-    where: { schoolId, isDefault: true, isActive: true },
-    select: { id: true },
-  });
-  if (template) return template.id;
-  const fallback = await db.reportCardTemplate.findFirst({
-    where: { schoolId, isActive: true },
-    select: { id: true },
-  });
-  if (!fallback) throw new Error('No active report card template configured for this school');
-  return fallback.id;
-}
-
-/**
- * Get school information for branding
- */
-async function getSchoolInfo(schoolId: string): Promise<{ name: string; address: string }> {
-  // Fetch from SystemSettings
+async function getSchoolInfo(schoolId: string): Promise<{
+  name: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  logo?: string;
+}> {
   try {
-    const { getSystemSettings } = await import('@/lib/actions/settingsActions');
-    const result = await getSystemSettings();
+    const [school, schoolSettings] = await Promise.all([
+      db.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true, address: true, phone: true, email: true, logo: true },
+      }),
+      db.schoolSettings.findFirst({
+        where: { schoolId },
+        select: { schoolName: true, schoolAddress: true, schoolPhone: true, schoolEmail: true, schoolLogo: true },
+      }),
+    ]);
 
-    if (result.success && result.data) {
-      return {
-        name: result.data.schoolName,
-        address: result.data.schoolAddress || 'School Address', // Fallback if address is missing
-      };
+    const name    = school?.name    || schoolSettings?.schoolName    || 'School Name';
+    const address = school?.address || schoolSettings?.schoolAddress || '';
+    const phone   = school?.phone   || schoolSettings?.schoolPhone   || undefined;
+    const email   = school?.email   || schoolSettings?.schoolEmail   || undefined;
+
+    let logo = school?.logo || schoolSettings?.schoolLogo || undefined;
+    if (logo && !logo.startsWith('http') && !logo.startsWith('data:')) {
+      const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+      logo = `${base}${logo.startsWith('/') ? '' : '/'}${logo}`;
     }
+    if (logo?.startsWith('http')) {
+      try {
+        const res = await fetch(logo);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          const ct = res.headers.get('content-type') || 'image/png';
+          logo = `data:${ct};base64,${Buffer.from(buf).toString('base64')}`;
+        }
+      } catch { logo = undefined; }
+    }
+
+    return { name, address, phone, email, logo };
   } catch (error) {
     console.error('Error fetching school info for report card:', error);
+    return { name: 'School Name', address: '' };
   }
-
-  // Fallback default values
-  return {
-    name: 'School Name',
-    address: 'School Address',
-  };
 }

@@ -36,10 +36,11 @@ export async function getSystemSettings() {
 
     // Create default settings if none exist for this school
     if (!settings) {
+      const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
       settings = await db.schoolSettings.create({
         data: {
           schoolId, // CRITICAL: Associate with school
-          schoolName: "School Name",
+          schoolName: school?.name || "School Name",
           timezone: "UTC",
           defaultGradingScale: "PERCENTAGE",
           passingGrade: 50,
@@ -57,6 +58,16 @@ export async function getSystemSettings() {
 
       // Invalidate cache after creating new settings
       await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
+    } else if (settings.schoolName === "School Name") {
+      // Auto-fix stale default: sync real name from School table
+      const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+      if (school?.name && school.name !== "School Name") {
+        settings = await db.schoolSettings.update({
+          where: { schoolId },
+          data: { schoolName: school.name },
+        });
+        await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
+      }
     }
 
     return { success: true, data: settings };

@@ -239,8 +239,7 @@ async function renderPage(
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
 
-  // Emblem: use passed value, else fall back to Sikshamitra logo
-  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+  const schoolEmblem = opts.schoolEmblem ?? undefined;
 
   renderDecorativeBorder(doc);
 
@@ -933,7 +932,7 @@ async function renderSecondaryPage(
   if (schoolLogo && schoolLogo.startsWith("http")) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
-  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+  const schoolEmblem = opts.schoolEmblem ?? undefined;
   const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
 
   renderDecorativeBorder(doc);
@@ -1024,7 +1023,7 @@ async function renderSeniorPage(
   if (schoolLogo && schoolLogo.startsWith("http")) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
-  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+  const schoolEmblem = opts.schoolEmblem ?? undefined;
   const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
 
   renderDecorativeBorder(doc);

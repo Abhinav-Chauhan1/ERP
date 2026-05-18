@@ -31,6 +31,7 @@ export function SchoolLogo({ className = "", showName = true }: SchoolLogoProps)
           width={40}
           height={40}
           className="object-contain"
+          unoptimized
         />
       ) : (
         <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
