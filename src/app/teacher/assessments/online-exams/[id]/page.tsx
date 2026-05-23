@@ -114,7 +114,16 @@ export default function OnlineExamDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (!exam) {
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertCircle className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">Exam not found</h2>
+        <p className="text-muted-foreground">This exam may have been removed or you may not have access.</p>
+        <Link href="/teacher/assessments/online-exams">
+          <Button variant="outline">Back to Exams</Button>
+        </Link>
+      </div>
+    );
   }
 
   const getExamStatus = () => {

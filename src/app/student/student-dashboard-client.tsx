@@ -45,28 +45,16 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
     className: currentEnrollment?.class?.name || "Class 6" 
   });
 
-  // Mock data for new features - TODO: Replace with real data from server
-  const mockLearningProgress = {
-    currentLesson: {
-      id: '1',
-      title: 'Introduction to Photosynthesis',
-      subject: 'Science',
-      progress: 65,
-      totalLessons: 12,
-      completedLessons: 8
-    },
-    recentAchievements: [
-      { id: '1', title: 'First Steps', icon: 'Star', points: 50, unlocked: true },
-      { id: '2', title: 'Perfect Week', icon: 'Trophy', points: 200, unlocked: true },
-      { id: '3', title: 'Study Streak', icon: 'Flame', points: 150, unlocked: false, progress: 4, maxProgress: 7 }
-    ],
+  const learningProgress = {
+    currentLesson: null as null | { id: string; title: string; subject: string; progress: number; totalLessons: number; completedLessons: number },
+    recentAchievements: [] as { id: string; title: string; icon: string; points: number; unlocked: boolean; progress?: number; maxProgress?: number }[],
     studyStats: {
-      totalXP: 1250,
-      level: 8,
-      streak: 12,
-      notesCount: 15,
-      flashcardsCount: 45,
-      mindMapsCount: 3
+      totalXP: 0,
+      level: 1,
+      streak: 0,
+      notesCount: 0,
+      flashcardsCount: 0,
+      mindMapsCount: 0
     }
   };
 
@@ -106,11 +94,11 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="flex items-center gap-1">
                 <Star className="h-3 w-3" />
-                Level {mockLearningProgress.studyStats.level}
+                Level {learningProgress.studyStats.level}
               </Badge>
               <Badge variant="outline" className="flex items-center gap-1">
                 <Flame className="h-3 w-3" />
-                {mockLearningProgress.studyStats.streak} day streak
+                {learningProgress.studyStats.streak} day streak
               </Badge>
             </div>
           )}
@@ -125,29 +113,43 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
                   <Play className="h-5 w-5 text-blue-500" />
                   Continue Learning
                 </CardTitle>
-                <Badge variant="secondary">{mockLearningProgress.currentLesson.subject}</Badge>
+                <Badge variant="secondary">{learningProgress.currentLesson.subject}</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">{mockLearningProgress.currentLesson.title}</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{mockLearningProgress.currentLesson.progress}%</span>
+              {learningProgress.currentLesson ? (
+                <>
+                  <div>
+                    <h4 className="font-semibold mb-2">{learningProgress.currentLesson.title}</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{learningProgress.currentLesson.progress}%</span>
+                      </div>
+                      <Progress value={learningProgress.currentLesson.progress} />
+                      <p className="text-xs text-muted-foreground">
+                        {learningProgress.currentLesson.completedLessons} of {learningProgress.currentLesson.totalLessons} lessons completed
+                      </p>
+                    </div>
                   </div>
-                  <Progress value={mockLearningProgress.currentLesson.progress} />
-                  <p className="text-xs text-muted-foreground">
-                    {mockLearningProgress.currentLesson.completedLessons} of {mockLearningProgress.currentLesson.totalLessons} lessons completed
-                  </p>
+                  <Link href={`/student/learn/lessons/${learningProgress.currentLesson.id}`}>
+                    <Button className={`w-full ${isMobile ? 'touch-target-secondary' : ''}`}>
+                      Continue Lesson
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">No lessons started yet</p>
+                  <Link href="/student/learn">
+                    <Button className={`w-full ${isMobile ? 'touch-target-secondary' : ''}`}>
+                      Browse Lessons
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
                 </div>
-              </div>
-              <Link href={`/student/learn/lessons/${mockLearningProgress.currentLesson.id}`}>
-                <Button className={`w-full ${isMobile ? 'touch-target-secondary' : ''}`}>
-                  Continue Lesson
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+              )}
             </CardContent>
           </Card>
 
@@ -160,30 +162,34 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {mockLearningProgress.recentAchievements.slice(0, 3).map((achievement) => (
-                <div key={achievement.id} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    achievement.unlocked ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {achievement.icon === 'Star' && <Star className="h-4 w-4" />}
-                    {achievement.icon === 'Trophy' && <Trophy className="h-4 w-4" />}
-                    {achievement.icon === 'Flame' && <Flame className="h-4 w-4" />}
+              {learningProgress.recentAchievements.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-2">No achievements yet — keep learning!</p>
+              ) : (
+                learningProgress.recentAchievements.slice(0, 3).map((achievement) => (
+                  <div key={achievement.id} className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      achievement.unlocked ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {achievement.icon === 'Star' && <Star className="h-4 w-4" />}
+                      {achievement.icon === 'Trophy' && <Trophy className="h-4 w-4" />}
+                      {achievement.icon === 'Flame' && <Flame className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{achievement.title}</p>
+                      {achievement.unlocked ? (
+                        <p className="text-xs text-green-600">+{achievement.points} XP</p>
+                      ) : (
+                        <div className="space-y-1">
+                          <Progress value={(achievement.progress! / achievement.maxProgress!) * 100} className="h-1" />
+                          <p className="text-xs text-muted-foreground">
+                            {achievement.progress}/{achievement.maxProgress}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{achievement.title}</p>
-                    {achievement.unlocked ? (
-                      <p className="text-xs text-green-600">+{achievement.points} XP</p>
-                    ) : (
-                      <div className="space-y-1">
-                        <Progress value={(achievement.progress! / achievement.maxProgress!) * 100} className="h-1" />
-                        <p className="text-xs text-muted-foreground">
-                          {achievement.progress}/{achievement.maxProgress}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
               <Link href="/student/achievements">
                 <Button variant="outline" size="sm" className={`w-full ${isMobile ? 'touch-target-secondary' : ''}`}>
                   View All Achievements
@@ -207,21 +213,21 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
                     <BookOpen className="h-4 w-4 text-blue-600" />
                   </div>
                   <p className="text-xs font-medium">Notes</p>
-                  <p className="text-xs text-muted-foreground">{mockLearningProgress.studyStats.notesCount}</p>
+                  <p className="text-xs text-muted-foreground">{learningProgress.studyStats.notesCount}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mx-auto">
                     <RotateCcw className="h-4 w-4 text-green-600" />
                   </div>
                   <p className="text-xs font-medium">Cards</p>
-                  <p className="text-xs text-muted-foreground">{mockLearningProgress.studyStats.flashcardsCount}</p>
+                  <p className="text-xs text-muted-foreground">{learningProgress.studyStats.flashcardsCount}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center mx-auto">
                     <Lightbulb className="h-4 w-4 text-teal-600" />
                   </div>
                   <p className="text-xs font-medium">Maps</p>
-                  <p className="text-xs text-muted-foreground">{mockLearningProgress.studyStats.mindMapsCount}</p>
+                  <p className="text-xs text-muted-foreground">{learningProgress.studyStats.mindMapsCount}</p>
                 </div>
               </div>
               <Link href="/student/study-tools">

@@ -227,37 +227,13 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
 async function checkExternalServicesHealth(): Promise<ServiceHealth> {
   const startTime = Date.now();
   
-  try {
-    // In a real implementation, you would check external services like:
-    // - Email service (SendGrid, etc.)
-    // - SMS service (MSG91, etc.)
-    // - File storage (AWS S3, etc.)
-    // - Payment gateway (Stripe, Razorpay, etc.)
-    
-    // For now, we'll simulate a check
-    const services = {
-      email: true,
-      sms: true,
-      storage: true,
-      payment: true,
-    };
-    
-    const responseTime = Date.now() - startTime;
-    
-    return {
-      status: 'healthy',
-      responseTime,
-      lastCheck: new Date().toISOString(),
-      details: services,
-    };
-  } catch (error) {
-    return {
-      status: 'degraded',
-      responseTime: Date.now() - startTime,
-      lastCheck: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'External service check failed',
-    };
-  }
+  return {
+    status: 'degraded',
+    responseTime: Date.now() - startTime,
+    lastCheck: new Date().toISOString(),
+    details: { email: 'unknown', sms: 'unknown', storage: 'unknown', payment: 'unknown' },
+    error: 'External service checks not yet configured',
+  };
 }
 
 /**
@@ -281,17 +257,12 @@ function getMemoryMetrics(): MemoryMetrics {
  * Get performance metrics
  */
 async function getPerformanceMetrics(): Promise<PerformanceMetrics> {
-  // In a real implementation, you would collect these metrics from:
-  // - Request tracking middleware
-  // - Error monitoring service
-  // - Performance monitoring tools
-  
   const cacheStats = cacheService.getStatistics();
-  
+
   return {
-    averageResponseTime: 150, // ms
-    requestsPerMinute: 45,
-    errorRate: 0.5, // percentage
+    averageResponseTime: -1,
+    requestsPerMinute: -1,
+    errorRate: -1,
     cacheHitRate: cacheStats.hitRate,
   };
 }

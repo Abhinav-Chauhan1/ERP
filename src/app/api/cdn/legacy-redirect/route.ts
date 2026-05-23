@@ -259,12 +259,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete mapping (this would need to be implemented in the service)
-    // For now, we'll return success
-    return NextResponse.json({
-      success: true,
-      message: 'Mapping deleted successfully',
-    });
+    return NextResponse.json(
+      { error: 'Legacy redirect deletion is not yet implemented' },
+      { status: 501 }
+    );
 
   } catch (error) {
     console.error('Legacy mapping deletion error:', error);

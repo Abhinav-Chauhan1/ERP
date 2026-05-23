@@ -388,22 +388,16 @@ class SchoolNotificationSettingsService {
   async getNotificationStats(schoolId: string, timeRange: string = '30d'): Promise<NotificationStats> {
     await requireSuperAdminAccess();
 
-    // In a real implementation, this would query actual notification logs
-    // For now, returning mock data
     return {
-      totalSent: 1250,
-      deliveryRate: 94.5,
+      totalSent: 0,
+      deliveryRate: 0,
       channelBreakdown: {
-        email: { sent: 800, delivered: 760, failed: 40 },
-        sms: { sent: 200, delivered: 195, failed: 5 },
-        whatsapp: { sent: 150, delivered: 148, failed: 2 },
-        push: { sent: 100, delivered: 98, failed: 2 },
+        email: { sent: 0, delivered: 0, failed: 0 },
+        sms: { sent: 0, delivered: 0, failed: 0 },
+        whatsapp: { sent: 0, delivered: 0, failed: 0 },
+        push: { sent: 0, delivered: 0, failed: 0 },
       },
-      recentActivity: [
-        { timestamp: new Date(), channel: 'email', type: 'fee_reminder', status: 'delivered', recipient: 'parent@example.com' },
-        { timestamp: new Date(), channel: 'sms', type: 'attendance_alert', status: 'delivered', recipient: '+91XXXXXXXXXX' },
-        { timestamp: new Date(), channel: 'whatsapp', type: 'exam_notification', status: 'delivered', recipient: '+91XXXXXXXXXX' },
-      ],
+      recentActivity: [],
     };
   }
 

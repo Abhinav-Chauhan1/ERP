@@ -299,10 +299,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ ev
                 </div>
 
                 <Button variant="outline" className="w-full mt-2" asChild>
-                  <a href="#" className="flex items-center justify-center gap-1">
+                  <Link href="/student/calendar" className="flex items-center justify-center gap-1">
                     <ExternalLink className="h-4 w-4" />
                     View Event Calendar
-                  </a>
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

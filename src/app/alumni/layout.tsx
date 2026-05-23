@@ -29,8 +29,6 @@ import {
   LayoutDashboard,
   User,
   Users,
-  Calendar,
-  BookOpen,
   LogOut,
   Menu,
   GraduationCap,
@@ -68,18 +66,6 @@ const navigationItems = [
     title: "Alumni Directory",
     href: "/alumni/directory",
     icon: Users,
-  },
-  {
-    title: "Events & Reunions",
-    href: "/alumni/events",
-    icon: Calendar,
-    disabled: true, // Placeholder for future implementation
-  },
-  {
-    title: "School News",
-    href: "/alumni/news",
-    icon: BookOpen,
-    disabled: true, // Placeholder for future implementation
   },
 ];
 

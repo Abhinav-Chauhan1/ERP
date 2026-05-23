@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
@@ -34,11 +35,13 @@ export interface PromotionProgressData {
 
 interface PromotionProgressDialogProps {
   open: boolean;
+  onClose?: () => void;
   data: PromotionProgressData;
 }
 
 export function PromotionProgressDialog({
   open,
+  onClose,
   data,
 }: PromotionProgressDialogProps) {
   const progress = data.totalStudents > 0 
@@ -58,11 +61,11 @@ export function PromotionProgressDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent 
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen && !isProcessing) onClose?.(); }}>
+      <DialogContent
         className="max-w-md"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => { if (isProcessing) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isProcessing) e.preventDefault(); }}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -172,6 +175,13 @@ export function PromotionProgressDialog({
             <div className="text-xs text-center text-muted-foreground">
               Please do not close this window or navigate away
             </div>
+          )}
+
+          {/* Close button when done */}
+          {(isCompleted || isFailed) && onClose && (
+            <Button variant="outline" className="w-full" onClick={onClose}>
+              Close
+            </Button>
           )}
         </div>
       </DialogContent>

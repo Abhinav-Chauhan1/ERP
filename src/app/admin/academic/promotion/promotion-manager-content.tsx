@@ -494,6 +494,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       {showProgressDialog && (
         <PromotionProgressDialog
           open={showProgressDialog}
+          onClose={() => setShowProgressDialog(false)}
           data={{
             status: executing ? "processing" : "completed",
             totalStudents: 0,

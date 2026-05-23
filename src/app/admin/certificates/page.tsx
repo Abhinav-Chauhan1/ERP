@@ -23,7 +23,8 @@ import {
     ScrollText,
     GraduationCap,
     UserCheck,
-    ArrowLeft
+    ArrowLeft,
+    AlertCircle
 } from 'lucide-react';
 import { getCertificateTemplates } from '@/lib/actions/certificateTemplateActions';
 
@@ -31,7 +32,12 @@ async function CertificateStats() {
     const result = await getCertificateTemplates();
 
     if (!result.success) {
-        return null;
+        return (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground p-4 rounded-lg border border-dashed">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Could not load certificate statistics. Check your connection and try again.</span>
+            </div>
+        );
     }
 
     const templates = result.data || [];
