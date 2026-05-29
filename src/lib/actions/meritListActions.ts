@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { revalidatePath } from "next/cache";
 import {
   meritListConfigSchema,
   MeritListConfigFormValues,
@@ -46,6 +47,7 @@ export async function createMeritListConfig(data: MeritListConfigFormValues) {
       },
     });
 
+    revalidatePath('/admin/merit-list');
     return {
       success: true,
       data: config,

@@ -7,9 +7,8 @@
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
  */
 
-import { PrismaClient, EventNote } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { EventNote } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 
 // Types for note creation and updates
 export interface CreateEventNoteInput {

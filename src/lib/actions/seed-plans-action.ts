@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { PLAN_FEATURES } from "@/lib/config/plan-features";
+import { revalidatePath } from "next/cache";
 
 const DEFAULT_PLANS = [
   {
@@ -99,5 +100,6 @@ export async function seedDefaultPlans(): Promise<{ success: boolean; message: s
     }
   }
 
+  revalidatePath('/super-admin');
   return { success: true, message: "Default plans seeded successfully", upserted };
 }

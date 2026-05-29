@@ -1,13 +1,12 @@
 'use server';
 
 import { auth } from "@/auth";
-import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
+import { UserRole, PermissionAction } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { db as prisma } from '@/lib/db';
 import { hasPermission } from '@/lib/utils/permissions';
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '@/lib/utils/permission-defaults';
 import { requireSchoolAccess } from '@/lib/auth/tenant';
-
-const prisma = new PrismaClient();
 
 /**
  * Server actions for permission management

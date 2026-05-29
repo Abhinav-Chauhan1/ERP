@@ -12,6 +12,7 @@
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth-helpers";
 import { MessageType, MessageStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 export interface MessageHistoryFilters {
   messageType?: MessageType;
@@ -80,6 +81,7 @@ export async function logMessageHistory(data: MessageHistoryInput, schoolId: str
       },
     });
 
+    revalidatePath('/admin/messages');
     return {
       success: true,
       data: messageHistory,

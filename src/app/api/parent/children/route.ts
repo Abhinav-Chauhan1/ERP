@@ -55,13 +55,13 @@ export const GET = withSchoolAuth(async (request, context) => {
       );
     }
 
-    // Get all children of this parent
+    // Get all children of this parent — filter student.schoolId to prevent stale
+    // records from surfacing after a student transfers to another school
     const parentChildren = await db.studentParent.findMany({
       where: {
         schoolId: context.schoolId,
-
         parentId: parent.id,
-
+        student: { schoolId: context.schoolId },
       },
       include: {
         student: {

@@ -7,9 +7,7 @@
  * Requirements: 6.1, 6.2, 6.3
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { db as prisma } from '@/lib/db';
 
 export interface MigrationWarning {
   feeStructureId: string;

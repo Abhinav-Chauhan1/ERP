@@ -9,13 +9,12 @@
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
  */
 
-import { PrismaClient, CalendarEvent, CalendarEventCategory, EventSourceType } from '@prisma/client';
+import { CalendarEvent, CalendarEventCategory, EventSourceType } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { createCalendarEvent, CreateCalendarEventInput } from './calendar-service';
 import { createEvents, EventAttributes, DateArray } from 'ics';
 import { parse as parseCSV } from 'csv-parse/sync';
 import { stringify as stringifyCSV } from 'csv-stringify/sync';
-
-const prisma = new PrismaClient();
 
 // Type for event with relations
 export type CalendarEventWithRelations = CalendarEvent & {

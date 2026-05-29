@@ -18,6 +18,7 @@ import {
 } from "@/lib/types/communication";
 import { sendBulkNotification } from "@/lib/services/communication-service";
 import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
+import { revalidatePath } from "next/cache";
 
 /**
  * Action result type
@@ -240,6 +241,7 @@ export async function sendBulkToClass(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -464,6 +466,7 @@ export async function sendBulkToAllParents(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {

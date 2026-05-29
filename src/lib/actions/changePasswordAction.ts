@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const schema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -59,5 +60,6 @@ export async function changePassword(formData: {
     },
   });
 
+  revalidatePath('/admin');
   return { success: true };
 }

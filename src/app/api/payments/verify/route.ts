@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
-import { verifyPaymentSignature } from '@/lib/utils/payment-gateway';
+import { verifyPaymentSignature, fetchPaymentDetails, fetchOrderDetails } from '@/lib/utils/payment-gateway';
 import { verifyPaymentSchema } from '@/lib/schemaValidation/parent-fee-schemas';
 import { verifyCsrfToken } from '@/lib/utils/csrf';
 import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
@@ -108,6 +108,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // CRITICAL: Validate amount via Razorpay — never trust the client-submitted amount.
+    // Fetch the authoritative order from Razorpay and verify the payment amount matches.
+    const [razorpayOrder, razorpayPayment] = await Promise.all([
+      fetchOrderDetails(validated.orderId),
+      fetchPaymentDetails(validated.paymentId),
+    ]);
+
+    const orderAmountPaise = (razorpayOrder as any).amount as number;
+    const paymentAmountPaise = (razorpayPayment as any).amount as number;
+
+    if (paymentAmountPaise !== orderAmountPaise) {
+      console.error(
+        `[PAYMENT-1] Amount mismatch: order=${orderAmountPaise} payment=${paymentAmountPaise} ` +
+        `paymentId=${validated.paymentId}`
+      );
+      return NextResponse.json(
+        { success: false, message: 'Payment amount does not match order amount' },
+        { status: 400 }
+      );
+    }
+
     // CRITICAL: Get school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
@@ -146,16 +167,17 @@ export async function POST(req: NextRequest) {
         }
       });
     } else {
-      // Create new payment record
+      // Create new payment record — use Razorpay-verified amount, not client-submitted amount
       const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
+      const verifiedAmount = orderAmountPaise / 100; // Convert paise to INR
 
       payment = await db.feePayment.create({
         data: {
           studentId: validated.childId,
           feeStructureId: validated.feeStructureId,
           schoolId, // CRITICAL: Use actual school context
-          amount: validated.amount,
-          paidAmount: validated.amount,
+          amount: verifiedAmount,
+          paidAmount: verifiedAmount,
           balance: 0,
           paymentDate: new Date(),
           paymentMethod: PaymentMethod.ONLINE_PAYMENT,

@@ -13,6 +13,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // Without this, NextAuth rejects the host header and the session cookie is never read.
   trustHost: true,
   adapter: PrismaAdapter(db),
+  jwt: { maxAge: 24 * 60 * 60 },
   providers: [
     Credentials({
       name: "credentials",
@@ -157,8 +158,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null
           }
 
-          // ── 6. Email verification (skip for SUPER_ADMIN) ─────────────────────
-          if (user.email && !user.emailVerified && user.role !== UserRole.SUPER_ADMIN) {
+          // ── 6. Email verification (required for all roles) ───────────────────
+          if (user.email && !user.emailVerified) {
             await logAuditEvent({
               userId: user.id,
               action: AuditAction.LOGIN,

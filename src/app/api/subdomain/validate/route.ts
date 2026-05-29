@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+const RESERVED_SUBDOMAINS = new Set([
+  'www', 'api', 'app', 'admin', 'superadmin', 'mail', 'smtp', 'imap', 'pop',
+  'static', 'assets', 'cdn', 'media', 'uploads', 'files', 'img', 'images',
+  'blog', 'help', 'support', 'docs', 'status', 'dashboard', 'login',
+  'auth', 'oauth', 'sso', 'dev', 'staging', 'test', 'demo', 'sandbox',
+  'ftp', 'ssh', 'vpn', 'proxy', 'ns', 'ns1', 'ns2', 'mx', 'mx1', 'mx2',
+]);
+
 /**
  * API Route to validate subdomain
  * This is called from middleware to avoid Edge Runtime Prisma issues
@@ -14,6 +22,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Subdomain parameter is required' },
         { status: 400 }
+      );
+    }
+
+    if (RESERVED_SUBDOMAINS.has(subdomain.toLowerCase())) {
+      return NextResponse.json(
+        { error: 'School not found or inactive' },
+        { status: 404 }
       );
     }
 

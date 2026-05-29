@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
     // Hash the OTP code before storing (security best practice)
-    const codeHash = await bcrypt.hash(otpCode, 10)
+    const codeHash = await bcrypt.hash(otpCode, 12)
 
     // Store OTP in database
     await db.oTP.create({

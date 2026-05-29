@@ -16,8 +16,15 @@ export async function GET(request: NextRequest) {
     const recommended = searchParams.get("recommended") === "true";
     const progress = searchParams.get("progress") === "true";
     const streak = searchParams.get("streak") === "true";
-    const studentId = searchParams.get("studentId");
     const limit = searchParams.get("limit");
+
+    // Non-admin users may only query their own data
+    const requestedStudentId = searchParams.get("studentId");
+    const isPrivileged = session.user.role === "ADMIN" || session.user.role === "TEACHER" || session.user.role === "SUPER_ADMIN";
+    if (requestedStudentId && !isPrivileged && requestedStudentId !== session.user.id) {
+      return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+    }
+    const studentId = requestedStudentId;
 
     if (recommended) {
       const result = await getRecommendedContent(limit ? (Math.min(Math.max(parseInt(limit, 10) || 5, 1), 100)) : 5);

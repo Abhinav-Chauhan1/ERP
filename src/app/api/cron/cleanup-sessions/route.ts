@@ -83,6 +83,12 @@ async function ensureSystemUser(): Promise<string | null> {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Enforce HTTPS — reject plaintext requests to prevent secret interception
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    if (process.env.NODE_ENV === 'production' && forwardedProto !== 'https') {
+      return NextResponse.json({ success: false, error: 'HTTPS required' }, { status: 400 });
+    }
+
     // Verify cron secret — fail closed if not configured
     const cronSecret = process.env.CRON_SECRET
     if (!cronSecret) {
@@ -142,7 +148,12 @@ export async function POST(request: NextRequest) {
           }
         })
       } catch (auditError) {
-        console.warn("Failed to create audit log:", auditError)
+        console.error("Failed to create audit log for session cleanup:", auditError)
+        // Return 500 so Vercel marks the cron run as failed — audit trail is security-critical
+        return NextResponse.json(
+          { success: false, error: "Session cleanup succeeded but audit logging failed", deletedCount: result.count },
+          { status: 500 }
+        )
       }
     }
 

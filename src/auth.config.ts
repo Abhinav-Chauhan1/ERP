@@ -8,6 +8,7 @@ export const authConfig = {
     session: {
         strategy: "jwt",
         maxAge: 24 * 60 * 60, // 24 hours
+        updateAge: 5 * 60, // Re-validate session (incl. school status) every 5 minutes
     },
 
     pages: {

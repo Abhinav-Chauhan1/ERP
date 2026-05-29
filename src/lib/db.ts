@@ -72,8 +72,18 @@ const createPrismaClient = () => {
             } catch (error: any) { }
           }
 
-          if (!context || (context.isSuperAdmin && !context.schoolId)) {
-            return query(args);
+          if (!context) {
+            throw new Error(
+              `[RLS] No tenant context for model "${model}". ` +
+              'Wrap the call in runWithTenantContext() or ensure a valid session is active.'
+            );
+          }
+
+          if (context.isSuperAdmin && !context.schoolId) {
+            throw new Error(
+              `[RLS] Super-admin query on tenant model "${model}" requires an explicit schoolId. ` +
+              'Use runWithTenantContext({ schoolId, isSuperAdmin: true }) to scope the query.'
+            );
           }
 
           const currentSchoolId = context.schoolId;

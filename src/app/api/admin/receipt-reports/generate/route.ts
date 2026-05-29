@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { UserRole } from "@prisma/client";
 import {
   generateDailyReport,
   generateWeeklyReport,
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    if (user.role !== "ADMIN") {
+    if (user.role !== UserRole.ADMIN) {
       return NextResponse.json(
         { success: false, error: "Only administrators can generate reports" },
         { status: 403 }

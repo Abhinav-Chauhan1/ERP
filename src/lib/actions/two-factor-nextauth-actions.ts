@@ -11,6 +11,7 @@ import {
   decrypt,
 } from "@/lib/utils/two-factor"
 import { verifyPassword } from "@/lib/password"
+import { revalidatePath } from "next/cache"
 
 export interface TwoFactorSetupResult {
   success: boolean
@@ -136,6 +137,7 @@ export async function enableTwoFactor(
       }
     })
 
+    revalidatePath('/admin')
     return { success: true }
   } catch (error) {
     console.error("Error enabling 2FA:", error)
@@ -194,6 +196,7 @@ export async function disableTwoFactor(token: string): Promise<TwoFactorVerifyRe
       }
     })
 
+    revalidatePath('/admin')
     return { success: true }
   } catch (error) {
     console.error("Error disabling 2FA:", error)
@@ -289,6 +292,7 @@ export async function regenerateBackupCodes(token: string): Promise<{
       }
     })
 
+    revalidatePath('/admin')
     return { success: true, backupCodes }
   } catch (error) {
     console.error("Error regenerating backup codes:", error)

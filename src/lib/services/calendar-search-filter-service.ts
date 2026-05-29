@@ -8,9 +8,8 @@
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
  */
 
-import { PrismaClient, CalendarEvent, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { CalendarEvent, Prisma } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 
 /**
  * Filter options for calendar events

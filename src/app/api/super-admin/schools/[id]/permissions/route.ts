@@ -51,13 +51,6 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching school permissions:', error);
     
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -99,13 +92,6 @@ export async function PUT(
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
         { status: 400 }
       );
     }

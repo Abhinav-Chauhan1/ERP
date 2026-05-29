@@ -13,6 +13,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import {
   sendTextMessage,
   sendTemplateMessage,
@@ -117,6 +118,7 @@ export async function sendWhatsAppMessage(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -211,6 +213,7 @@ export async function sendWhatsAppTemplate(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -317,6 +320,7 @@ export async function sendWhatsAppMedia(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -422,6 +426,7 @@ export async function sendWhatsAppInteractive(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -561,6 +566,7 @@ export async function sendBulkWhatsApp(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
       data: {
@@ -820,6 +826,7 @@ export async function updateWhatsAppBusinessProfile(data: {
       },
     });
 
+    revalidatePath('/admin/communications');
     return {
       success: true,
     };

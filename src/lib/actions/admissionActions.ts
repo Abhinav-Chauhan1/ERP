@@ -9,6 +9,7 @@ import {
 } from "../schemaValidation/admissionSchemaValidation";
 import { uploadHandler } from "@/lib/services/upload-handler";
 import { sendAdmissionConfirmationEmail } from "@/lib/utils/email-service";
+import { revalidatePath } from "next/cache";
 
 // Generate unique application number
 function generateApplicationNumber(): string {
@@ -200,6 +201,7 @@ export const createAdmissionApplication = withSchoolAuthAction(async (schoolId: 
       console.error("Failed to send confirmation email:", emailError);
     }
 
+    revalidatePath('/admin/admissions');
     return {
       success: true,
       data: application,

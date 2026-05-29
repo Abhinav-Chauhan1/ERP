@@ -7,6 +7,7 @@ import { hashPassword } from "@/lib/password";
 import { UserRole } from "@prisma/client";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
+import { revalidatePath } from "next/cache";
 
 const BATCH_SIZE = 10;
 
@@ -463,6 +464,7 @@ export async function importStudents(
   }
 
   result.success = result.summary.failed === 0;
+  revalidatePath('/admin/students');
   return result;
 }
 
@@ -527,6 +529,7 @@ export async function importStudentsBatched(
   const nextBatch = nextBatchStart < data.length ? batchIndex + 1 : null;
   result.success = result.summary.failed === 0;
 
+  if (!nextBatch) revalidatePath('/admin/students');
   return { ...result, nextBatch };
 }
 
@@ -626,6 +629,7 @@ export async function importTeachers(
   }
 
   result.success = result.summary.failed === 0;
+  revalidatePath('/admin/staff');
   return result;
 }
 
@@ -731,5 +735,6 @@ export async function importParents(
   }
 
   result.success = result.summary.failed === 0;
+  revalidatePath('/admin/parents');
   return result;
 }

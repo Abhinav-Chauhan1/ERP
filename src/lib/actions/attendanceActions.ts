@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { revalidatePath } from "next/cache";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -551,6 +552,7 @@ export async function markStudentAttendance(data: {
       }
     }
 
+    revalidatePath('/admin/attendance');
     return { success: true, data: attendanceRecord };
   } catch (error) {
     console.error("Error marking student attendance:", error);
@@ -613,6 +615,7 @@ export async function deleteStudentAttendance(id: string) {
       where: { id, schoolId },
     });
 
+    revalidatePath('/admin/attendance');
     return { success: true, message: "Attendance record deleted successfully" };
   } catch (error) {
     console.error("Error deleting attendance record:", error);

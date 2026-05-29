@@ -15,6 +15,7 @@ import { db } from '@/lib/db';
 import { auth } from "@/auth";
 import { requireSchoolAccess } from '@/lib/auth/tenant';
 import { logAuditEvent } from '@/lib/services/audit-service';
+import { revalidatePath } from 'next/cache';
 import {
   generateTermReportCardPDF,
   generateBatchTermReportCardsPDF,
@@ -137,6 +138,7 @@ export async function generateSingleReportCard(
       changes: { studentId, termId, pdfUrl },
     });
 
+    revalidatePath('/admin/report-cards');
     return {
       success: true,
       data: {
@@ -270,6 +272,7 @@ export async function generateBatchReportCards(
 
     await Promise.all(updatePromises);
 
+    revalidatePath('/admin/report-cards');
     return {
       success: true,
       data: {
@@ -467,6 +470,7 @@ export async function generateBatchReportCardsZip(
 
     await Promise.all(updatePromises);
 
+    revalidatePath('/admin/report-cards');
     return {
       success: true,
       data: {
@@ -571,6 +575,7 @@ export async function generateSingleExamTypeReportCard(
       changes: { studentId, termId, examTypeId, pdfUrl },
     });
 
+    revalidatePath('/admin/report-cards');
     return { success: true, data: { pdfUrl, reportCardId: reportCard.id, pdfBase64: pdfBuffer.toString('base64') } };
   } catch (error) {
     console.error('Error generating exam-type report card:', error);
@@ -706,6 +711,7 @@ export async function generateBatchExamTypeReportCardsZip(
       }),
     );
 
+    revalidatePath('/admin/report-cards');
     return { success: true, data: { zipData, zipFilename, totalGenerated: validPdfs.length, fileList } };
   } catch (error) {
     console.error('Error generating batch exam-type report cards ZIP:', error);

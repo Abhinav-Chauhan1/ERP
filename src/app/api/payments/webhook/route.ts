@@ -191,6 +191,12 @@ async function handlePaymentSuccess(paymentEntity: any) {
         console.log(`Updated existing payment: ${existingPayment.id}`);
       }
     } else {
+      // Require studentId and feeStructureId — return a non-200 so Razorpay retries
+      if (!notes.studentId || !notes.feeStructureId) {
+        console.error('[webhook] Missing required notes fields (studentId/feeStructureId)', { notes });
+        throw new Error('Missing required payment notes: studentId and feeStructureId are required');
+      }
+
       // Create new payment record if notes contain required information
       if (notes.studentId && notes.feeStructureId) {
         // H6 FIX: Always derive schoolId from the verified student record in the DB.

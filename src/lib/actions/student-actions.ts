@@ -4,6 +4,7 @@ import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { revalidatePath } from "next/cache";
 
 export async function getStudentProfile() {
   const session = await auth();
@@ -402,6 +403,8 @@ export async function updateStudentProfile(studentId: string, data: {
       });
     }
 
+    revalidatePath('/student/profile');
+    revalidatePath('/admin');
     return { success: true, message: "Profile updated successfully" };
   } catch (error) {
     console.error("Error updating student profile:", error);

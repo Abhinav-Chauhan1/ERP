@@ -11,7 +11,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get("studentId");
+    const requestedStudentId = searchParams.get("studentId");
+
+    // Non-admin users may only query their own flashcard data
+    const isPrivileged = session.user.role === "ADMIN" || session.user.role === "TEACHER" || session.user.role === "SUPER_ADMIN";
+    if (requestedStudentId && !isPrivileged && requestedStudentId !== session.user.id) {
+      return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+    }
+    const studentId = requestedStudentId;
 
     const result = await getFlashcardDecks(studentId || undefined);
     

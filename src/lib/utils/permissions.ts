@@ -1,10 +1,9 @@
-import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
+import { UserRole, PermissionAction } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { logPermissionCheck, logPermissionDenial } from '@/lib/services/permission-audit';
 import { hasDefaultResourcePermission, getRoleDefaultPermissions, DEFAULT_PERMISSIONS } from './permission-defaults';
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-
-const prisma = new PrismaClient();
 
 // Try to import cache from React, but make it optional for non-React contexts
 let cache: typeof import('react').cache | undefined;

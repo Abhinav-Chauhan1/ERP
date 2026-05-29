@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Export error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to export calendar events' },
+      { error: 'Failed to export calendar events' },
       { status: 500 }
     );
   }

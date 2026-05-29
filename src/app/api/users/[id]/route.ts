@@ -83,6 +83,11 @@ export async function PATCH(
       return new NextResponse("Invalid role", { status: 400 });
     }
 
+    // Only SUPER_ADMINs can assign the SUPER_ADMIN role
+    if (newRole === UserRole.SUPER_ADMIN && role !== UserRole.SUPER_ADMIN) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
     const { id } = await params;
     const context = await requireSchoolAccess();
 

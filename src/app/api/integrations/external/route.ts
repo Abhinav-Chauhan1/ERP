@@ -5,6 +5,28 @@ import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import crypto from 'crypto';
+
+const SENSITIVE_KEYS = ['apiKey', 'api_key', 'secret', 'password', 'token', 'webhook_secret', 'client_secret'];
+
+function encryptConfigSecrets(config: Record<string, unknown>): Record<string, unknown> {
+  const key = process.env.TWO_FACTOR_ENCRYPTION_KEY;
+  if (!key) return config;
+  const keyBuf = Buffer.from(key, 'hex');
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(config)) {
+    if (SENSITIVE_KEYS.some(s => k.toLowerCase().includes(s)) && typeof v === 'string') {
+      const iv = crypto.randomBytes(12);
+      const cipher = crypto.createCipheriv('aes-256-gcm', keyBuf, iv);
+      const encrypted = Buffer.concat([cipher.update(v, 'utf8'), cipher.final()]);
+      const tag = cipher.getAuthTag();
+      result[k] = `enc:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
+    } else {
+      result[k] = v;
+    }
+  }
+  return result;
+}
 
 const integrationConfigSchema = z.object({
   provider: z.enum(['stripe', 'datadog', 'newrelic', 'pingdom', 'uptimerobot', 'slack', 'discord', 'email']),
@@ -84,7 +106,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const integration = await environmentConfigurationManager.createExternalIntegration(validatedData);
+    const dataToStore = {
+      ...validatedData,
+      config: encryptConfigSecrets(validatedData.config),
+    };
+    const integration = await environmentConfigurationManager.createExternalIntegration(dataToStore);
 
     await logAuditEvent({
       userId: session.user.id,

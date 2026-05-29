@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Import error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to import calendar events' },
+      { error: 'Failed to import calendar events' },
       { status: 500 }
     );
   }

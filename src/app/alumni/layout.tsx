@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { ReactNode } from "react";
+import { ReactNode, ElementType } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -51,7 +51,7 @@ interface AlumniLayoutProps {
 /**
  * Navigation items for alumni portal
  */
-const navigationItems = [
+const navigationItems: Array<{ title: string; href: string; icon: ElementType; disabled?: boolean }> = [
   {
     title: "Dashboard",
     href: "/alumni/dashboard",

@@ -199,6 +199,19 @@ export default auth(async (req) => {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Enforce school INACTIVE status mid-session:
+  // The jwt callback re-validates school status on each token refresh (every 5 min).
+  // If the school was suspended, authorizedSchools will be empty and schoolId null.
+  if (
+    session.user.role !== UserRole.SUPER_ADMIN &&
+    !session.user.schoolId &&
+    !pathname.startsWith('/api/auth/')
+  ) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('error', 'school_inactive');
+    return NextResponse.redirect(loginUrl);
+  }
+
   // Force password change on first login
   if (session.user.mustChangePassword) {
     // Auth endpoints and the change-password action itself are always allowed

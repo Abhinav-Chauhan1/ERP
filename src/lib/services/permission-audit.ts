@@ -4,9 +4,8 @@
  * Validates: Requirements 20.4
  */
 
-import { PrismaClient, AuditAction } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { AuditAction } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 
 export interface PermissionAuditEntry {
   userId: string;

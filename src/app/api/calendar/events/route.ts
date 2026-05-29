@@ -80,9 +80,22 @@ export const GET = withSchoolAuth(async (request, context) => {
     const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50')));
     const childId = searchParams.get('childId');
 
+    const MAX_DATE_RANGE_MS = 180 * 24 * 60 * 60 * 1000; // 6 months
+
     const options: any = {};
     if (startDateParam) options.startDate = new Date(startDateParam);
     if (endDateParam) options.endDate = new Date(endDateParam);
+
+    // Guard against unbounded date ranges to prevent OOM on large datasets
+    if (options.startDate && options.endDate && (options.endDate - options.startDate) > MAX_DATE_RANGE_MS) {
+      return NextResponse.json({ error: 'Date range exceeds maximum of 6 months' }, { status: 400 });
+    }
+    if (!options.startDate) {
+      options.startDate = new Date();
+    }
+    if (!options.endDate) {
+      options.endDate = new Date(options.startDate.getTime() + MAX_DATE_RANGE_MS);
+    }
     if (categoriesParam) options.categoryIds = categoriesParam.split(',').filter(Boolean);
     if (searchTerm) options.searchTerm = searchTerm;
     options.sortOptions = parseSortOptions(sortBy, sortOrder);
@@ -174,10 +187,17 @@ export const POST = withSchoolAuth(async (request, context) => {
 
     const body = await request.json();
     const sanitizedData = sanitizeEventData(body);
+    const startDate = new Date(body.startDate);
+    const endDate = new Date(body.endDate);
+
+    if (startDate > endDate) {
+      return NextResponse.json({ error: 'startDate must be before or equal to endDate' }, { status: 400 });
+    }
+
     const eventData = {
       ...sanitizedData,
-      startDate: new Date(body.startDate),
-      endDate: new Date(body.endDate),
+      startDate,
+      endDate,
       exceptionDates: body.exceptionDates?.map((d: string) => new Date(d)),
       createdBy: user.id,
     };

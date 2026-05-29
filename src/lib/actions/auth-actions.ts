@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { signIn } from "@/auth";
 import { headers } from "next/headers";
 import { getClientIp } from "@/lib/utils/rate-limit";
+import { revalidatePath } from "next/cache";
 
 interface ChangePasswordParams {
   userId: string;
@@ -302,6 +303,7 @@ export async function changePassword({
       }
     });
 
+    revalidatePath('/admin');
     return { success: true };
   } catch (error) {
     console.error("Error changing password:", error);

@@ -445,7 +445,7 @@ model VerificationToken {
 
 model Administrator {
   id            String         @id @default(cuid())
-  userId        String         @unique
+  userId        String
   position      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -454,6 +454,7 @@ model Administrator {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   announcements Announcement[]
 
+  @@unique([schoolId, userId])
   @@index([schoolId])
 }
 
@@ -1485,6 +1486,8 @@ model StudentAttendance {
   @@index([sectionId, date, status])
   @@index([status])
   @@index([schoolId])
+  @@index([schoolId, studentId])
+  @@index([schoolId, date])
 }
 
 model TeacherAttendance {
@@ -1630,7 +1633,7 @@ model FeePayment {
   balance        Float           @default(0)
   paymentDate    DateTime
   paymentMethod  PaymentMethod   @default(CASH)
-  transactionId  String?
+  transactionId  String?         @unique
   receiptNumber  String?
   status         PaymentStatus   @default(PENDING)
   remarks        String?
@@ -1647,6 +1650,7 @@ model FeePayment {
   @@index([paymentDate])
   @@index([status])
   @@index([schoolId])
+  @@index([schoolId, studentId])
 }
 
 model PaymentReceipt {
@@ -3728,9 +3732,12 @@ model TicketComment {
   content    String
   isInternal Boolean       @default(false)
   createdAt  DateTime      @default(now())
+  schoolId   String?
   author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  school     School?       @relation(fields: [schoolId], references: [id])
 
+  @@index([schoolId])
   @@map("ticket_comments")
 }
 
@@ -3745,9 +3752,12 @@ model KnowledgeBaseArticle {
   viewCount   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  schoolId    String?
   author      User     @relation(fields: [authorId], references: [id])
+  school      School?  @relation(fields: [schoolId], references: [id])
 
   @@index([category, isPublished])
+  @@index([schoolId])
   @@map("knowledge_base_articles")
 }
 
@@ -3813,6 +3823,7 @@ model AlertConfig {
   @@map("alert_configs")
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model SystemHealth {
   id           String   @id @default(cuid())
   component    String   @unique
@@ -3827,6 +3838,7 @@ model SystemHealth {
   @@map("system_health")
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model PerformanceMetric {
   id         String   @id @default(cuid())
   metricType String
@@ -3841,6 +3853,7 @@ model PerformanceMetric {
   @@map("performance_metrics")
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model BlockedIdentifier {
   id         String   @id @default(cuid())
   identifier String
@@ -3856,6 +3869,7 @@ model BlockedIdentifier {
   @@map("blocked_identifiers")
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model LoginFailure {
   id         String   @id @default(cuid())
   identifier String
@@ -3869,6 +3883,7 @@ model LoginFailure {
   @@map("login_failures")
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model RateLimitLog {
   id         String   @id @default(cuid())
   identifier String
@@ -4696,6 +4711,7 @@ model SystemConfiguration {
   @@index([environment])
 }
 
+// SYSTEM-WIDE: intentionally not tenant-scoped
 model FeatureFlag {
   id                 String   @id @default(cuid())
   name               String

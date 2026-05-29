@@ -253,7 +253,7 @@ export async function changePassword(input: ChangePasswordInput) {
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(validated.newPassword, 10);
+    const hashedPassword = await bcrypt.hash(validated.newPassword, 12);
 
     // Update password in database
     await db.user.update({
