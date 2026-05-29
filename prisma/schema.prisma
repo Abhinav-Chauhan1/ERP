@@ -223,6 +223,8 @@ model School {
   studentXPLevels         StudentXPLevel[]
   SubjectMarkConfig       SubjectMarkConfig[]
   supportTickets          SupportTicket[]
+  ticketComments          TicketComment[]
+  knowledgeBaseArticles   KnowledgeBaseArticle[]
   systemMetrics           SystemMetric[]
   TransportAttendance     TransportAttendance[]
   usageCounters           UsageCounter[]
@@ -445,7 +447,7 @@ model VerificationToken {
 
 model Administrator {
   id            String         @id @default(cuid())
-  userId        String
+  userId        String         @unique
   position      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
