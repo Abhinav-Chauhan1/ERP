@@ -447,7 +447,7 @@ export async function aggregateMultiTermReportCardData(
   try {
     const studentData = await fetchStudentParentInfo(studentId);
 
-    const activeEnrollment = await db.enrollment.findFirst({
+    const activeEnrollment = await db.classEnrollment.findFirst({
       where: { studentId, status: "ACTIVE" },
       select: { classId: true },
     });

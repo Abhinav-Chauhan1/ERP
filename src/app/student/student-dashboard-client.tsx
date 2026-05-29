@@ -113,7 +113,9 @@ export function StudentDashboardClient({ data }: StudentDashboardClientProps) {
                   <Play className="h-5 w-5 text-blue-500" />
                   Continue Learning
                 </CardTitle>
-                <Badge variant="secondary">{learningProgress.currentLesson.subject}</Badge>
+                {learningProgress.currentLesson && (
+                  <Badge variant="secondary">{learningProgress.currentLesson.subject}</Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
