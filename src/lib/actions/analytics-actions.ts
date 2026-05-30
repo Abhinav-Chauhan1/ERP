@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { runWithSuperAdminContext } from "@/lib/tenant-context";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
 import { calcMonthlyBill, PlanType } from "@/lib/config/plan-features";
 import {
@@ -43,7 +44,9 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
     ] = await Promise.all([
       db.school.groupBy({ by: ["status"], _count: { id: true } }),
       db.user.groupBy({ by: ["role"], _count: { id: true } }),
-      db.enhancedSubscription.groupBy({ by: ["status"], _count: { id: true } }),
+      runWithSuperAdminContext(() =>
+        db.enhancedSubscription.groupBy({ by: ["status"], _count: { id: true } })
+      ),
       db.school.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
       db.auditLog.findMany({
         take: 5,

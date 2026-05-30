@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { getTenantContext } from './tenant-context';
+import { getTenantContext, SUPER_ADMIN_GLOBAL } from './tenant-context';
 
 declare global {
   var db: PrismaClient | undefined;
@@ -86,8 +86,14 @@ const createPrismaClient = () => {
           if (context.isSuperAdmin && !context.schoolId) {
             throw new Error(
               `[RLS] Super-admin query on tenant model "${model}" requires an explicit schoolId. ` +
-              'Use runWithTenantContext({ schoolId, isSuperAdmin: true }) to scope the query.'
+              'Use runWithTenantContext({ schoolId, isSuperAdmin: true }) to scope the query, ' +
+              'or runWithSuperAdminContext() for cross-tenant aggregate reads.'
             );
+          }
+
+          // Super-admin global cross-tenant query — skip schoolId injection
+          if (context.isSuperAdmin && context.schoolId === SUPER_ADMIN_GLOBAL) {
+            return query(args);
           }
 
           const currentSchoolId = context.schoolId;

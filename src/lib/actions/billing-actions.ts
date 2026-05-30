@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { runWithSuperAdminContext } from "@/lib/tenant-context";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
 import { calcMonthlyBill, PlanType } from "@/lib/config/plan-features";
 
@@ -34,35 +35,41 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       // Monthly payment breakdown for trend chart
       recentPayments,
     ] = await Promise.all([
-      db.enhancedSubscription.groupBy({
-        by: ["status"],
-        _count: { id: true },
-      }),
-      db.enhancedSubscription.findMany({
-        select: {
-          id: true,
-          status: true,
-          currentPeriodEnd: true,
-          createdAt: true,
-          school: {
-            select: { name: true, plan: true, status: true },
+      runWithSuperAdminContext(() =>
+        db.enhancedSubscription.groupBy({
+          by: ["status"],
+          _count: { id: true },
+        })
+      ),
+      runWithSuperAdminContext(() =>
+        db.enhancedSubscription.findMany({
+          select: {
+            id: true,
+            status: true,
+            currentPeriodEnd: true,
+            createdAt: true,
+            school: {
+              select: { name: true, plan: true, status: true },
+            },
           },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      }),
-      db.enhancedSubscription.findMany({
-        where: {
-          createdAt: {
-            gte: startOfMonth(subDays(now, 11 * 30)),
-            lte: now,
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        })
+      ),
+      runWithSuperAdminContext(() =>
+        db.enhancedSubscription.findMany({
+          where: {
+            createdAt: {
+              gte: startOfMonth(subDays(now, 11 * 30)),
+              lte: now,
+            },
           },
-        },
-        select: {
-          createdAt: true,
-          school: { select: { plan: true } },
-        },
-      }),
+          select: {
+            createdAt: true,
+            school: { select: { plan: true } },
+          },
+        })
+      ),
       // All-time collected revenue (paise)
       db.payment.aggregate({
         where: { status: "COMPLETED" },

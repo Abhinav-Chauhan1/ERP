@@ -24,6 +24,13 @@ const getAsyncLocalStorage = () => {
 export const tenantContext = getAsyncLocalStorage();
 
 /**
+ * Sentinel schoolId for super-admin cross-tenant (global) queries.
+ * When used, the RLS middleware skips schoolId injection so the query
+ * runs across all schools — valid only for super-admin aggregate reads.
+ */
+export const SUPER_ADMIN_GLOBAL = '__super_admin_global__';
+
+/**
  * Run a function with a specific tenant context
  */
 export function runWithTenantContext<T>(
@@ -31,6 +38,15 @@ export function runWithTenantContext<T>(
     callback: () => T
 ): T {
     return tenantContext.run(context, callback);
+}
+
+/**
+ * Run a super-admin function that must query across all schools.
+ * Bypasses the per-school RLS filter — only use for read-only
+ * aggregate/analytics queries in super-admin server actions.
+ */
+export function runWithSuperAdminContext<T>(callback: () => T): T {
+    return tenantContext.run({ schoolId: SUPER_ADMIN_GLOBAL, isSuperAdmin: true }, callback);
 }
 
 /**

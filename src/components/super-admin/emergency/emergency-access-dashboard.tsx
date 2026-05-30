@@ -95,8 +95,8 @@ export default function EmergencyAccessDashboard() {
 
   // History filters
   const [historyFilters, setHistoryFilters] = useState({
-    targetType: '',
-    action: '',
+    targetType: 'ALL',
+    action: 'ALL',
     limit: 20,
     offset: 0,
   });
@@ -124,8 +124,8 @@ export default function EmergencyAccessDashboard() {
   const loadHistory = async () => {
     try {
       const params = new URLSearchParams();
-      if (historyFilters.targetType) params.append('targetType', historyFilters.targetType);
-      if (historyFilters.action) params.append('action', historyFilters.action);
+      if (historyFilters.targetType && historyFilters.targetType !== 'ALL') params.append('targetType', historyFilters.targetType);
+      if (historyFilters.action && historyFilters.action !== 'ALL') params.append('action', historyFilters.action);
       params.append('limit', historyFilters.limit.toString());
       params.append('offset', historyFilters.offset.toString());
 
@@ -439,7 +439,7 @@ export default function EmergencyAccessDashboard() {
                   <SelectValue placeholder="Target Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="ALL">All Types</SelectItem>
                   <SelectItem value="USER">Users</SelectItem>
                   <SelectItem value="SCHOOL">Schools</SelectItem>
                 </SelectContent>
@@ -453,7 +453,7 @@ export default function EmergencyAccessDashboard() {
                   <SelectValue placeholder="Action" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Actions</SelectItem>
+                  <SelectItem value="ALL">All Actions</SelectItem>
                   <SelectItem value="DISABLE">Disable</SelectItem>
                   <SelectItem value="ENABLE">Enable</SelectItem>
                   <SelectItem value="FORCE_DISABLE">Force Disable</SelectItem>
