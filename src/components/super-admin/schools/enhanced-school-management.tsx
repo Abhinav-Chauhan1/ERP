@@ -287,9 +287,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   };
 
   const handleLaunchSetupWizard = async (schoolId: string, schoolName: string) => {
-    console.log("🚀 Launch Setup Wizard clicked for:", schoolName, schoolId);
-
-    // Redirect to the existing setup wizard page
     router.push(`/super-admin/schools/${schoolId}/setup`);
   };
 

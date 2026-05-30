@@ -78,10 +78,7 @@ export function AddStudentDialog({ schoolId }: AddStudentDialogProps) {
             const fetchClasses = async () => {
                 try {
                     setLoadingClasses(true);
-                    // Note: This API might need to be scoped to the specific school if not implicitly handled
-                    // Assuming /api/classes fetches for the current context, but for Super Admin we might need a specific endpoint
-                    // For now, let's try the generic one, or fallback to an empty list if it fails.
-                    const response = await fetch('/api/classes');
+                    const response = await fetch(`/api/classes?schoolId=${schoolId}`);
                     if (response.ok) {
                         const data = await response.json();
                         setClasses(data);

@@ -53,6 +53,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
   if (!school) redirect("/super-admin/schools");
 
   const currentSub = school.enhancedSubscriptions.find(s => s.status === "ACTIVE");
+  const legacyPlan = !currentSub && school.plan ? school.plan : null;
   const studentCount = school._count.students;
 
   // Resolve per-student pricing from plan record features JSON or PLAN_LIMITS fallback
@@ -268,9 +269,21 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
       ) : (
         <Card>
           <CardContent className="p-6 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Active Plan</h3>
-            <p className="text-muted-foreground mb-4">This school does not have an active subscription.</p>
+            {legacyPlan ? (
+              <>
+                <CheckCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-1">Legacy Plan: {legacyPlan}</h3>
+                <p className="text-muted-foreground mb-4">
+                  This school is on a legacy plan without a formal subscription record. Assign a plan below to create a billing record.
+                </p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Active Plan</h3>
+                <p className="text-muted-foreground mb-4">This school does not have an active subscription.</p>
+              </>
+            )}
             <ChangePlanDialog
               schoolId={school.id}
               currentPlan={school.plan}

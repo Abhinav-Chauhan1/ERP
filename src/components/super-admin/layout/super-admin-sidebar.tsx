@@ -17,6 +17,9 @@ import {
     LogOut,
     ChevronLeft,
     Menu,
+    Users,
+    Activity,
+    ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -31,10 +34,13 @@ interface NavItem {
 const navItems: NavItem[] = [
     { label: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
     { label: "Schools", href: "/super-admin/schools", icon: Building2 },
+    { label: "Users", href: "/super-admin/users", icon: Users },
     { label: "Analytics", href: "/super-admin/analytics", icon: BarChart3 },
     { label: "Billing", href: "/super-admin/billing", icon: CreditCard },
     { label: "Plans", href: "/super-admin/plans", icon: Layers },
     { label: "Storage", href: "/super-admin/storage", icon: HardDrive },
+    { label: "Monitoring", href: "/super-admin/monitoring", icon: Activity },
+    { label: "Emergency", href: "/super-admin/emergency", icon: ShieldAlert },
     { label: "Support", href: "/super-admin/support", icon: HeadphonesIcon },
     { label: "Audit Logs", href: "/super-admin/audit", icon: FileText },
     { label: "Settings", href: "/super-admin/settings", icon: Settings },
