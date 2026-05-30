@@ -29,19 +29,19 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
   }
 
   try {
+    // Run each independent group in its own Promise.allSettled so one failing
+    // query (e.g. RLS on enhancedSubscription) never zeros out unrelated stats.
     const [
-      schoolStats,
-      userStats,
-      subscriptionStats,
-      recentSchools,
-      recentActivity,
-      userGrowthData,
-      schoolsByPlan,
-      // Active schools with student counts for real MRR via calcMonthlyBill
-      activeSchoolsForMRR,
-      // Real collected revenue from Payment table
-      totalPaymentsAgg,
-    ] = await Promise.all([
+      schoolStatsResult,
+      userStatsResult,
+      subscriptionStatsResult,
+      recentSchoolsResult,
+      recentActivityResult,
+      userGrowthDataResult,
+      schoolsByPlanResult,
+      activeSchoolsForMRRResult,
+      totalPaymentsAggResult,
+    ] = await Promise.allSettled([
       db.school.groupBy({ by: ["status"], _count: { id: true } }),
       db.user.groupBy({ by: ["role"], _count: { id: true } }),
       runWithSuperAdminContext(() =>
@@ -65,40 +65,49 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
         },
       }),
       db.user.findMany({
-        where: {
-          createdAt: {
-            gte: startOfMonth(subDays(now, 11 * 30)),
-            lte: now,
-          },
-        },
+        where: { createdAt: { gte: startOfMonth(subDays(now, 11 * 30)), lte: now } },
         select: { createdAt: true },
       }),
       db.school.groupBy({ by: ["plan"], _count: { id: true } }),
-      // Real MRR: active schools + student counts
       db.school.findMany({
         where: { status: "ACTIVE" },
-        select: {
-          plan: true,
-          _count: { select: { students: true } },
-        },
+        select: { plan: true, _count: { select: { students: true } } },
       }),
-      // Real collected revenue (all-time, paise)
       db.payment.aggregate({
         where: { status: "COMPLETED" },
         _sum: { amount: true },
       }),
     ]);
 
+    // Unwrap settled results — log any individual failures but keep going
+    const unwrap = <T>(r: PromiseSettledResult<T>, label: string, fallback: T): T => {
+      if (r.status === "rejected") {
+        console.error(`[getDashboardAnalytics] ${label} failed:`, r.reason);
+        return fallback;
+      }
+      return r.value;
+    };
+
+    const schoolStats       = unwrap(schoolStatsResult,       "schoolStats",       []);
+    const userStats         = unwrap(userStatsResult,         "userStats",         []);
+    const subscriptionStats = unwrap(subscriptionStatsResult, "subscriptionStats", []);
+    const recentSchools     = unwrap(recentSchoolsResult,     "recentSchools",     0);
+    const recentActivity    = unwrap(recentActivityResult,    "recentActivity",    []);
+    const userGrowthData    = unwrap(userGrowthDataResult,    "userGrowthData",    []);
+    const schoolsByPlan     = unwrap(schoolsByPlanResult,     "schoolsByPlan",     []);
+    const activeSchoolsForMRR = unwrap(activeSchoolsForMRRResult, "activeSchoolsForMRR", []);
+    const totalPaymentsAgg  = unwrap(totalPaymentsAggResult,  "totalPaymentsAgg",  { _sum: { amount: null } });
+
     // School stats
-    const totalSchools = schoolStats.reduce((sum, s) => sum + s._count.id, 0);
-    const activeSchools = schoolStats.find((s) => s.status === "ACTIVE")?._count.id ?? 0;
+    const totalSchools   = schoolStats.reduce((sum, s) => sum + s._count.id, 0);
+    const activeSchools  = schoolStats.find((s) => s.status === "ACTIVE")?._count.id ?? 0;
     const suspendedSchools = schoolStats.find((s) => s.status === "SUSPENDED")?._count.id ?? 0;
 
     // User stats
-    const totalUsers = userStats.reduce((sum, s) => sum + s._count.id, 0);
+    const totalUsers    = userStats.reduce((sum, s) => sum + s._count.id, 0);
     const totalStudents = userStats.find((u) => u.role === "STUDENT")?._count.id ?? 0;
     const totalTeachers = userStats.find((u) => u.role === "TEACHER")?._count.id ?? 0;
-    const totalAdmins = userStats.find((u) => u.role === "ADMIN")?._count.id ?? 0;
+    const totalAdmins   = userStats.find((u) => u.role === "ADMIN")?._count.id ?? 0;
 
     // Subscription stats
     const totalSubscriptions = subscriptionStats.reduce((sum, s) => sum + s._count.id, 0);

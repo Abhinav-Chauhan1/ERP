@@ -1,281 +1,211 @@
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Building2,
-  Users,
-  DollarSign,
-  TrendingUp,
-  HardDrive,
-  Activity,
-  Plus,
-  ArrowRight,
-  Clock,
+    Building2,
+    Users,
+    DollarSign,
+    TrendingUp,
+    ArrowRight,
+    Plus,
+    Clock,
+    HardDrive,
 } from "lucide-react";
 
-// Import data fetching actions
 import { getDashboardAnalytics } from "@/lib/actions/analytics-actions";
 import { getBillingDashboardData } from "@/lib/actions/billing-actions";
 import { getSchoolsWithFilters } from "@/lib/actions/school-management-actions";
 import { getStorageAnalytics } from "@/lib/actions/storage-actions";
-
-// Import dashboard components
 import { RecentActivity } from "@/components/super-admin/dashboard/recent-activity";
 import { StorageOverview } from "@/components/super-admin/dashboard/storage-overview";
 
+function formatINR(paise: number) {
+    return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(paise / 100);
+}
+
 export default async function SuperAdminDashboard() {
-  // Fetch real data for the dashboard
-  const [analyticsResult, billingResult, schoolsResult, storageResult] = await Promise.all([
-    getDashboardAnalytics("30d"),
-    getBillingDashboardData("30d"),
-    getSchoolsWithFilters({ status: "ACTIVE" }),
-    getStorageAnalytics()
-  ]);
+    const [analyticsResult, billingResult, schoolsResult, storageResult] = await Promise.all([
+        getDashboardAnalytics("30d"),
+        getBillingDashboardData("30d"),
+        getSchoolsWithFilters({ status: "ACTIVE" }),
+        getStorageAnalytics(),
+    ]);
 
-  // Extract data with fallbacks
-  const analytics = analyticsResult.success ? analyticsResult.data : null;
-  const billing = billingResult.success ? billingResult.data : null;
-  const schools = schoolsResult.success ? schoolsResult.data : [];
-  const storage = storageResult.success ? storageResult.data : null;
+    const analytics = analyticsResult.success ? analyticsResult.data : null;
+    const billing = billingResult.success ? billingResult.data : null;
+    const schools = schoolsResult.success ? schoolsResult.data : [];
+    const storage = storageResult.success ? storageResult.data : null;
 
-  // Format currency values
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount / 100);
-  };
+    const kpis = [
+        {
+            label: "Active Schools",
+            value: analytics?.kpiData?.activeSchools ?? 0,
+            sub: `${analytics?.kpiData?.recentSchools ?? 0} new this month`,
+            icon: Building2,
+            color: "bg-blue-50 text-blue-600",
+        },
+        {
+            label: "Total Users",
+            value: (analytics?.kpiData?.totalUsers ?? 0).toLocaleString(),
+            sub: `${analytics?.kpiData?.totalStudents ?? 0} students · ${analytics?.kpiData?.totalTeachers ?? 0} teachers`,
+            icon: Users,
+            color: "bg-violet-50 text-violet-600",
+        },
+        {
+            label: "Projected MRR",
+            value: billing?.metrics?.projectedMRR ? formatINR(billing.metrics.projectedMRR) : "₹0",
+            sub: billing?.metrics?.hasPaymentData
+                ? `Collected: ${formatINR(billing.metrics.totalCollected)}`
+                : "No payments yet",
+            icon: DollarSign,
+            color: "bg-emerald-50 text-emerald-600",
+        },
+        {
+            label: "Subscriptions",
+            value: billing?.metrics?.activeSubscriptions ?? 0,
+            sub: "Active subscriptions",
+            icon: TrendingUp,
+            color: "bg-amber-50 text-amber-600",
+        },
+    ];
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-gray-400 mt-1">Welcome back! Here's your platform overview.</p>
-        </div>
-        <Button asChild className="bg-red-600 hover:bg-red-700 text-white">
-          <Link href="/super-admin/schools/create">
-            <Plus className="h-4 w-4 mr-2" />
-            Add School
-          </Link>
-        </Button>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Projected MRR */}
-        <Card className="bg-gradient-to-br from-red-600 to-red-700 border-0 text-white">
-          <CardContent className="p-6">
+    return (
+        <div className="space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-200 text-sm font-medium">Projected MRR</p>
-                <p className="text-2xl font-bold mt-1">
-                  {billing?.metrics?.projectedMRR
-                    ? formatCurrency(billing.metrics.projectedMRR)
-                    : "₹0"}
-                </p>
-                <p className="text-red-200 text-xs mt-1">
-                  {billing?.metrics?.hasPaymentData
-                    ? `Collected: ${formatCurrency(billing.metrics.totalCollected)}`
-                    : "No payment data yet — appears once schools pay via Razorpay"}
-                </p>
-              </div>
-              <div className="p-3 bg-white/20 rounded-xl">
-                <DollarSign className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Schools */}
-        <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Active Schools</p>
-                <p className="text-2xl font-bold text-white mt-1">
-                  {analytics?.kpiData?.activeSchools || 0}
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {analytics?.kpiData?.suspendedSchools || 0} suspended • {analytics?.kpiData?.recentSchools || 0} new
-                </p>
-              </div>
-              <div className="p-3 bg-red-600/20 rounded-xl">
-                <Building2 className="h-6 w-6 text-red-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Total Users */}
-        <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Total Users</p>
-                <p className="text-2xl font-bold text-white mt-1">
-                  {analytics?.kpiData?.totalUsers?.toLocaleString() || "0"}
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {analytics?.kpiData?.totalStudents || 0} students • {analytics?.kpiData?.totalTeachers || 0} teachers
-                </p>
-              </div>
-              <div className="p-3 bg-red-600/20 rounded-xl">
-                <Users className="h-6 w-6 text-red-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Subscriptions */}
-        <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Subscriptions</p>
-                <p className="text-2xl font-bold text-white mt-1">
-                  {billing?.metrics?.activeSubscriptions || 0}
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {billing?.metrics?.activeSubscriptions || 0} active subscriptions
-                </p>
-              </div>
-              <div className="p-3 bg-red-600/20 rounded-xl">
-                <TrendingUp className="h-6 w-6 text-red-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-white">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" asChild className="border-[hsl(var(--border))] text-gray-300 hover:bg-red-600/20 hover:text-white hover:border-red-600">
-              <Link href="/super-admin/schools">
-                <Building2 className="h-4 w-4 mr-2" />
-                Manage Schools
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="border-[hsl(var(--border))] text-gray-300 hover:bg-red-600/20 hover:text-white hover:border-red-600">
-              <Link href="/super-admin/analytics">
-                <Activity className="h-4 w-4 mr-2" />
-                View Analytics
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="border-[hsl(var(--border))] text-gray-300 hover:bg-red-600/20 hover:text-white hover:border-red-600">
-              <Link href="/super-admin/billing">
-                <DollarSign className="h-4 w-4 mr-2" />
-                Billing & Plans
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="border-[hsl(var(--border))] text-gray-300 hover:bg-red-600/20 hover:text-white hover:border-red-600">
-              <Link href="/super-admin/storage">
-                <HardDrive className="h-4 w-4 mr-2" />
-                Storage Usage
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Schools */}
-        <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-lg text-white">Recent Schools</CardTitle>
-              <CardDescription className="text-gray-500">Latest registered schools</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild className="text-red-500 hover:text-red-400 hover:bg-red-600/20">
-              <Link href="/super-admin/schools">
-                View All
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {(schools || []).slice(0, 5).map((school) => (
-                <div key={school.id} className="flex items-center justify-between p-3 rounded-lg bg-[hsl(var(--secondary))]">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-red-600/20 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-red-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">{school.name}</p>
-                      <p className="text-xs text-gray-500">{school.schoolCode}</p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={school.status === "ACTIVE"
-                      ? "bg-green-950/50 text-green-400 border-green-800"
-                      : "bg-red-950/50 text-red-400 border-red-800"
-                    }
-                  >
-                    {school.status}
-                  </Badge>
+                <div>
+                    <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+                    <p className="text-sm text-gray-500 mt-0.5">Platform overview and key metrics</p>
                 </div>
-              ))}
-              {(schools || []).length === 0 && (
-                <p className="text-center text-gray-500 py-4">No schools registered yet</p>
-              )}
+                <Button asChild size="sm">
+                    <Link href="/super-admin/schools/create">
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        Add School
+                    </Link>
+                </Button>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Recent Activity */}
-        <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-lg text-white flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-red-500" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription className="text-gray-500">Latest system events</CardDescription>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {kpis.map((kpi) => {
+                    const Icon = kpi.icon;
+                    return (
+                        <Card key={kpi.label} className="bg-white border border-gray-200 shadow-sm">
+                            <CardContent className="p-5">
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+                                        <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
+                                        <p className="text-xs text-gray-400">{kpi.sub}</p>
+                                    </div>
+                                    <div className={`p-2.5 rounded-lg ${kpi.color}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
-            <Button variant="ghost" size="sm" asChild className="text-red-500 hover:text-red-400 hover:bg-red-600/20">
-              <Link href="/super-admin/audit">
-                View All
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <RecentActivity activities={analytics?.recentActivity || []} />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Storage Overview */}
-      <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-white flex items-center">
-            <HardDrive className="h-5 w-5 mr-2 text-red-500" />
-            Storage Analytics
-          </CardTitle>
-          <CardDescription className="text-gray-500">Platform storage usage overview</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <StorageOverview storageData={storage} />
-          </Suspense>
-        </CardContent>
-      </Card>
-    </div>
-  );
+            {/* Middle row: Recent Schools + Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Schools */}
+                <Card className="bg-white border border-gray-200 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between pb-3 pt-5 px-5">
+                        <CardTitle className="text-sm font-semibold text-gray-900">Recent Schools</CardTitle>
+                        <Button variant="ghost" size="sm" asChild className="text-xs text-primary hover:text-primary h-auto p-0">
+                            <Link href="/super-admin/schools" className="flex items-center gap-1">
+                                View all <ArrowRight className="h-3 w-3" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="px-5 pb-5">
+                        <div className="space-y-2">
+                            {(schools || []).slice(0, 5).map((school) => (
+                                <Link
+                                    key={school.id}
+                                    href={`/super-admin/schools/${school.id}`}
+                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                            <Building2 className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900 group-hover:text-primary">{school.name}</p>
+                                            <p className="text-xs text-gray-400">{school.schoolCode}</p>
+                                        </div>
+                                    </div>
+                                    <Badge
+                                        variant="outline"
+                                        className={
+                                            school.status === "ACTIVE"
+                                                ? "text-emerald-600 border-emerald-200 bg-emerald-50 text-[11px]"
+                                                : "text-red-600 border-red-200 bg-red-50 text-[11px]"
+                                        }
+                                    >
+                                        {school.status}
+                                    </Badge>
+                                </Link>
+                            ))}
+                            {(schools || []).length === 0 && (
+                                <p className="text-center text-sm text-gray-400 py-6">No schools registered yet</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Recent Activity */}
+                <Card className="bg-white border border-gray-200 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between pb-3 pt-5 px-5">
+                        <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-400" />
+                            Recent Activity
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" asChild className="text-xs text-primary hover:text-primary h-auto p-0">
+                            <Link href="/super-admin/audit" className="flex items-center gap-1">
+                                View all <ArrowRight className="h-3 w-3" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="px-5 pb-5">
+                        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+                            <RecentActivity activities={analytics?.recentActivity || []} />
+                        </Suspense>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Storage Overview */}
+            <Card className="bg-white border border-gray-200 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-3 pt-5 px-5">
+                    <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                        <HardDrive className="h-4 w-4 text-gray-400" />
+                        Storage Overview
+                    </CardTitle>
+                    <Button variant="ghost" size="sm" asChild className="text-xs text-primary hover:text-primary h-auto p-0">
+                        <Link href="/super-admin/storage" className="flex items-center gap-1">
+                            Manage <ArrowRight className="h-3 w-3" />
+                        </Link>
+                    </Button>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                    <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+                        <StorageOverview storageData={storage} />
+                    </Suspense>
+                </CardContent>
+            </Card>
+        </div>
+    );
 }
