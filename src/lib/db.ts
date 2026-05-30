@@ -5,9 +5,13 @@ declare global {
   var db: PrismaClient | undefined;
 }
 
+// Models that have a schoolId but should NOT be subject to automatic RLS because
+// they are intentionally cross-tenant or have nullable schoolId with service-level filtering.
+const RLS_EXEMPT_MODELS = new Set(['AuditLog']);
+
 // Generate the list of models that have a schoolId field for RLS
 export const tenantModels = Prisma.dmmf.datamodel.models
-  .filter(model => model.fields.some(f => f.name === 'schoolId'))
+  .filter(model => model.fields.some(f => f.name === 'schoolId') && !RLS_EXEMPT_MODELS.has(model.name))
   .map(model => model.name);
 
 export const injectTenantContextToArgs = (operation: string, args: any, currentSchoolId: string) => {

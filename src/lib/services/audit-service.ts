@@ -581,32 +581,7 @@ export class AuditService {
    * Handle audit logging errors
    */
   private async handleAuditError(error: unknown, context: AuditContext): Promise<void> {
-    console.error("Failed to log audit event:", error)
-    
-    try {
-      // Skip database logging in edge runtime
-      if (error instanceof Error && error.message.includes('Edge Runtime')) {
-        console.warn('Audit error logging skipped in Edge Runtime');
-        return;
-      }
-      
-      await db.auditLog.create({
-        data: {
-          userId: context.userId,
-          action: 'CREATE' as AuditAction,
-          resource: 'AUDIT_LOG',
-          changes: {
-            error: 'Failed to log audit event',
-            originalContext: JSON.parse(JSON.stringify(context)),
-            errorMessage: error instanceof Error ? error.message : 'Unknown error'
-          },
-          timestamp: new Date(),
-          checksum: AUDIT_CONSTANTS.ERROR_LOG_CHECKSUM
-        }
-      })
-    } catch (secondaryError) {
-      console.error("Failed to log audit failure:", secondaryError)
-    }
+    console.error("Failed to log audit event:", error instanceof Error ? error.message : error)
   }
 
   /**
@@ -952,22 +927,10 @@ async function getRequestMetadata(): Promise<{ ipAddress: string; userAgent: str
  */
 export async function logAuditEvent(context: AuditContext): Promise<void> {
   try {
-    const result = await auditService.logAuditEvent(context)
-    if (!result.success) {
-      // Handle edge runtime errors gracefully
-      if (result.error?.includes('Edge Runtime')) {
-        console.warn('Audit logging skipped in Edge Runtime:', result.error);
-        return;
-      }
-      throw new Error(result.error)
-    }
+    await auditService.logAuditEvent(context)
   } catch (error) {
-    // Handle edge runtime errors gracefully
-    if (error instanceof Error && error.message.includes('Edge Runtime')) {
-      console.warn('Audit logging skipped in Edge Runtime:', error.message);
-      return;
-    }
-    throw error;
+    // Audit logging must never block the caller — log and swallow.
+    console.error('Failed to log audit event (non-fatal):', error instanceof Error ? error.message : error)
   }
 }
 
