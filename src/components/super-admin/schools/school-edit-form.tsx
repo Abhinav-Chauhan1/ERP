@@ -51,7 +51,7 @@ interface School {
   domain: string | null;
   subdomain: string | null;
   plan: 'STARTER' | 'GROWTH' | 'DOMINATE';
-  status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+  status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
   isOnboarded: boolean;
   onboardingStep: number;
   tagline: string | null;
@@ -129,7 +129,7 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
     }
   };
 
-  const handleStatusChange = async (newStatus: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE') => {
+  const handleStatusChange = async (newStatus: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED') => {
     setIsLoading(true);
 
     try {
@@ -295,9 +295,9 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
                   </Button>
                   <Button
                     type="button"
-                    variant={formData.status === 'INACTIVE' ? 'secondary' : 'outline'}
+                    variant={formData.status === 'DEACTIVATED' ? 'secondary' : 'outline'}
                     size="sm"
-                    onClick={() => handleStatusChange('INACTIVE')}
+                    onClick={() => handleStatusChange('DEACTIVATED')}
                     disabled={isLoading}
                   >
                     Deactivate

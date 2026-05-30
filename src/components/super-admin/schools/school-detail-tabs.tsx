@@ -48,7 +48,7 @@ export interface SchoolDetailData {
     dnsConfigured: boolean;
     sslConfigured: boolean;
     sslExpiresAt: Date | null;
-    status: "ACTIVE" | "SUSPENDED" | "INACTIVE";
+    status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
     plan: "STARTER" | "GROWTH" | "DOMINATE";
     isOnboarded: boolean;
     onboardingStep: number;
@@ -528,7 +528,7 @@ export function SchoolDetailTabs({ school }: { school: SchoolDetailData }) {
             ? "text-emerald-600 border-emerald-200 bg-emerald-50"
             : school.status === "SUSPENDED"
                 ? "text-amber-600 border-amber-200 bg-amber-50"
-                : "text-red-600 border-red-200 bg-red-50";
+                : "text-red-600 border-red-200 bg-red-50"; // DEACTIVATED
 
     return (
         <div className="space-y-5">
