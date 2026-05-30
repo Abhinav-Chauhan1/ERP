@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { db } from '@/lib/db';
+import { validateFileUpload, incrementStorageUsage } from '@/lib/services/usage-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +38,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'File size exceeds 50MB limit' },
         { status: 400 }
+      );
+    }
+
+    // Enforce storage quota before reading the file into memory
+    const quotaCheck = await validateFileUpload(file.size, schoolId);
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: quotaCheck.error,
+          remainingSpaceMB: quotaCheck.remainingSpaceMB,
+        },
+        { status: 413 }
       );
     }
 
@@ -88,6 +102,12 @@ export async function POST(request: NextRequest) {
     });
 
     await s3Client.send(command);
+
+    // Track storage usage — non-blocking so a counter failure never breaks the upload
+    const fileSizeMB = file.size / (1024 * 1024);
+    incrementStorageUsage(fileSizeMB, schoolId).catch((err) => {
+      console.error('[storage] Failed to increment usage counter after upload:', err);
+    });
 
     // Always serve through the authenticated proxy so private-bucket objects
     // remain accessible regardless of bucket visibility settings.

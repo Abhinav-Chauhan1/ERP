@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentSchoolId, requireSchoolAccess } from "@/lib/auth/tenant";
+import { PLAN_LIMITS, type PlanType } from "@/lib/config/plan-features";
 
 export interface UsageLimits {
   whatsappLimit: number;
@@ -44,14 +45,19 @@ export async function getUsageLimits(schoolId?: string): Promise<UsageLimits> {
   });
 
   if (!usageCounter) {
-    // Create default usage counter if it doesn't exist
+    const school = await db.school.findUnique({
+      where: { id: targetSchoolId },
+      select: { plan: true },
+    });
+    const planLimits = PLAN_LIMITS[(school?.plan ?? 'STARTER') as PlanType];
+
     const newCounter = await db.usageCounter.create({
       data: {
         schoolId: targetSchoolId,
         month: new Date().toISOString().slice(0, 7),
-        whatsappLimit: 1000, // Default limits
-        smsLimit: 1000,
-        storageLimitMB: 1024,
+        whatsappLimit: planLimits.whatsapp === -1 ? 999999 : planLimits.whatsapp,
+        smsLimit: planLimits.sms === -1 ? 999999 : planLimits.sms,
+        storageLimitMB: planLimits.storageGB * 1024,
       },
     });
 
@@ -274,6 +280,14 @@ export async function incrementStorageUsage(sizeMB: number, schoolId?: string): 
 
   const month = new Date().toISOString().slice(0, 7);
 
+  // Resolve plan-based limits for the create path (new month or first-ever row).
+  // Only runs when the row doesn't exist yet, so the extra query is rare.
+  const school = await db.school.findUnique({
+    where: { id: targetSchoolId },
+    select: { plan: true },
+  });
+  const planLimits = PLAN_LIMITS[(school?.plan ?? 'STARTER') as PlanType];
+
   await db.usageCounter.upsert({
     where: {
       schoolId_month: {
@@ -292,9 +306,9 @@ export async function incrementStorageUsage(sizeMB: number, schoolId?: string): 
       storageUsedMB: sizeMB,
       whatsappUsed: 0,
       smsUsed: 0,
-      whatsappLimit: 1000,
-      smsLimit: 1000,
-      storageLimitMB: 1024,
+      whatsappLimit: planLimits.sms,
+      smsLimit: planLimits.sms,
+      storageLimitMB: planLimits.storageGB * 1024,
     },
   });
 }
