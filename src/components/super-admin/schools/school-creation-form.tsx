@@ -15,7 +15,7 @@ import { ArrowLeft, Building2, CreditCard, Check, Shield, Key, X } from "lucide-
 import { toast } from "sonner";
 import Link from "next/link";
 import {
-  PLAN_LIMITS, PLAN_FEATURES, type PlanType, type FeatureKey,
+  PLAN_LIMITS, PLAN_FEATURES, FEATURE_LABELS, type PlanType, type FeatureKey,
   calcMonthlyBill,
 } from "@/lib/config/plan-features";
 
@@ -56,27 +56,6 @@ interface SchoolCreationData {
   enableSubdomain:       boolean;
 }
 
-// ── Feature labels ────────────────────────────────────────────────────────────
-
-const FEATURE_LABELS: Record<string, string> = {
-  library:           'Library management',
-  transport:         'Transport management',
-  admissions:        'Admissions portal',
-  bulk_messaging:    'Bulk SMS messaging',
-  whatsapp:          'WhatsApp notifications',
-  message_templates: 'Message templates',
-  payroll:           'Payroll management',
-  budget:            'Budget planning',
-  finance_analytics: 'Finance analytics',
-  advanced_reports:  'Advanced reports',
-  id_cards:          'ID card generation',
-  certificates:      'Certificate generation',
-  hostel:            'Hostel management',
-  alumni:            'Alumni portal',
-  audit_logs:        'Audit logs',
-  lms:               'LMS & online courses',
-  study_tools:       'Student study tools',
-};
 
 // Features to show as "locked" on lower plans (top 3 missing)
 const LOCKED_FEATURES: Record<string, { keys: FeatureKey[]; label: string }> = {

@@ -8,18 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { ArrowLeft, CreditCard, Calendar, AlertCircle, CheckCircle, Clock, Layers } from "lucide-react";
-import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
+import { PLAN_LIMITS, PLAN_FEATURES, FEATURE_LABELS, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
 import { ChangePlanDialog } from "@/components/super-admin/schools/change-plan-dialog";
 import { CancelSubscriptionButton } from "@/components/super-admin/schools/cancel-subscription-button";
 
-const FEATURE_LABELS: Record<string, string> = {
-  library: "Library", transport: "Transport", admissions: "Admissions Portal",
-  bulk_messaging: "Bulk Messaging", whatsapp: "WhatsApp", message_templates: "Message Templates",
-  payroll: "Payroll", budget: "Budget", finance_analytics: "Finance Analytics",
-  advanced_reports: "Advanced Reports", id_cards: "ID Cards", certificates: "Certificates",
-  hostel: "Hostel", alumni: "Alumni", audit_logs: "Audit Logs", lms: "LMS / Courses",
-  study_tools: "Study Tools",
-};
 
 function fmt(inr: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(inr);

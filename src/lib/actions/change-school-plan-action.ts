@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { revalidatePath } from "next/cache";
 import { type PlanType } from "@/lib/config/plan-features";
 
@@ -25,28 +26,29 @@ export async function changeSchoolPlan(
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-    // Update school.plan field
+    // Update school.plan field (School has no schoolId field — not RLS-gated)
     await db.school.update({
       where: { id: schoolId },
       data: { plan: newPlan },
     });
 
-    // Deactivate any existing active subscriptions
-    await (db.enhancedSubscription as any).updateMany({
-      where: { schoolId, status: "ACTIVE" },
-      data: { status: "CANCELED", cancelAtPeriodEnd: false },
-    });
+    // EnhancedSubscription has schoolId and is RLS-gated; scope explicitly as super-admin
+    await runWithTenantContext({ schoolId, isSuperAdmin: true }, async () => {
+      await (db.enhancedSubscription as any).updateMany({
+        where: { schoolId, status: "ACTIVE" },
+        data: { status: "CANCELED", cancelAtPeriodEnd: false },
+      });
 
-    // Create new active subscription
-    await (db.enhancedSubscription as any).create({
-      data: {
-        schoolId,
-        planId: planRecord.id,
-        status: "ACTIVE",
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
-        cancelAtPeriodEnd: false,
-      },
+      await (db.enhancedSubscription as any).create({
+        data: {
+          schoolId,
+          planId: planRecord.id,
+          status: "ACTIVE",
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          cancelAtPeriodEnd: false,
+        },
+      });
     });
 
     revalidatePath(`/super-admin/schools/${schoolId}/subscription`);

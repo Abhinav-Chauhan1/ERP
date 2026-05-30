@@ -93,6 +93,26 @@ export function calcMonthlyBill(plan: PlanType, studentCount: number): number {
   return Math.max(studentCount * limits.pricePerStudent, limits.minMonthly)
 }
 
+export const FEATURE_LABELS: Record<FeatureKey, string> = {
+  library:          'Library',
+  transport:        'Transport',
+  admissions:       'Admissions Portal',
+  bulk_messaging:   'Bulk Messaging',
+  whatsapp:         'WhatsApp',
+  message_templates:'Message Templates',
+  payroll:          'Payroll',
+  budget:           'Budget',
+  finance_analytics:'Finance Analytics',
+  advanced_reports: 'Advanced Reports',
+  id_cards:         'ID Cards',
+  certificates:     'Certificates',
+  hostel:           'Hostel',
+  alumni:           'Alumni',
+  audit_logs:       'Audit Logs',
+  lms:              'LMS / Courses',
+  study_tools:      'Study Tools',
+}
+
 export const UPGRADE_NUDGE: Partial<Record<PlanType, {
   missing: string
   upgradesTo: PlanType

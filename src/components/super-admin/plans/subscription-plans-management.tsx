@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, MoreHorizontal, Edit, Trash2, Copy, Users, IndianRupee, Sprout } from "lucide-react";
 import { toast } from "sonner";
-import { type FeatureKey, PLAN_FEATURES } from "@/lib/config/plan-features";
+import { type FeatureKey, PLAN_FEATURES, FEATURE_LABELS } from "@/lib/config/plan-features";
 import { seedDefaultPlans } from "@/lib/actions/seed-plans-action";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -100,25 +100,6 @@ const FEATURE_GROUPS: { label: string; keys: FeatureKey[] }[] = [
   },
 ];
 
-const FEATURE_LABELS: Record<FeatureKey, string> = {
-  library:          'Library',
-  transport:        'Transport',
-  admissions:       'Admissions Portal',
-  bulk_messaging:   'Bulk Messaging',
-  whatsapp:         'WhatsApp Integration',
-  message_templates:'Message Templates',
-  payroll:          'Payroll',
-  budget:           'Budget',
-  finance_analytics:'Finance Analytics',
-  advanced_reports: 'Advanced Reports',
-  id_cards:         'ID Cards',
-  certificates:     'Certificates',
-  hostel:           'Hostel',
-  alumni:           'Alumni',
-  audit_logs:       'Audit Logs',
-  lms:              'LMS / Courses',
-  study_tools:      'Study Tools',
-};
 
 // ── Price preview ─────────────────────────────────────────────────────────────
 

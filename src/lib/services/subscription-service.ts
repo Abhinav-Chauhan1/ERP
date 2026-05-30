@@ -1,12 +1,17 @@
 import { prisma } from '@/lib/db';
-import { 
-  EnhancedSubscription, 
-  SubscriptionPlan, 
+import {
+  EnhancedSubscription,
+  SubscriptionPlan,
   SubscriptionStatus,
   InvoiceStatus,
   PaymentStatus
 } from '@prisma/client';
 import { billingService } from './billing-service';
+import { PLAN_RANK, type PlanType } from '@/lib/config/plan-features';
+
+function getPlanRank(planName: string): number {
+  return PLAN_RANK[planName as PlanType] ?? 0;
+}
 
 export interface SubscriptionUpgradeData {
   subscriptionId: string;
@@ -67,8 +72,8 @@ export class SubscriptionService {
         throw new Error(`Plan not found: ${data.newPlanId}`);
       }
 
-      // Validate upgrade (new plan should be higher tier)
-      if (newPlan.amount <= subscription.plan.amount) {
+      // Validate upgrade (new plan must be higher tier)
+      if (getPlanRank(newPlan.name) <= getPlanRank(subscription.plan.name)) {
         throw new Error('Upgrade requires a higher-tier plan');
       }
 
@@ -138,8 +143,8 @@ export class SubscriptionService {
         throw new Error(`Plan not found: ${data.newPlanId}`);
       }
 
-      // Validate downgrade (new plan should be lower tier)
-      if (newPlan.amount >= subscription.plan.amount) {
+      // Validate downgrade (new plan must be lower tier)
+      if (getPlanRank(newPlan.name) >= getPlanRank(subscription.plan.name)) {
         throw new Error('Downgrade requires a lower-tier plan');
       }
 

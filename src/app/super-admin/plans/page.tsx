@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Layers } from "lucide-react";
 import { SubscriptionPlansManagement } from "@/components/super-admin/plans/subscription-plans-management";
 import { db } from "@/lib/db";
-import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
+import { PLAN_LIMITS, PLAN_FEATURES, FEATURE_LABELS, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
 
 // ── Server-side plan summary cards ───────────────────────────────────────────
 
@@ -40,15 +40,6 @@ async function PlanSummaryCards() {
       annualDiscountMonths: (typeof p.annualDiscountMonths === "number" ? p.annualDiscountMonths : (feat.annualDiscountMonths as number | undefined) ?? 2),
     };
   });
-
-  const FEATURE_LABELS: Record<string, string> = {
-    library: "Library", transport: "Transport", admissions: "Admissions",
-    bulk_messaging: "Bulk SMS", whatsapp: "WhatsApp", message_templates: "Msg Templates",
-    payroll: "Payroll", budget: "Budget", finance_analytics: "Finance Analytics",
-    advanced_reports: "Advanced Reports", id_cards: "ID Cards", certificates: "Certificates",
-    hostel: "Hostel", alumni: "Alumni", audit_logs: "Audit Logs", lms: "LMS",
-    study_tools: "Study Tools",
-  };
 
   const PLAN_COLORS: Record<string, string> = {
     STARTER: "border-blue-500/30 bg-blue-500/5",

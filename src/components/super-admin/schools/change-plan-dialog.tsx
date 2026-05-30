@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { CheckCircle, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
+import { PLAN_LIMITS, PLAN_FEATURES, FEATURE_LABELS, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
 import { changeSchoolPlan } from "@/lib/actions/change-school-plan-action";
 
 const PLANS: PlanType[] = ["STARTER", "GROWTH", "DOMINATE"];
@@ -25,14 +25,6 @@ const ACTIVE_COLORS: Record<PlanType, string> = {
   DOMINATE: "border-purple-500 ring-2 ring-purple-500/30",
 };
 
-const FEATURE_LABELS: Record<string, string> = {
-  library: "Library", transport: "Transport", admissions: "Admissions",
-  bulk_messaging: "Bulk SMS", whatsapp: "WhatsApp", message_templates: "Msg Templates",
-  payroll: "Payroll", budget: "Budget", finance_analytics: "Finance Analytics",
-  advanced_reports: "Advanced Reports", id_cards: "ID Cards", certificates: "Certificates",
-  hostel: "Hostel", alumni: "Alumni", audit_logs: "Audit Logs", lms: "LMS",
-  study_tools: "Study Tools",
-};
 
 interface Props {
   schoolId: string;

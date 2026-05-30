@@ -8,6 +8,7 @@ import {
   calcMonthlyBill,
   PLAN_FEATURES,
   PLAN_LIMITS,
+  FEATURE_LABELS,
   UPGRADE_NUDGE,
   type PlanType,
   type FeatureKey,
@@ -16,26 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Lock, ArrowUpRight } from "lucide-react";
 
-// ── Feature display labels ────────────────────────────────────────────────────
-const FEATURE_LABELS: Record<FeatureKey, string> = {
-  library:           "Library management",
-  transport:         "Transport management",
-  admissions:        "Admissions portal",
-  bulk_messaging:    "Bulk SMS messaging",
-  whatsapp:          "WhatsApp notifications",
-  message_templates: "Message templates",
-  payroll:           "Payroll management",
-  budget:            "Budget planning",
-  finance_analytics: "Finance analytics",
-  advanced_reports:  "Advanced reports",
-  id_cards:          "ID card generation",
-  certificates:      "Certificate generation",
-  hostel:            "Hostel management",
-  alumni:            "Alumni portal",
-  audit_logs:        "Audit logs",
-  lms:               "LMS & online courses",
-  study_tools:       "Student study tools",
-};
 
 // ── Plan pill colours ─────────────────────────────────────────────────────────
 const PLAN_BADGE_CLASS: Record<PlanType, string> = {
