@@ -5,6 +5,7 @@ import { requireSuperAdminAccess } from '@/lib/auth/tenant';
 import { r2StorageService } from '@/lib/services/r2-storage-service';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 import { z } from 'zod';
+import { PLAN_LIMITS, type PlanType } from '@/lib/config/plan-features';
 
 const rateLimitConfig = {
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -43,14 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Calculate plan-based storage limits
-    const planLimits = {
-      STARTER: 1024, // 1GB in MB
-      GROWTH: 5120,  // 5GB in MB
-      DOMINATE: 51200 // 50GB in MB
-    };
-
-    const planLimit = planLimits[school.plan as keyof typeof planLimits] || planLimits.STARTER;
+    const planLimit = (PLAN_LIMITS[school.plan as PlanType]?.storageGB ?? 1) * 1024;
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
 
     // Update usage counter with plan-based limit
@@ -152,7 +146,7 @@ export async function PUT(request: NextRequest) {
           schoolId,
           month: currentMonth,
           storageUsedMB: actualUsageMB,
-          storageLimitMB: 1024, // Default 1GB
+          storageLimitMB: PLAN_LIMITS.STARTER.storageGB * 1024,
           whatsappUsed: 0,
           smsUsed: 0,
           whatsappLimit: 500,

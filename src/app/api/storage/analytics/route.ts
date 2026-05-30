@@ -5,6 +5,7 @@ import { requireSuperAdminAccess } from '@/lib/auth/tenant';
 import { r2StorageService } from '@/lib/services/r2-storage-service';
 import { getR2Config } from '@/lib/config/r2-config';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { PLAN_LIMITS, type PlanType } from '@/lib/config/plan-features';
 
 const rateLimitConfig = {
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -60,13 +61,6 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculate plan-based storage limits
-    const planLimits = {
-      STARTER: 1024, // 1GB in MB
-      GROWTH: 5120,  // 5GB in MB
-      DOMINATE: 51200 // 50GB in MB
-    };
-
     let totalUsageMB = 0;
     let totalLimitMB = 0;
     let schoolsOverWarningThreshold = 0;
@@ -82,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     // Process each school's storage data
     for (const school of schools) {
-      const planLimit = planLimits[school.plan as keyof typeof planLimits] || planLimits.STARTER;
+      const planLimit = (PLAN_LIMITS[school.plan as PlanType]?.storageGB ?? 1) * 1024;
       const currentUsage = school.usageCounters[0]?.storageUsedMB || 0;
       const percentageUsed = (currentUsage / planLimit) * 100;
 

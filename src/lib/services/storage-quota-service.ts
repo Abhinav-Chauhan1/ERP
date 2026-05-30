@@ -14,6 +14,7 @@
 
 import { db } from "@/lib/db";
 import { getCurrentSchoolId, requireSchoolAccess } from "@/lib/auth/tenant";
+import { runWithSuperAdminContext } from "@/lib/tenant-context";
 import { r2StorageService } from "./r2-storage-service";
 
 /**
@@ -232,22 +233,15 @@ export class StorageQuotaService {
 
     const currentMonth = new Date().toISOString().slice(0, 7);
 
-    const usageCounters = await db.usageCounter.findMany({
-      where: {
-        month: currentMonth,
-      },
-      include: {
-        school: {
-          select: {
-            name: true,
-            plan: true,
-          },
+    const usageCounters = await runWithSuperAdminContext(() =>
+      db.usageCounter.findMany({
+        where: { month: currentMonth },
+        include: {
+          school: { select: { name: true, plan: true } },
         },
-      },
-      orderBy: {
-        storageUsedMB: 'desc',
-      },
-    });
+        orderBy: { storageUsedMB: 'desc' },
+      })
+    );
 
     const results: SchoolStorageUsage[] = [];
 
