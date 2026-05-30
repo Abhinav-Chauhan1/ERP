@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,139 +88,75 @@ interface SubscriptionPlan {
   isActive: boolean;
 }
 
+function computeLifecycle(sub: { status: string; currentPeriodEnd: Date; trialEnd: Date | null; cancelAtPeriodEnd: boolean }) {
+  const now = new Date();
+  const daysUntilExpiry = Math.floor((sub.currentPeriodEnd.getTime() - now.getTime()) / 86400000);
+  const isInTrial = !!sub.trialEnd && sub.trialEnd > now;
+  const trialDaysRemaining = isInTrial ? Math.floor((sub.trialEnd!.getTime() - now.getTime()) / 86400000) : 0;
+  const isExpired = daysUntilExpiry < 0;
+  return {
+    isInTrial,
+    trialDaysRemaining,
+    daysUntilExpiry,
+    isExpired,
+    canUpgrade: sub.status === 'ACTIVE',
+    canDowngrade: sub.status === 'ACTIVE',
+    canCancel: sub.status === 'ACTIVE' && !sub.cancelAtPeriodEnd,
+    nextAction: isExpired ? 'renewal_required' : sub.cancelAtPeriodEnd ? 'cancels_at_period_end' : 'active',
+  };
+}
+
 export function SubscriptionManagement({ schoolId, showAllSchools = true }: SubscriptionManagementProps) {
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [showPlanComparison, setShowPlanComparison] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
 
-  // Mock data - in real implementation, this would come from API
-  const subscriptions: Subscription[] = [
-    {
-      id: "sub_1",
-      status: "ACTIVE",
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      cancelAtPeriodEnd: false,
-      trialEnd: null,
-      school: {
-        id: "school_1",
-        name: "Delhi Public School",
-        schoolCode: "DPS001"
-      },
-      plan: {
-        id: "plan_growth",
-        name: "Growth Plan",
-        amount: 2500,
-        currency: "INR",
-        interval: "month",
-        features: {
-          students: 500,
-          teachers: 50,
-          storage: "10GB",
-          whatsapp: 1000,
-          sms: 500
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (schoolId) params.set("schoolId", schoolId);
+        const [subRes, planRes] = await Promise.all([
+          fetch(`/api/super-admin/billing/subscriptions?${params}`),
+          fetch("/api/super-admin/plans"),
+        ]);
+        if (subRes.ok) {
+          const json = await subRes.json();
+          const raw: any[] = json.data ?? [];
+          setSubscriptions(raw.map(s => ({
+            id: s.id,
+            status: s.status,
+            currentPeriodStart: new Date(s.currentPeriodStart),
+            currentPeriodEnd: new Date(s.currentPeriodEnd),
+            cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+            trialEnd: s.trialEnd ? new Date(s.trialEnd) : null,
+            school: { id: s.school?.id ?? "", name: s.school?.name ?? "Unknown", schoolCode: s.school?.schoolCode ?? "" },
+            plan: { id: s.plan?.id ?? "", name: s.plan?.name ?? "Unknown", amount: s.plan?.amount ?? 0, currency: s.plan?.currency ?? "INR", interval: s.plan?.interval ?? "month", features: s.plan?.features ?? {} },
+            lifecycle: computeLifecycle({ status: s.status, currentPeriodEnd: new Date(s.currentPeriodEnd), trialEnd: s.trialEnd ? new Date(s.trialEnd) : null, cancelAtPeriodEnd: s.cancelAtPeriodEnd }),
+          })));
         }
-      },
-      lifecycle: {
-        isInTrial: false,
-        trialDaysRemaining: 0,
-        daysUntilExpiry: 30,
-        isExpired: false,
-        canUpgrade: true,
-        canDowngrade: true,
-        canCancel: true,
-        nextAction: "active"
-      }
-    },
-    {
-      id: "sub_2",
-      status: "PAST_DUE",
-      currentPeriodStart: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
-      currentPeriodEnd: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      cancelAtPeriodEnd: false,
-      trialEnd: null,
-      school: {
-        id: "school_2",
-        name: "St. Mary's School",
-        schoolCode: "SMS002"
-      },
-      plan: {
-        id: "plan_starter",
-        name: "Starter Plan",
-        amount: 1500,
-        currency: "INR",
-        interval: "month",
-        features: {
-          students: 200,
-          teachers: 20,
-          storage: "5GB",
-          whatsapp: 500,
-          sms: 250
+        if (planRes.ok) {
+          const plans: any[] = await planRes.json();
+          setAvailablePlans(plans.filter(p => p.isActive).map(p => ({
+            id: p.id, name: p.name, description: p.description ?? "", amount: p.amount, currency: p.currency ?? "INR", interval: p.interval ?? "month", features: p.features ?? {}, isActive: p.isActive,
+          })));
         }
-      },
-      lifecycle: {
-        isInTrial: false,
-        trialDaysRemaining: 0,
-        daysUntilExpiry: -5,
-        isExpired: true,
-        canUpgrade: false,
-        canDowngrade: false,
-        canCancel: false,
-        nextAction: "payment_failed_retry_needed"
+      } catch (e) {
+        console.error("Failed to load subscription data", e);
+      } finally {
+        setIsFetching(false);
       }
-    }
-  ];
+    };
+    load();
+  }, [schoolId]);
 
-  const availablePlans: SubscriptionPlan[] = [
-    {
-      id: "plan_starter",
-      name: "Starter Plan",
-      description: "Perfect for small schools",
-      amount: 1500,
-      currency: "INR",
-      interval: "month",
-      features: {
-        students: 200,
-        teachers: 20,
-        storage: "5GB",
-        whatsapp: 500,
-        sms: 250
-      },
-      isActive: true
-    },
-    {
-      id: "plan_growth",
-      name: "Growth Plan",
-      description: "Ideal for growing schools",
-      amount: 2500,
-      currency: "INR",
-      interval: "month",
-      features: {
-        students: 500,
-        teachers: 50,
-        storage: "10GB",
-        whatsapp: 1000,
-        sms: 500
-      },
-      isActive: true
-    },
-    {
-      id: "plan_enterprise",
-      name: "Enterprise Plan",
-      description: "For large educational institutions",
-      amount: 5000,
-      currency: "INR",
-      interval: "month",
-      features: {
-        students: "Unlimited",
-        teachers: "Unlimited",
-        storage: "50GB",
-        whatsapp: 5000,
-        sms: 2500
-      },
-      isActive: true
-    }
-  ];
+  const activeCount = subscriptions.filter(s => s.status === 'ACTIVE').length;
+  const pastDueCount = subscriptions.filter(s => s.status === 'PAST_DUE').length;
+  const trialCount = subscriptions.filter(s => s.lifecycle.isInTrial).length;
+  const monthlyRevenue = subscriptions.filter(s => s.status === 'ACTIVE').reduce((sum, s) => sum + s.plan.amount, 0);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -263,37 +199,48 @@ export function SubscriptionManagement({ schoolId, showAllSchools = true }: Subs
     }).format(amount / 100);
   };
 
-  const handleUpgradeSubscription = async (subscriptionId: string, newPlanId: string) => {
+  const mutateSubscription = async (subscriptionId: string, body: Record<string, unknown>) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    // In real implementation, this would call the subscription service
+    try {
+      await fetch(`/api/super-admin/billing/subscriptions/${subscriptionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      // Refresh list
+      const res = await fetch(`/api/super-admin/billing/subscriptions?limit=100${schoolId ? `&schoolId=${schoolId}` : ""}`);
+      if (res.ok) {
+        const json = await res.json();
+        const raw: any[] = json.data ?? [];
+        setSubscriptions(raw.map(s => ({
+          id: s.id, status: s.status,
+          currentPeriodStart: new Date(s.currentPeriodStart), currentPeriodEnd: new Date(s.currentPeriodEnd),
+          cancelAtPeriodEnd: s.cancelAtPeriodEnd, trialEnd: s.trialEnd ? new Date(s.trialEnd) : null,
+          school: { id: s.school?.id ?? "", name: s.school?.name ?? "Unknown", schoolCode: s.school?.schoolCode ?? "" },
+          plan: { id: s.plan?.id ?? "", name: s.plan?.name ?? "Unknown", amount: s.plan?.amount ?? 0, currency: s.plan?.currency ?? "INR", interval: s.plan?.interval ?? "month", features: s.plan?.features ?? {} },
+          lifecycle: computeLifecycle({ status: s.status, currentPeriodEnd: new Date(s.currentPeriodEnd), trialEnd: s.trialEnd ? new Date(s.trialEnd) : null, cancelAtPeriodEnd: s.cancelAtPeriodEnd }),
+        })));
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDowngradeSubscription = async (subscriptionId: string, newPlanId: string) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    // In real implementation, this would call the subscription service
-  };
+  const handleUpgradeSubscription = (subscriptionId: string, newPlanId: string) =>
+    mutateSubscription(subscriptionId, { action: "upgrade", planId: newPlanId });
 
-  const handleCancelSubscription = async (subscriptionId: string, immediate: boolean = false) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    // In real implementation, this would call the subscription service
-  };
+  const handleDowngradeSubscription = (subscriptionId: string, newPlanId: string) =>
+    mutateSubscription(subscriptionId, { action: "downgrade", planId: newPlanId });
 
-  const handlePauseSubscription = async (subscriptionId: string) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    // In real implementation, this would call the subscription service
-  };
+  const handleCancelSubscription = (subscriptionId: string, immediate = false) =>
+    mutateSubscription(subscriptionId, { action: "cancel", immediate });
+
+  const handlePauseSubscription = (subscriptionId: string) =>
+    mutateSubscription(subscriptionId, { action: "pause" });
+
+  if (isFetching) {
+    return <div className="flex items-center justify-center h-48 text-muted-foreground">Loading subscriptions…</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -319,8 +266,8 @@ export function SubscriptionManagement({ schoolId, showAllSchools = true }: Subs
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">142</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
+            <div className="text-2xl font-bold">{activeCount}</div>
+            <p className="text-xs text-muted-foreground">{subscriptions.length} total</p>
           </CardContent>
         </Card>
 
@@ -330,8 +277,8 @@ export function SubscriptionManagement({ schoolId, showAllSchools = true }: Subs
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">8</div>
-            <p className="text-xs text-muted-foreground">Requires attention</p>
+            <div className="text-2xl font-bold text-red-600">{pastDueCount}</div>
+            <p className="text-xs text-muted-foreground">{pastDueCount > 0 ? "Requires attention" : "All good"}</p>
           </CardContent>
         </Card>
 
@@ -341,8 +288,8 @@ export function SubscriptionManagement({ schoolId, showAllSchools = true }: Subs
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">15 expiring soon</p>
+            <div className="text-2xl font-bold">{trialCount}</div>
+            <p className="text-xs text-muted-foreground">Currently in trial</p>
           </CardContent>
         </Card>
 
@@ -352,8 +299,8 @@ export function SubscriptionManagement({ schoolId, showAllSchools = true }: Subs
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹3,45,000</div>
-            <p className="text-xs text-muted-foreground">+8.2% from last month</p>
+            <div className="text-2xl font-bold">{formatCurrency(monthlyRevenue)}</div>
+            <p className="text-xs text-muted-foreground">From active subscriptions</p>
           </CardContent>
         </Card>
       </div>

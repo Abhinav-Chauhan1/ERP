@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const systemHealthResult = await monitoringService.getSystemHealth();
     
     if (!systemHealthResult.success) {
-      throw systemHealthResult.error;
+      throw new Error(systemHealthResult.error?.message ?? 'Failed to get system health');
     }
 
     await logAuditEvent({

@@ -38,6 +38,12 @@ import {
 } from "recharts";
 import { getDashboardAnalytics } from "@/lib/actions/analytics-actions";
 import { toast } from "sonner";
+import { UserGrowthChart } from "./user-growth-chart";
+import { SchoolDistributionChart } from "./school-distribution-chart";
+import { RevenueChart } from "./revenue-chart";
+import { ChurnAnalysisChart } from "./churn-analysis-chart";
+import { PerformanceMetrics } from "./performance-metrics";
+import { UsageAnalyticsChart } from "./usage-analytics-chart";
 
 interface AnalyticsDashboardProps {
   timeRange?: string;
@@ -570,83 +576,28 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
         </TabsContent>
 
         <TabsContent value="revenue">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {data && [
-                { label: "Projected MRR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue), note: "Based on active schools × per-student rate" },
-                { label: "Projected ARR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue * 12), note: "Annualised from MRR" },
-                { label: "Collected Revenue", value: data.kpiData.hasPaymentData ? formatCurrency(data.kpiData.totalRevenue) : "₹0", note: data.kpiData.hasPaymentData ? "All-time from Payment records" : "No payments processed via Razorpay yet" },
-              ].map(({ label, value, note }) => (
-                <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{value}</div>
-                    <p className="text-xs text-muted-foreground mt-1">{note}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>Revenue by Plan (Projected)</CardTitle>
-                <CardDescription>Projected monthly revenue contribution per plan</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? <Skeleton className="h-64 w-full" /> : data && data.schoolDistribution.length > 0 ? (
-                  <div className="space-y-4">
-                    {data.schoolDistribution.map((item) => (
-                      <div key={item.plan} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{item.plan}</span>
-                          <span>{item.count} schools ({item.percentage}%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-emerald-500 h-2 rounded-full"
-                            style={{ width: `${item.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No plan data available</p>
-                )}
-              </CardContent>
-            </Card>
+          <div className="space-y-4">
+            {data && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { label: "Projected MRR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue), note: "Based on active schools × per-student rate" },
+                  { label: "Projected ARR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue * 12), note: "Annualised from MRR" },
+                  { label: "Collected Revenue", value: data.kpiData.hasPaymentData ? formatCurrency(data.kpiData.totalRevenue) : "₹0", note: data.kpiData.hasPaymentData ? "All-time from Payment records" : "No Razorpay payments yet" },
+                ].map(({ label, value, note }) => (
+                  <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{value}</div><p className="text-xs text-muted-foreground mt-1">{note}</p></CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            <RevenueChart timeRange={selectedTimeRange} />
+            <ChurnAnalysisChart timeRange={selectedTimeRange} />
           </div>
         </TabsContent>
 
         <TabsContent value="users">
-          <div className="space-y-6">
-            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>User Growth — Last 12 Months</CardTitle>
-                <CardDescription>Cumulative registered users across all schools</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? <Skeleton className="h-80 w-full" /> : data && data.userGrowthData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={320}>
-                    <ReLineChart data={data.userGrowthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="month" fontSize={11} tickLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 12 }}
-                        formatter={(v) => [(v as number).toLocaleString("en-IN"), "Total users"]}
-                      />
-                      <Line type="monotone" dataKey="users" stroke="#14b8a6" strokeWidth={2} dot={{ r: 3 }} name="Users" />
-                    </ReLineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-80 flex items-center justify-center text-muted-foreground">No user data available</div>
-                )}
-              </CardContent>
-            </Card>
-
+          <div className="space-y-4">
             {data && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
@@ -664,33 +615,13 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                 ))}
               </div>
             )}
+            {data && <UserGrowthChart data={data.userGrowthData} />}
+            <UsageAnalyticsChart timeRange={selectedTimeRange} />
           </div>
         </TabsContent>
 
         <TabsContent value="schools">
-          <div className="space-y-6">
-            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>School Distribution by Plan</CardTitle>
-                <CardDescription>Number of schools on each subscription plan</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? <Skeleton className="h-64 w-full" /> : data && data.schoolDistribution.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={256}>
-                    <BarChart data={data.schoolDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="plan" fontSize={12} tickLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                      <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v) => [v as number, "Schools"]} />
-                      <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Schools" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">No school data</div>
-                )}
-              </CardContent>
-            </Card>
-
+          <div className="space-y-4">
             {data && (
               <div className="grid grid-cols-3 gap-4">
                 {[
@@ -707,37 +638,12 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                 ))}
               </div>
             )}
+            {data && <SchoolDistributionChart data={data.schoolDistribution} />}
           </div>
         </TabsContent>
 
         <TabsContent value="performance">
-          <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>System Performance</CardTitle>
-              <CardDescription>
-                Real-time system metrics are available in the{" "}
-                <a href="/super-admin/monitoring" className="text-blue-500 underline">Monitoring dashboard</a>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {[
-                    { label: "Active Subscriptions", value: data.kpiData.activeSubscriptions },
-                    { label: "Conversion Rate", value: `${data.kpiData.conversionRate.toFixed(1)}%` },
-                    { label: "New Schools (period)", value: data.kpiData.recentSchools },
-                  ].map(({ label, value }) => (
-                    <Card key={label}>
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold">{value}</div>
-                        <div className="text-sm text-muted-foreground">{label}</div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <PerformanceMetrics />
         </TabsContent>
       </Tabs>
     </div>

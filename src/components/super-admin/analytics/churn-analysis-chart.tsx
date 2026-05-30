@@ -1,30 +1,55 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import { subDays, startOfDay } from "date-fns";
 
-export function ChurnAnalysisChart() {
-  // Mock data - in real implementation, this would be fetched based on timeRange
-  const churnData = [
-    { date: '2024-01-01', churnRate: 2.5, newSubscriptions: 12, cancelledSubscriptions: 3, retentionRate: 97.5 },
-    { date: '2024-01-02', churnRate: 1.8, newSubscriptions: 15, cancelledSubscriptions: 2, retentionRate: 98.2 },
-    { date: '2024-01-03', churnRate: 2.2, newSubscriptions: 10, cancelledSubscriptions: 3, retentionRate: 97.8 },
-    { date: '2024-01-04', churnRate: 1.5, newSubscriptions: 18, cancelledSubscriptions: 2, retentionRate: 98.5 },
-    { date: '2024-01-05', churnRate: 2.8, newSubscriptions: 8, cancelledSubscriptions: 4, retentionRate: 97.2 },
-    { date: '2024-01-06', churnRate: 2.1, newSubscriptions: 14, cancelledSubscriptions: 3, retentionRate: 97.9 },
-    { date: '2024-01-07', churnRate: 1.9, newSubscriptions: 16, cancelledSubscriptions: 3, retentionRate: 98.1 },
-  ];
+interface ChurnAnalysisChartProps {
+  timeRange?: string;
+}
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+interface ChurnByPlan {
+  planName: string;
+  churnRate: number;
+  retentionRate: number;
+}
 
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
+interface ChurnData {
+  churnRate: number;
+  retentionRate: number;
+  customerLifetimeValue: number;
+  churnByPlan: ChurnByPlan[];
+}
+
+export function ChurnAnalysisChart({ timeRange = "30d" }: ChurnAnalysisChartProps) {
+  const [data, setData] = useState<ChurnData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const days = timeRange === "7d" ? 7 : timeRange === "90d" ? 90 : timeRange === "1y" ? 365 : 30;
+    const endDate = new Date();
+    const startDate = startOfDay(subDays(endDate, days));
+    fetch(
+      `/api/super-admin/analytics/churn?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+    )
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [timeRange]);
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  if (!data) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Churn Analysis</CardTitle></CardHeader>
+        <CardContent><p className="text-center text-muted-foreground py-12">Could not load churn data.</p></CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -34,173 +59,45 @@ export function ChurnAnalysisChart() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Churn Rate vs Retention Rate */}
-          <div>
-            <h4 className="text-sm font-medium mb-3">Churn Rate vs Retention Rate</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={churnData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={formatDate}
-                  fontSize={12}
-                />
-                <YAxis 
-                  tickFormatter={formatPercentage}
-                  fontSize={12}
-                />
-                <Tooltip 
-                  labelFormatter={(value) => formatDate(value as string)}
-                  formatter={(value, name) => [
-                    formatPercentage(value as number), 
-                    name === 'churnRate' ? 'Churn Rate' : 'Retention Rate'
-                  ]}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="churnRate" 
-                  stroke="#ef4444" 
-                  strokeWidth={2}
-                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="retentionRate" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* New vs Cancelled Subscriptions */}
-          <div>
-            <h4 className="text-sm font-medium mb-3">New vs Cancelled Subscriptions</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={churnData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={formatDate}
-                  fontSize={12}
-                />
-                <YAxis fontSize={12} />
-                <Tooltip 
-                  labelFormatter={(value) => formatDate(value as string)}
-                  formatter={(value, name) => [
-                    value, 
-                    name === 'newSubscriptions' ? 'New Subscriptions' : 'Cancelled Subscriptions'
-                  ]}
-                />
-                <Bar 
-                  dataKey="newSubscriptions" 
-                  fill="#10b981" 
-                  name="newSubscriptions"
-                  radius={[2, 2, 0, 0]}
-                />
-                <Bar 
-                  dataKey="cancelledSubscriptions" 
-                  fill="#ef4444" 
-                  name="cancelledSubscriptions"
-                  radius={[2, 2, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Churn Insights */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Churn Reasons</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Payment Issues</span>
-                    <span className="font-medium">35%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Feature Limitations</span>
-                    <span className="font-medium">25%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Support Issues</span>
-                    <span className="font-medium">20%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Competitor Switch</span>
-                    <span className="font-medium">15%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Other</span>
-                    <span className="font-medium">5%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Retention Strategies</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Proactive Support</span>
-                    <span className="font-medium text-green-600">+15%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Feature Training</span>
-                    <span className="font-medium text-green-600">+12%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Loyalty Programs</span>
-                    <span className="font-medium text-green-600">+8%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Custom Pricing</span>
-                    <span className="font-medium text-green-600">+6%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Regular Check-ins</span>
-                    <span className="font-medium text-green-600">+4%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Churn Summary */}
-          <div className="grid grid-cols-4 gap-4 pt-4 border-t">
+          {/* Summary metrics */}
+          <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
             <div className="text-center">
-              <div className="text-xl font-bold text-red-600">
-                {formatPercentage(churnData[churnData.length - 1].churnRate)}
-              </div>
-              <div className="text-sm text-muted-foreground">Current Churn Rate</div>
+              <div className="text-2xl font-bold text-red-600">{data.churnRate.toFixed(2)}%</div>
+              <div className="text-sm text-muted-foreground">Churn Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-green-600">
-                {formatPercentage(churnData[churnData.length - 1].retentionRate)}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{data.retentionRate.toFixed(2)}%</div>
               <div className="text-sm text-muted-foreground">Retention Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-blue-600">
-                {churnData.reduce((sum, item) => sum + item.newSubscriptions, 0)}
+              <div className="text-2xl font-bold text-blue-600">
+                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(data.customerLifetimeValue / 100)}
               </div>
-              <div className="text-sm text-muted-foreground">New Subscriptions</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-orange-600">
-                {churnData.reduce((sum, item) => sum + item.cancelledSubscriptions, 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Cancellations</div>
+              <div className="text-sm text-muted-foreground">Avg LTV</div>
             </div>
           </div>
+
+          {/* Churn by plan */}
+          {data.churnByPlan.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-3">Churn Rate by Plan</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={data.churnByPlan}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="planName" fontSize={12} />
+                  <YAxis tickFormatter={v => `${v.toFixed(1)}%`} fontSize={12} />
+                  <Tooltip formatter={(v) => [`${(v as number).toFixed(2)}%`]} />
+                  <Legend />
+                  <Bar dataKey="churnRate" name="Churn %" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="retentionRate" name="Retention %" fill="#10b981" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {data.churnByPlan.length === 0 && (
+            <p className="text-center text-muted-foreground py-4">No churned subscriptions in this period.</p>
+          )}
         </div>
       </CardContent>
     </Card>

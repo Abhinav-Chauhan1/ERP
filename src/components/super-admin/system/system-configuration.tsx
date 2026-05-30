@@ -47,13 +47,8 @@ interface ConfigurationSetting {
   requiresRestart?: boolean;
 }
 
-export function SystemConfiguration() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-
-  // Mock configuration data - in real implementation, this would come from API
-  const [configurations, setConfigurations] = useState<ConfigurationSetting[]>([
+// Hardcoded defaults used as fallback when no DB rows exist yet
+const DEFAULT_CONFIGURATIONS: ConfigurationSetting[] = [
     // Global Settings
     {
       id: "app_name",
@@ -348,7 +343,29 @@ export function SystemConfiguration() {
       isSystem: false,
       requiresRestart: false
     }
-  ]);
+];
+
+export function SystemConfiguration() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [configurations, setConfigurations] = useState<ConfigurationSetting[]>(DEFAULT_CONFIGURATIONS);
+
+  // Load real configuration from API on mount, overlay DB values onto the defaults
+  useEffect(() => {
+    fetch("/api/super-admin/configuration/settings")
+      .then(r => r.ok ? r.json() : null)
+      .then((res: { configurations?: Array<{ key: string; value: any; category: string; description?: string }> } | null) => {
+        if (!res?.configurations?.length) return;
+        setConfigurations(prev => {
+          const dbMap = new Map(res.configurations!.map(c => [c.key, c.value]));
+          return prev.map(cfg => dbMap.has(cfg.id) ? { ...cfg, value: dbMap.get(cfg.id), defaultValue: dbMap.get(cfg.id) } : cfg);
+        });
+      })
+      .catch(console.error)
+      .finally(() => setIsFetching(false));
+  }, []);
 
   const categories = Array.from(new Set(configurations.map(config => config.category)));
 
@@ -530,6 +547,8 @@ export function SystemConfiguration() {
     requiresRestart: configurations.filter(c => c.requiresRestart && c.value !== c.defaultValue).length,
     modified: configurations.filter(c => c.value !== c.defaultValue).length,
   };
+
+  if (isFetching) return <div className="flex items-center justify-center h-48 text-muted-foreground">Loading configuration…</div>;
 
   return (
     <div className="space-y-6">

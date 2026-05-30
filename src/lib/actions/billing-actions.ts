@@ -273,3 +273,63 @@ export async function getPaymentHistory(limit: number = 50) {
     return { success: false, error: "Failed to fetch payment history" };
   }
 }
+
+export async function getInvoices(limit: number = 100) {
+  await requireSuperAdminAccess();
+
+  try {
+    const invoices = await db.invoice.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        status: true,
+        dueDate: true,
+        paidAt: true,
+        createdAt: true,
+        metadata: true,
+        razorpayInvoiceId: true,
+        subscription: {
+          select: {
+            id: true,
+            school: { select: { name: true, schoolCode: true, email: true } },
+            plan: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: invoices.map((inv, idx) => ({
+        id: inv.id,
+        invoiceNumber: inv.razorpayInvoiceId ?? `INV-${String(idx + 1).padStart(4, "0")}`,
+        amount: inv.amount,
+        currency: inv.currency.toUpperCase(),
+        status: inv.status as "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE",
+        dueDate: inv.dueDate,
+        paidAt: inv.paidAt,
+        createdAt: inv.createdAt,
+        subscription: {
+          id: inv.subscription.id,
+          school: {
+            name: inv.subscription.school.name,
+            schoolCode: inv.subscription.school.schoolCode,
+            email: inv.subscription.school.email ?? "",
+          },
+          plan: { name: inv.subscription.plan.name },
+        },
+        metadata: {
+          razorpayInvoiceNumber: inv.razorpayInvoiceId ?? undefined,
+          remindersSent: (inv.metadata as any)?.remindersSent ?? 0,
+          lastReminderSent: (inv.metadata as any)?.lastReminderSent,
+        },
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching invoices:", error);
+    return { success: false, error: "Failed to fetch invoices" };
+  }
+}

@@ -944,21 +944,48 @@ export class AnalyticsService {
   }
 
   private async getTrends() {
-    // Implementation for calculating trends
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [thisMonthPayments, lastMonthPayments, thisMonthSchools, lastMonthSchools, thisMonthSubs, lastMonthSubs] =
+      await Promise.all([
+        prisma.payment.aggregate({ where: { status: PaymentStatus.COMPLETED, processedAt: { gte: thisMonthStart } }, _sum: { amount: true } }),
+        prisma.payment.aggregate({ where: { status: PaymentStatus.COMPLETED, processedAt: { gte: lastMonthStart, lte: lastMonthEnd } }, _sum: { amount: true } }),
+        prisma.school.count({ where: { createdAt: { gte: thisMonthStart } } }),
+        prisma.school.count({ where: { createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+        prisma.enhancedSubscription.count({ where: { status: SubscriptionStatus.ACTIVE, createdAt: { gte: thisMonthStart } } }),
+        prisma.enhancedSubscription.count({ where: { status: SubscriptionStatus.ACTIVE, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+      ]);
+
+    const prev = (n: number) => (n === 0 ? 1 : n);
+    const thisRev = thisMonthPayments._sum.amount ?? 0;
+    const lastRev = lastMonthPayments._sum.amount ?? 0;
+
     return {
-      revenueGrowth: 0,
-      schoolGrowth: 0,
-      subscriptionGrowth: 0,
+      revenueGrowth: lastRev > 0 ? ((thisRev - lastRev) / lastRev) * 100 : 0,
+      schoolGrowth: lastMonthSchools > 0 ? ((thisMonthSchools - lastMonthSchools) / prev(lastMonthSchools)) * 100 : 0,
+      subscriptionGrowth: lastMonthSubs > 0 ? ((thisMonthSubs - lastMonthSubs) / prev(lastMonthSubs)) * 100 : 0,
     };
   }
 
   private async generateAlerts() {
-    // Implementation for generating alerts
-    return [];
+    const alerts = await prisma.alert.findMany({
+      where: { isResolved: false },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { alertType: true, severity: true, title: true, threshold: true, currentValue: true },
+    });
+    return alerts.map(a => ({
+      type: (a.severity === 'CRITICAL' || a.severity === 'ERROR' ? 'error' : a.severity === 'WARNING' ? 'warning' : 'info') as 'error' | 'warning' | 'info',
+      message: a.title,
+      value: a.currentValue ?? 0,
+      threshold: a.threshold ?? 0,
+    }));
   }
 
   private async createDefaultWidgets() {
-    // Implementation for creating default dashboard widgets
     return [];
   }
 
@@ -980,7 +1007,6 @@ export class AnalyticsService {
         plan: true,
         school: true,
         payments: true,
-        invoices: true,
       },
     });
   }

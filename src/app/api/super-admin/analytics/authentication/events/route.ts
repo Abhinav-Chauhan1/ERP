@@ -81,17 +81,18 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // Filter by event type
+    // Auth events all live under action=LOGIN; success/failure is determined by
+    // the absence or presence of a "reason" field in the changes JSON.
     switch (eventType) {
       case 'success':
-        whereClause.action = {
-          in: ['LOGIN', 'CREATE'] // Using valid enum values
-        };
+        // Successful logins have action=LOGIN and no failure reason in changes
+        whereClause.action = 'LOGIN';
+        whereClause.changes = { path: ['reason'], equals: null };
         break;
       case 'failure':
-        whereClause.action = {
-          in: ['DELETE', 'UPDATE'] // Using valid enum values
-        };
+        // Failed logins have action=LOGIN and a reason field (INVALID_PASSWORD, USER_NOT_FOUND, etc.)
+        whereClause.action = 'LOGIN';
+        whereClause.NOT = { changes: { path: ['reason'], equals: null } };
         break;
       case 'security':
         whereClause.action = {
@@ -100,22 +101,21 @@ export async function GET(request: NextRequest) {
             'RATE_LIMIT_EXCEEDED',
             'BRUTE_FORCE_ATTEMPT',
             'UNAUTHORIZED_ACCESS_ATTEMPT',
-            'MULTIPLE_FAILED_LOGINS'
-          ]
+            'MULTIPLE_FAILED_LOGINS',
+          ],
         };
         break;
       case 'all':
       default:
         whereClause.action = {
           in: [
-            'LOGIN', 'DELETE', 'CREATE', // Using valid enum values
-            'UPDATE', 'READ',
+            'LOGIN',
             'VERIFY', 'VIEW', 'ARCHIVE',
             'SCHOOL_CONTEXT_SWITCH',
             'SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED', 'BRUTE_FORCE_ATTEMPT',
             'UNAUTHORIZED_ACCESS_ATTEMPT',
-            'OTP_GENERATED', 'OTP_VERIFIED', 'OTP_FAILED', 'OTP_EXPIRED'
-          ]
+            'OTP_GENERATED', 'OTP_VERIFIED', 'OTP_FAILED', 'OTP_EXPIRED',
+          ],
         };
         break;
     }
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       id: event.id,
       timestamp: event.createdAt,
       action: event.action,
-      result: getEventResult(event.action),
+      result: getEventResult(event.action, event.changes),
       severity: getEventSeverity(event.action),
       user: event.user ? {
         id: event.user.id,
@@ -198,8 +198,8 @@ export async function GET(request: NextRequest) {
     const summary = {
       totalEvents: totalCount,
       eventsInRange: events.length,
-      successfulEvents: events.filter(e => getEventResult(e.action) === 'SUCCESS').length,
-      failedEvents: events.filter(e => getEventResult(e.action) === 'FAILURE').length,
+      successfulEvents: events.filter(e => getEventResult(e.action, e.changes) === 'SUCCESS').length,
+      failedEvents: events.filter(e => getEventResult(e.action, e.changes) === 'FAILURE').length,
       securityEvents: events.filter(e => getEventSeverity(e.action) === 'HIGH' || getEventSeverity(e.action) === 'CRITICAL').length,
       uniqueUsers: new Set(events.map(e => e.userId).filter(Boolean)).size,
       uniqueSchools: new Set(events.map(e => e.schoolId).filter(Boolean)).size,
@@ -372,24 +372,19 @@ export async function POST(request: NextRequest) {
 
 // Helper functions
 
-function getEventResult(action: string): 'SUCCESS' | 'FAILURE' | 'WARNING' | 'INFO' {
-  const successActions = [
-    'LOGIN', 'CREATE', 'VERIFY', // Using valid enum values
-    'OTP_GENERATED', 'OTP_VERIFIED', 'SCHOOL_CONTEXT_SWITCH'
-  ];
-  
-  const failureActions = [
-    'DELETE', 'UPDATE', 'UNAUTHORIZED_ACCESS_ATTEMPT', // Using valid enum values
-    'OTP_FAILED', 'OTP_EXPIRED'
-  ];
-  
-  const warningActions = [
-    'SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED', 'BRUTE_FORCE_ATTEMPT'
-  ];
+function getEventResult(action: string, changes?: any): 'SUCCESS' | 'FAILURE' | 'WARNING' | 'INFO' {
+  const warningActions = ['SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED', 'BRUTE_FORCE_ATTEMPT'];
+  const failureActions = ['UNAUTHORIZED_ACCESS_ATTEMPT', 'OTP_FAILED', 'OTP_EXPIRED', 'MULTIPLE_FAILED_LOGINS'];
+  const successAuthActions = ['OTP_GENERATED', 'OTP_VERIFIED', 'SCHOOL_CONTEXT_SWITCH', 'VERIFY'];
 
-  if (successActions.includes(action)) return 'SUCCESS';
-  if (failureActions.includes(action)) return 'FAILURE';
   if (warningActions.includes(action)) return 'WARNING';
+  if (failureActions.includes(action)) return 'FAILURE';
+  if (action === 'LOGIN') {
+    // A login is a failure if there's a reason field in changes
+    const reason = changes?.reason ?? (changes as any)?.metadata?.reason;
+    return reason ? 'FAILURE' : 'SUCCESS';
+  }
+  if (successAuthActions.includes(action)) return 'SUCCESS';
   return 'INFO';
 }
 

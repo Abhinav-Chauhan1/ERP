@@ -1,176 +1,98 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-export function UsageAnalyticsChart() {
-  // Mock data - in real implementation, this would be fetched based on timeRange
-  const usageData = [
-    { date: '2024-01-01', whatsapp: 45000, sms: 25000, storage: 850, apiCalls: 125000 },
-    { date: '2024-01-02', whatsapp: 48000, sms: 27000, storage: 865, apiCalls: 132000 },
-    { date: '2024-01-03', whatsapp: 46000, sms: 26000, storage: 870, apiCalls: 128000 },
-    { date: '2024-01-04', whatsapp: 52000, sms: 29000, storage: 885, apiCalls: 145000 },
-    { date: '2024-01-05', whatsapp: 49000, sms: 28000, storage: 890, apiCalls: 138000 },
-    { date: '2024-01-06', whatsapp: 51000, sms: 30000, storage: 905, apiCalls: 142000 },
-    { date: '2024-01-07', whatsapp: 54000, sms: 31000, storage: 920, apiCalls: 148000 },
-  ];
+interface UsageAnalyticsChartProps {
+  timeRange?: string;
+}
 
-  const formatNumber = (value: number) => {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    }
-    return value.toString();
-  };
+interface ResourceRow {
+  schoolName: string;
+  plan: string;
+  storageUsedMB: number;
+  storageLimitMB: number;
+  smsUsed: number;
+  whatsappUsed: number;
+}
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+interface FeatureRow {
+  feature: string;
+  usage: number;
+  schools: number;
+}
+
+export function UsageAnalyticsChart({ timeRange: _timeRange = "30d" }: UsageAnalyticsChartProps) {
+  const [resource, setResource] = useState<ResourceRow[]>([]);
+  const [features, setFeatures] = useState<FeatureRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/super-admin/analytics/usage")
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((d: { resourceConsumption?: ResourceRow[]; usageByFeature?: FeatureRow[] }) => {
+        setResource(d.resourceConsumption ?? []);
+        setFeatures((d.usageByFeature ?? []).slice(0, 10));
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  const topStorage = resource.slice(0, 10).map(r => ({
+    name: r.schoolName.length > 20 ? r.schoolName.slice(0, 20) + "…" : r.schoolName,
+    usedMB: r.storageUsedMB,
+    limitMB: r.storageLimitMB,
+    sms: r.smsUsed,
+    whatsapp: r.whatsappUsed,
+  }));
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Usage Analytics</CardTitle>
-        <CardDescription>Platform usage metrics across all schools</CardDescription>
+        <CardDescription>Platform resource consumption across all schools</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          {/* Communication Usage */}
-          <div>
-            <h4 className="text-sm font-medium mb-3">Communication Usage</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={usageData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={formatDate}
-                  fontSize={12}
-                />
-                <YAxis 
-                  tickFormatter={formatNumber}
-                  fontSize={12}
-                />
-                <Tooltip 
-                  labelFormatter={(value) => formatDate(value as string)}
-                  formatter={(value, name) => [
-                    formatNumber(value as number), 
-                    name === 'whatsapp' ? 'WhatsApp Messages' : 'SMS Messages'
-                  ]}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="whatsapp" 
-                  stackId="1"
-                  stroke="#25d366" 
-                  fill="#25d366"
-                  fillOpacity={0.6}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="sms" 
-                  stackId="1"
-                  stroke="#3b82f6" 
-                  fill="#3b82f6"
-                  fillOpacity={0.6}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="space-y-8">
+          {/* Storage by school */}
+          {topStorage.length > 0 ? (
+            <div>
+              <h4 className="text-sm font-medium mb-3">Storage Usage (MB) — Top 10 Schools</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={topStorage} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" fontSize={11} />
+                  <YAxis dataKey="name" type="category" width={140} fontSize={11} />
+                  <Tooltip />
+                  <Bar dataKey="usedMB" name="Used (MB)" fill="#3b82f6" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm py-4">No storage usage data for the current month yet.</p>
+          )}
 
-          {/* Storage Usage */}
-          <div>
-            <h4 className="text-sm font-medium mb-3">Storage Usage (GB)</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={usageData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={formatDate}
-                  fontSize={12}
-                />
-                <YAxis 
-                  tickFormatter={(value) => `${value}GB`}
-                  fontSize={12}
-                />
-                <Tooltip 
-                  labelFormatter={(value) => formatDate(value as string)}
-                  formatter={(value) => [`${value}GB`, 'Storage Used']}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="storage" 
-                  stroke="#14b8a6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#14b8a6', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* API Calls */}
-          <div>
-            <h4 className="text-sm font-medium mb-3">API Calls</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={usageData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={formatDate}
-                  fontSize={12}
-                />
-                <YAxis 
-                  tickFormatter={formatNumber}
-                  fontSize={12}
-                />
-                <Tooltip 
-                  labelFormatter={(value) => formatDate(value as string)}
-                  formatter={(value) => [formatNumber(value as number), 'API Calls']}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="apiCalls" 
-                  stroke="#f59e0b" 
-                  fill="#f59e0b"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Usage Summary */}
-          <div className="grid grid-cols-4 gap-4 pt-4 border-t">
-            <div className="text-center">
-              <div className="text-xl font-bold text-green-600">
-                {formatNumber(usageData[usageData.length - 1].whatsapp)}
-              </div>
-              <div className="text-sm text-muted-foreground">WhatsApp Messages</div>
+          {/* Feature usage */}
+          {features.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-3">Feature Events (Top 10)</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={features}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="feature" fontSize={11} angle={-30} textAnchor="end" height={50} />
+                  <YAxis fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="usage" name="Events" fill="#10b981" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="schools" name="Schools" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-blue-600">
-                {formatNumber(usageData[usageData.length - 1].sms)}
-              </div>
-              <div className="text-sm text-muted-foreground">SMS Messages</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-teal-600">
-                {usageData[usageData.length - 1].storage}GB
-              </div>
-              <div className="text-sm text-muted-foreground">Storage Used</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-yellow-600">
-                {formatNumber(usageData[usageData.length - 1].apiCalls)}
-              </div>
-              <div className="text-sm text-muted-foreground">API Calls</div>
-            </div>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

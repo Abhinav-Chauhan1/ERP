@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,15 @@ interface User {
   createdAt: Date;
 }
 
+// Static permission definitions (these are capability labels, not DB rows)
+const STATIC_PERMISSIONS: Permission[] = [
+  { id: "SUPER_ADMIN", name: "super_admin.all", description: "Full super-admin access", category: "Platform", resource: "platform", action: "all", isActive: true },
+  { id: "ADMIN", name: "school.admin", description: "School admin access", category: "School Management", resource: "school", action: "manage", isActive: true },
+  { id: "TEACHER", name: "school.teacher", description: "Teacher access", category: "School", resource: "school", action: "teach", isActive: true },
+  { id: "STUDENT", name: "school.student", description: "Student access", category: "School", resource: "school", action: "learn", isActive: true },
+  { id: "PARENT", name: "school.parent", description: "Parent access", category: "School", resource: "school", action: "view", isActive: true },
+];
+
 export function PermissionManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -83,130 +92,51 @@ export function PermissionManagement() {
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
 
-  // Mock data - in real implementation, this would come from API
-  const permissions: Permission[] = [
-    {
-      id: "perm_1",
-      name: "school.create",
-      description: "Create new schools",
-      category: "School Management",
-      resource: "school",
-      action: "create",
-      isActive: true
-    },
-    {
-      id: "perm_2",
-      name: "school.edit",
-      description: "Edit school information",
-      category: "School Management",
-      resource: "school",
-      action: "edit",
-      isActive: true
-    },
-    {
-      id: "perm_3",
-      name: "billing.manage",
-      description: "Manage billing and subscriptions",
-      category: "Billing",
-      resource: "billing",
-      action: "manage",
-      isActive: true
-    },
-    {
-      id: "perm_4",
-      name: "analytics.view",
-      description: "View analytics and reports",
-      category: "Analytics",
-      resource: "analytics",
-      action: "view",
-      isActive: true
-    },
-    {
-      id: "perm_5",
-      name: "user.manage",
-      description: "Manage user accounts",
-      category: "User Management",
-      resource: "user",
-      action: "manage",
-      isActive: true
-    }
-  ];
+  const permissions = STATIC_PERMISSIONS;
 
-  const roles: Role[] = [
-    {
-      id: "role_1",
-      name: "Super Admin",
-      description: "Full system access with all permissions",
-      permissions: ["perm_1", "perm_2", "perm_3", "perm_4", "perm_5"],
-      userCount: 3,
-      isSystem: true,
-      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date()
-    },
-    {
-      id: "role_2",
-      name: "Billing Manager",
-      description: "Manage billing and subscription operations",
-      permissions: ["perm_3", "perm_4"],
-      userCount: 2,
-      isSystem: false,
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date()
-    },
-    {
-      id: "role_3",
-      name: "Support Agent",
-      description: "View schools and basic analytics",
-      permissions: ["perm_4"],
-      userCount: 5,
-      isSystem: false,
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date()
-    }
-  ];
+  // Derive roles from unique role values in the real user list
+  const [roles, setRoles] = useState<Role[]>([]);
 
-  const users: User[] = [
-    {
-      id: "user_1",
-      name: "John Admin",
-      email: "john@company.com",
-      role: "role_1",
-      permissions: [],
-      isActive: true,
-      lastLoginAt: new Date(),
-      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-    },
-    {
-      id: "user_2",
-      name: "Jane Manager",
-      email: "jane@company.com",
-      role: "role_2",
-      permissions: ["perm_1"], // Additional permission
-      isActive: true,
-      lastLoginAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
-    },
-    {
-      id: "user_3",
-      name: "Bob Support",
-      email: "bob@company.com",
-      role: "role_3",
-      permissions: [],
-      isActive: false,
-      lastLoginAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    }
-  ];
+  useEffect(() => {
+    fetch("/api/super-admin/users?limit=200")
+      .then(r => r.ok ? r.json() : null)
+      .then((res: { data?: any[] } | null) => {
+        const list: any[] = res?.data ?? [];
+        setUsers(list.map(u => ({
+          id: u.id,
+          name: u.name ?? "Unknown",
+          email: u.email ?? "",
+          role: u.role ?? "UNKNOWN",
+          permissions: [],
+          isActive: u.isActive ?? true,
+          lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt) : null,
+          createdAt: new Date(u.createdAt),
+        })));
+        // Derive role summary from users
+        const roleCounts: Record<string, number> = {};
+        list.forEach(u => { roleCounts[u.role] = (roleCounts[u.role] ?? 0) + 1; });
+        setRoles(Object.entries(roleCounts).map(([name, count]) => ({
+          id: name,
+          name,
+          description: `${name} role`,
+          permissions: permissions.filter(p => p.id === name).map(p => p.id),
+          userCount: count,
+          isSystem: ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT", "PARENT"].includes(name),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })));
+      })
+      .catch(console.error)
+      .finally(() => setIsFetching(false));
+  }, []);
 
-  const getRoleName = (roleId: string) => {
-    return roles.find(role => role.id === roleId)?.name || 'Unknown Role';
-  };
+  const getRoleName = (roleId: string) => roleId;
 
   const getUserPermissions = (user: User) => {
-    const role = roles.find(r => r.id === user.role);
-    const rolePermissions = role?.permissions || [];
-    return [...rolePermissions, ...user.permissions];
+    return permissions.filter(p => p.id === user.role).map(p => p.id);
   };
 
   const getPermissionName = (permissionId: string) => {
@@ -215,10 +145,12 @@ export function PermissionManagement() {
 
   const handleCreateUser = async (userData: any) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setShowUserDialog(false);
+    try {
+      await fetch("/api/super-admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userData) });
+    } finally {
+      setIsLoading(false);
+      setShowUserDialog(false);
+    }
   };
 
   const handleCreateRole = async (roleData: any) => {
@@ -249,6 +181,8 @@ export function PermissionManagement() {
     totalUsers: users.length,
     activeUsers: users.filter(u => u.isActive).length,
   };
+
+  if (isFetching) return <div className="flex items-center justify-center h-48 text-muted-foreground">Loading users…</div>;
 
   return (
     <div className="space-y-6">
