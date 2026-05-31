@@ -31,8 +31,8 @@ interface ParentDetailsDialogProps {
     createdAt: Date;
     user: {
       id: string;
-      firstName: string;
-      lastName: string;
+      firstName: string | null;
+      lastName: string | null;
       name?: string | null;
       email?: string | null;
       phone?: string | null;
@@ -42,8 +42,8 @@ interface ParentDetailsDialogProps {
       student: {
         id: string;
         user: {
-          firstName: string;
-          lastName: string;
+          firstName: string | null;
+          lastName: string | null;
           name?: string | null;
         };
         enrollments: Array<{
@@ -65,7 +65,7 @@ export function ParentDetailsDialog({
 }: ParentDetailsDialogProps) {
   if (!parent) return null;
 
-  const parentName = parent.user.name || `${parent.user.firstName} ${parent.user.lastName}`;
+  const parentName = parent.user.name || `${parent.user.firstName ?? ''} ${parent.user.lastName ?? ''}`.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,7 +157,7 @@ export function ParentDetailsDialog({
               <div className="space-y-3">
                 {parent.children.map((child) => {
                   const childName = child.student.user.name ||
-                    `${child.student.user.firstName} ${child.student.user.lastName}`;
+                    `${child.student.user.firstName ?? ''} ${child.student.user.lastName ?? ''}`.trim();
                   const className = child.student.enrollments[0]?.class?.name;
 
                   return (
