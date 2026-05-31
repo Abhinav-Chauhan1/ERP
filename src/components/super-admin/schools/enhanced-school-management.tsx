@@ -389,20 +389,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">School Management</h2>
-          <p className="text-muted-foreground">
-            Manage all schools in your platform
-          </p>
-        </div>
-        <Button onClick={() => router.push('/super-admin/schools/create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add School
-        </Button>
-      </div>
-
       {/* Search and Filters */}
       <Card>
         <CardContent className="p-6">
@@ -527,297 +513,119 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className={tableClasses.table}>
-                <Table {...tableAccessibility.getTableProps("Schools list")}>
-                  <TableHeader>
-                    <TableRow {...tableAccessibility.getRowProps()}>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={selectedSchools.length === schools.length && schools.length > 0}
-                          onCheckedChange={handleSelectAll}
-                          {...aria.attributes.label("Select all schools")}
-                        />
-                      </TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()}>School</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnMobile}>Status</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnMobile}>Plan</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Onboarding</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Users</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Subscription</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Created</TableHead>
-                      <TableHead {...tableAccessibility.getHeaderProps()}>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {schools.map((school) => (
-                      <TableRow key={school.id} {...tableAccessibility.getRowProps(selectedSchools.includes(school.id))}>
-                        <TableCell {...tableAccessibility.getCellProps()}>
-                          <Checkbox
-                            checked={selectedSchools.includes(school.id)}
-                            onCheckedChange={(checked) =>
-                              handleSchoolSelect(school.id, checked as boolean)
-                            }
-                            {...aria.attributes.label(`Select ${school.name}`)}
-                          />
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps(true)}>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
-                              {school.name.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="font-medium">{school.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {school.email}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnMobile}>
-                          <Badge variant={getStatusBadgeVariant(school.status) as any}>
-                            {school.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnMobile}>
-                          <Badge variant={getPlanBadgeVariant(school.plan) as any}>
-                            {school.plan}
-                          </Badge>
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
-                          {getOnboardingStatusBadge(school)}
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
-                          <div className="text-sm">
-                            <div>{school.userCounts.total} total</div>
-                            <div className="text-muted-foreground">
-                              {school.userCounts.students} students
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
-                          {school.subscription ? (
-                            <div className="text-sm">
-                              <div>₹{getPlanPrice(school.plan)}</div>
-                              <div className="text-muted-foreground">
-                                Expires {new Date(school.subscription.endDate).toLocaleDateString()}
-                              </div>
-                            </div>
+              {/* Card Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {schools.map((school) => (
+                  <div
+                    key={school.id}
+                    className={`relative bg-white border rounded-xl p-4 hover:shadow-md transition-shadow ${
+                      selectedSchools.includes(school.id) ? "ring-2 ring-blue-500 border-blue-300" : "border-gray-200"
+                    }`}
+                  >
+                    {/* Select checkbox */}
+                    <div className="absolute top-3 left-3">
+                      <Checkbox
+                        checked={selectedSchools.includes(school.id)}
+                        onCheckedChange={(checked) => handleSchoolSelect(school.id, checked as boolean)}
+                        {...aria.attributes.label(`Select ${school.name}`)}
+                      />
+                    </div>
+
+                    {/* Actions menu */}
+                    <div className="absolute top-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-700">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}>
+                            <Users className="h-4 w-4 mr-2" />
+                            Manage Users
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {school.isOnboarded ? (
+                            <DropdownMenuItem onClick={() => handleResetOnboarding(school.id, school.name)} className="text-orange-600">
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reset Onboarding
+                            </DropdownMenuItem>
                           ) : (
-                            <span className="text-muted-foreground">No subscription</span>
+                            <DropdownMenuItem onClick={() => handleLaunchSetupWizard(school.id, school.name)} className="text-blue-600">
+                              <PlayCircle className="h-4 w-4 mr-2" />
+                              Launch Setup Wizard
+                            </DropdownMenuItem>
                           )}
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
-                          {new Date(school.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell {...tableAccessibility.getCellProps()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={focus.classes.visible}
-                                {...aria.attributes.label(`Actions for ${school.name}`)}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Manage Users
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {school.isOnboarded ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleResetOnboarding(school.id, school.name)}
-                                  className="text-orange-600"
-                                >
-                                  <RotateCcw className="h-4 w-4 mr-2" />
-                                  Reset Onboarding
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleLaunchSetupWizard(school.id, school.name)}
-                                  className="text-blue-600"
-                                >
-                                  <PlayCircle className="h-4 w-4 mr-2" />
-                                  Launch Setup Wizard
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              {school.status === "ACTIVE" ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleSuspendSchool(school.id, school.name)}
-                                  className="text-red-600"
-                                >
-                                  <Ban className="h-4 w-4 mr-2" />
-                                  Suspend
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleActivateSchool(school.id, school.name)}
-                                  className="text-green-600"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Activate
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          <DropdownMenuSeparator />
+                          {school.status === "ACTIVE" ? (
+                            <DropdownMenuItem onClick={() => handleSuspendSchool(school.id, school.name)} className="text-red-600">
+                              <Ban className="h-4 w-4 mr-2" />
+                              Suspend
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handleActivateSchool(school.id, school.name)} className="text-green-600">
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Activate
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
-              {/* Mobile Card View */}
-              <div className={tableClasses.cardContainer}>
-                <div className="space-y-4">
-                  {schools.map((school) => (
-                    <Card key={school.id} className="relative">
-                      <CardContent className={`${mobileClasses.card.mobile} ${selectedSchools.includes(school.id) ? 'ring-2 ring-blue-500' : ''}`}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
-                            <Checkbox
-                              checked={selectedSchools.includes(school.id)}
-                              onCheckedChange={(checked) =>
-                                handleSchoolSelect(school.id, checked as boolean)
-                              }
-                              {...aria.attributes.label(`Select ${school.name}`)}
-                            />
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
-                              {school.name.charAt(0)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-base truncate">{school.name}</h3>
-                              <p className="text-sm text-muted-foreground truncate">{school.email}</p>
-                            </div>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`${focus.classes.visible} min-h-[44px] min-w-[44px]`}
-                                {...aria.attributes.label(`Actions for ${school.name}`)}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Manage Users
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {school.isOnboarded ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleResetOnboarding(school.id, school.name)}
-                                  className="text-orange-600"
-                                >
-                                  <RotateCcw className="h-4 w-4 mr-2" />
-                                  Reset Onboarding
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleLaunchSetupWizard(school.id, school.name)}
-                                  className="text-blue-600"
-                                >
-                                  <PlayCircle className="h-4 w-4 mr-2" />
-                                  Launch Setup Wizard
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              {school.status === "ACTIVE" ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleSuspendSchool(school.id, school.name)}
-                                  className="text-red-600"
-                                >
-                                  <Ban className="h-4 w-4 mr-2" />
-                                  Suspend
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleActivateSchool(school.id, school.name)}
-                                  className="text-green-600"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Activate
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                    {/* School avatar + name */}
+                    <div className="flex items-center gap-3 pl-7 pr-6 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center text-white font-semibold text-base shrink-0">
+                        {school.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <button
+                          onClick={() => router.push(`/super-admin/schools/${school.id}`)}
+                          className="font-semibold text-sm text-gray-900 hover:text-blue-600 truncate block text-left w-full"
+                        >
+                          {school.name}
+                        </button>
+                        <p className="text-xs text-gray-500 truncate">{school.email || school.schoolCode}</p>
+                      </div>
+                    </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Status:</span>
-                            <div className="mt-1">
-                              <Badge variant={getStatusBadgeVariant(school.status) as any}>
-                                {school.status}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Plan:</span>
-                            <div className="mt-1">
-                              <Badge variant={getPlanBadgeVariant(school.plan) as any}>
-                                {school.plan}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Users:</span>
-                            <div className="mt-1">
-                              <div>{school.userCounts.total} total</div>
-                              <div className="text-xs text-muted-foreground">
-                                {school.userCounts.students} students
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Onboarding:</span>
-                            <div className="mt-1">
-                              {getOnboardingStatusBadge(school)}
-                            </div>
-                          </div>
-                        </div>
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      <Badge variant={getStatusBadgeVariant(school.status) as any} className="text-xs">
+                        {school.status}
+                      </Badge>
+                      <Badge variant={getPlanBadgeVariant(school.plan) as any} className="text-xs">
+                        {school.plan}
+                      </Badge>
+                      {getOnboardingStatusBadge(school)}
+                    </div>
 
-                        {school.subscription && (
-                          <div className="mt-3 pt-3 border-t text-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Subscription:</span>
-                              <div className="text-right">
-                                <div>₹{getPlanPrice(school.plan)}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  Expires {new Date(school.subscription.endDate).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                    {/* Stats row */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5 mt-2.5">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {school.userCounts.total} users · {school.userCounts.students} students
+                      </span>
+                      <span>
+                        {new Date(school.createdAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "2-digit",
+                        })}
+                      </span>
+                    </div>
+
+                    {school.subscription && (
+                      <div className="text-xs text-gray-500 mt-1.5 flex items-center justify-between">
+                        <span>₹{getPlanPrice(school.plan)}/mo</span>
+                        <span>Exp. {new Date(school.subscription.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </>
           )}

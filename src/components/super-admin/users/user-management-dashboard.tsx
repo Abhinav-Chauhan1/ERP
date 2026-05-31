@@ -325,14 +325,6 @@ export function UserManagementDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Controls */}
-      <div className="flex items-center justify-end">
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
-      </div>
-
       {/* Search and Filters */}
       <Card>
         <CardContent className="p-6">
@@ -392,6 +384,10 @@ export function UserManagementDashboard({
                 <SelectItem value="SINGLE">Single School</SelectItem>
               </SelectContent>
             </Select>
+            <Button onClick={() => setShowCreateDialog(true)} className="shrink-0">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
           </div>
         </CardContent>
       </Card>

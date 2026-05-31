@@ -11,19 +11,23 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  School, 
-  Shield, 
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  School,
+  Shield,
   Activity,
   Edit,
   UserX,
   UserCheck,
-  Trash2
+  Trash2,
+  X,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,10 +46,18 @@ export function UserDetailsDialog({
 }: UserDetailsDialogProps) {
   const [userDetails, setUserDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [editForm, setEditForm] = useState({
+    name: "", firstName: "", lastName: "", email: "", mobile: "",
+  });
 
   useEffect(() => {
     if (open && user) {
       fetchUserDetails();
+      setIsEditing(false);
+      setActiveTab("overview");
     }
   }, [open, user]);
 
@@ -59,6 +71,13 @@ export function UserDetailsDialog({
       
       if (result.success) {
         setUserDetails(result.data);
+        setEditForm({
+          name: result.data.name ?? "",
+          firstName: result.data.firstName ?? "",
+          lastName: result.data.lastName ?? "",
+          email: result.data.email ?? "",
+          mobile: result.data.mobile ?? "",
+        });
       } else {
         toast.error("Failed to load user details");
       }
@@ -66,6 +85,37 @@ export function UserDetailsDialog({
       toast.error("Failed to load user details");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/super-admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name || undefined,
+          firstName: editForm.firstName || undefined,
+          lastName: editForm.lastName || undefined,
+          email: editForm.email || undefined,
+          mobile: editForm.mobile || undefined,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("User updated successfully");
+        setIsEditing(false);
+        fetchUserDetails();
+        onUserUpdate();
+      } else {
+        toast.error(result.error || "Failed to update user");
+      }
+    } catch {
+      toast.error("Failed to update user");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -137,7 +187,7 @@ export function UserDetailsDialog({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : userDetails ? (
-          <Tabs defaultValue="overview" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="schools">Schools</TabsTrigger>
@@ -299,56 +349,136 @@ export function UserDetailsDialog({
             </TabsContent>
 
             <TabsContent value="actions" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">User Management Actions</CardTitle>
-                  <CardDescription>
-                    Perform administrative actions on this user account
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button variant="outline" className="justify-start">
-                      <Edit className="h-4 w-4 mr-2" />
+              {isEditing ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
                       Edit User Information
-                    </Button>
-                    
-                    {userDetails.isActive ? (
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-orange-600 hover:text-orange-700"
-                        onClick={() => handleUserAction('deactivate')}
-                      >
-                        <UserX className="h-4 w-4 mr-2" />
-                        Deactivate User
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditing(false)}>
+                        <X className="h-4 w-4" />
                       </Button>
-                    ) : (
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-green-600 hover:text-green-700"
-                        onClick={() => handleUserAction('activate')}
-                      >
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Activate User
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-name">Full Name</Label>
+                        <Input
+                          id="edit-name"
+                          value={editForm.name}
+                          onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="Full name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-email">Email</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                          placeholder="Email address"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-firstname">First Name</Label>
+                        <Input
+                          id="edit-firstname"
+                          value={editForm.firstName}
+                          onChange={(e) => setEditForm(f => ({ ...f, firstName: e.target.value }))}
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-lastname">Last Name</Label>
+                        <Input
+                          id="edit-lastname"
+                          value={editForm.lastName}
+                          onChange={(e) => setEditForm(f => ({ ...f, lastName: e.target.value }))}
+                          placeholder="Last name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-mobile">Mobile</Label>
+                        <Input
+                          id="edit-mobile"
+                          value={editForm.mobile}
+                          onChange={(e) => setEditForm(f => ({ ...f, mobile: e.target.value }))}
+                          placeholder="Mobile number"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={handleSaveEdit} disabled={isSaving} size="sm">
+                        <Save className="h-4 w-4 mr-2" />
+                        {isSaving ? "Saving…" : "Save Changes"}
                       </Button>
-                    )}
-                    
-                    <Button variant="outline" className="justify-start">
-                      <School className="h-4 w-4 mr-2" />
-                      Manage School Access
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      className="justify-start text-red-600 hover:text-red-700"
-                      onClick={() => handleUserAction('delete')}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete User
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">User Management Actions</CardTitle>
+                    <CardDescription>
+                      Perform administrative actions on this user account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit User Information
+                      </Button>
+
+                      {userDetails.isActive ? (
+                        <Button
+                          variant="outline"
+                          className="justify-start text-orange-600 hover:text-orange-700"
+                          onClick={() => handleUserAction('deactivate')}
+                        >
+                          <UserX className="h-4 w-4 mr-2" />
+                          Deactivate User
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="justify-start text-green-600 hover:text-green-700"
+                          onClick={() => handleUserAction('activate')}
+                        >
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Activate User
+                        </Button>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() => setActiveTab("schools")}
+                      >
+                        <School className="h-4 w-4 mr-2" />
+                        Manage School Access
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        className="justify-start text-red-600 hover:text-red-700"
+                        onClick={() => handleUserAction('delete')}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete User
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         ) : (
