@@ -74,8 +74,8 @@ export interface SchoolDetailData {
         createdAt: Date;
         user: {
             id: string;
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
             name?: string | null;
             email?: string | null;
             phone?: string | null;
@@ -88,8 +88,8 @@ export interface SchoolDetailData {
         createdAt: Date;
         user: {
             id: string;
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
             name?: string | null;
             email?: string | null;
             phone?: string | null;
@@ -102,8 +102,8 @@ export interface SchoolDetailData {
         createdAt: Date;
         user: {
             id: string;
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
             name?: string | null;
             email?: string | null;
             phone?: string | null;
@@ -118,8 +118,8 @@ export interface SchoolDetailData {
         createdAt: Date;
         user: {
             id: string;
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
             name?: string | null;
             email?: string | null;
             phone?: string | null;
@@ -128,7 +128,7 @@ export interface SchoolDetailData {
         children: Array<{
             student: {
                 id: string;
-                user: { firstName: string; lastName: string; name?: string | null };
+                user: { firstName: string | null; lastName: string | null; name?: string | null };
                 enrollments: Array<{ class: { name: string } }>;
             };
         }>;

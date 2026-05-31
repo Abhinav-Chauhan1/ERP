@@ -85,8 +85,8 @@ interface SchoolUsersClientProps {
       createdAt: Date;
       user: {
         id: string;
-        firstName: string;
-        lastName: string;
+        firstName: string | null;
+        lastName: string | null;
         name?: string | null;
         email?: string | null;
         phone?: string | null;
@@ -99,8 +99,8 @@ interface SchoolUsersClientProps {
       createdAt: Date;
       user: {
         id: string;
-        firstName: string;
-        lastName: string;
+        firstName: string | null;
+        lastName: string | null;
         name?: string | null;
         email?: string | null;
         phone?: string | null;
@@ -117,8 +117,8 @@ interface SchoolUsersClientProps {
       createdAt: Date;
       user: {
         id: string;
-        firstName: string;
-        lastName: string;
+        firstName: string | null;
+        lastName: string | null;
         name?: string | null;
         email?: string | null;
         phone?: string | null;
@@ -133,8 +133,8 @@ interface SchoolUsersClientProps {
       createdAt: Date;
       user: {
         id: string;
-        firstName: string;
-        lastName: string;
+        firstName: string | null;
+        lastName: string | null;
         name?: string | null;
         email?: string | null;
         phone?: string | null;
@@ -144,8 +144,8 @@ interface SchoolUsersClientProps {
         student: {
           id: string;
           user: {
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
             name?: string | null;
           };
           enrollments: Array<{
@@ -336,7 +336,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   {school.students.map((student) => (
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">
-                        {student.user.name || `${student.user.firstName} ${student.user.lastName}`}
+                        {student.user.name || `${student.user.firstName ?? ''} ${student.user.lastName ?? ''}`}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -449,7 +449,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   {school.teachers.map((teacher) => (
                     <TableRow key={teacher.id}>
                       <TableCell className="font-medium">
-                        {teacher.user.name || `${teacher.user.firstName} ${teacher.user.lastName}`}
+                        {teacher.user.name || `${teacher.user.firstName ?? ''} ${teacher.user.lastName ?? ''}`}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -567,7 +567,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   {school.administrators.map((admin) => (
                     <TableRow key={admin.id}>
                       <TableCell className="font-medium">
-                        {admin.user.name || `${admin.user.firstName} ${admin.user.lastName}`}
+                        {admin.user.name || `${admin.user.firstName ?? ''} ${admin.user.lastName ?? ''}`}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -693,7 +693,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                       onClick={() => handleParentClick(parent)}
                     >
                       <TableCell className="font-medium">
-                        {parent.user.name || `${parent.user.firstName} ${parent.user.lastName}`}
+                        {parent.user.name || `${parent.user.firstName ?? ''} ${parent.user.lastName ?? ''}`}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -717,7 +717,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                           {parent.children.map((child) => (
                             <div key={child.student.id} className="text-sm">
                               <span className="font-medium">
-                                {child.student.user.name || `${child.student.user.firstName} ${child.student.user.lastName}`}
+                                {child.student.user.name || `${child.student.user.firstName ?? ''} ${child.student.user.lastName ?? ''}`}
                               </span>
                               {child.student.enrollments[0]?.class?.name && (
                                 <span className="text-muted-foreground ml-2">
