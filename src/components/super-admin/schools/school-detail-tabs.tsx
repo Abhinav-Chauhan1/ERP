@@ -320,7 +320,7 @@ function OverviewTab({ school }: { school: SchoolDetailData }) {
                 schoolId={school.id}
                 schoolName={school.name}
                 subdomain={school.subdomain}
-                subdomainStatus={school.subdomainStatus}
+                subdomainStatus={school.subdomainStatus ?? undefined}
                 dnsConfigured={school.dnsConfigured}
                 sslConfigured={school.sslConfigured}
                 sslExpiresAt={school.sslExpiresAt?.toISOString()}
