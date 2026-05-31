@@ -23,18 +23,23 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
   }
 
   try {
+    const unwrap = <T>(r: PromiseSettledResult<T>, label: string, fallback: T): T => {
+      if (r.status === "rejected") {
+        console.error(`[getBillingDashboardData] ${label} failed:`, r.reason);
+        return fallback;
+      }
+      return r.value;
+    };
+
     const [
-      subscriptionCounts,
-      allSubscriptions,
-      monthlySubscriptions,
-      // Real collected revenue from Payment table
-      totalPaymentsAgg,
-      periodPaymentsAgg,
-      // Active schools with student counts for projected MRR
-      activeSchoolsForMRR,
-      // Monthly payment breakdown for trend chart
-      recentPayments,
-    ] = await Promise.all([
+      subscriptionCountsResult,
+      allSubscriptionsResult,
+      monthlySubscriptionsResult,
+      totalPaymentsAggResult,
+      periodPaymentsAggResult,
+      activeSchoolsForMRRResult,
+      recentPaymentsResult,
+    ] = await Promise.allSettled([
       runWithSuperAdminContext(() =>
         db.enhancedSubscription.groupBy({
           by: ["status"],
@@ -112,6 +117,14 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
         },
       }),
     ]);
+
+    const subscriptionCounts = unwrap(subscriptionCountsResult, "subscriptionCounts", []);
+    const allSubscriptions   = unwrap(allSubscriptionsResult,   "allSubscriptions",   []);
+    const monthlySubscriptions = unwrap(monthlySubscriptionsResult, "monthlySubscriptions", []);
+    const totalPaymentsAgg   = unwrap(totalPaymentsAggResult,   "totalPaymentsAgg",   { _sum: { amount: null } });
+    const periodPaymentsAgg  = unwrap(periodPaymentsAggResult,  "periodPaymentsAgg",  { _sum: { amount: null } });
+    const activeSchoolsForMRR = unwrap(activeSchoolsForMRRResult, "activeSchoolsForMRR", []);
+    const recentPayments     = unwrap(recentPaymentsResult,     "recentPayments",     []);
 
     // Subscription counts
     const totalSubscriptions = subscriptionCounts.reduce((sum, s) => sum + s._count.id, 0);
