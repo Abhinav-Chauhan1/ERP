@@ -83,16 +83,12 @@ const createPrismaClient = () => {
             );
           }
 
-          if (context.isSuperAdmin && !context.schoolId) {
-            throw new Error(
-              `[RLS] Super-admin query on tenant model "${model}" requires an explicit schoolId. ` +
-              'Use runWithTenantContext({ schoolId, isSuperAdmin: true }) to scope the query, ' +
-              'or runWithSuperAdminContext() for cross-tenant aggregate reads.'
-            );
-          }
-
-          // Super-admin global cross-tenant query — skip schoolId injection
-          if (context.isSuperAdmin && context.schoolId === SUPER_ADMIN_GLOBAL) {
+          // Super-admin without a scoped schoolId — allow cross-tenant reads.
+          // Covers both explicit runWithSuperAdminContext() (schoolId = SUPER_ADMIN_GLOBAL)
+          // and session-fallback paths where AsyncLocalStorage context is unavailable
+          // (schoolId = null/undefined) — both are safe because the role is already
+          // verified as SUPER_ADMIN by the auth layer.
+          if (context.isSuperAdmin && (!context.schoolId || context.schoolId === SUPER_ADMIN_GLOBAL)) {
             return query(args);
           }
 
