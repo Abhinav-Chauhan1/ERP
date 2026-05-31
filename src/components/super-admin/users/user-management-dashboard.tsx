@@ -325,14 +325,8 @@ export function UserManagementDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">User Management</h2>
-          <p className="text-muted-foreground">
-            Manage user accounts across all schools
-          </p>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center justify-end">
         <Button onClick={() => setShowCreateDialog(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add User

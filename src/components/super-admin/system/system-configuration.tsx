@@ -552,14 +552,8 @@ export function SystemConfiguration() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">System Configuration</h2>
-          <p className="text-muted-foreground">
-            Manage system-wide settings and configurations
-          </p>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           {hasChanges && (
             <Badge variant="secondary" className="animate-pulse">

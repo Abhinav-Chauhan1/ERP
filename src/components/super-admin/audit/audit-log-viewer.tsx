@@ -249,14 +249,8 @@ export function AuditLogViewer({ schoolId, showAllSchools = true, limit = 50 }: 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Audit Log Viewer</h2>
-          <p className="text-muted-foreground">
-            {showAllSchools ? "System-wide audit trail" : "School-specific audit logs"}
-          </p>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

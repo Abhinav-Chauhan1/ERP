@@ -165,14 +165,8 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Billing & Revenue</h2>
-          <p className="text-muted-foreground">
-            Comprehensive billing management and revenue analytics
-          </p>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center space-x-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-32">
@@ -404,7 +398,7 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
                         <TableCell>
                           {payment.schoolId ? (
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/super-admin/schools/${payment.schoolId}/billing`}>
+                              <Link href={`/super-admin/schools/${payment.schoolId}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -558,7 +552,7 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
                         <TableCell>
                           {payment.schoolId ? (
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/super-admin/schools/${payment.schoolId}/billing`}>
+                              <Link href={`/super-admin/schools/${payment.schoolId}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>

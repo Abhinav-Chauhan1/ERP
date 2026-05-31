@@ -415,7 +415,7 @@ function BillingTab({ school }: { school: SchoolDetailData }) {
                                         <TableCell className="text-sm text-gray-600">{inv.dueDate.toLocaleDateString()}</TableCell>
                                         <TableCell className="text-sm text-gray-500">{inv.paidAt ? inv.paidAt.toLocaleDateString() : "—"}</TableCell>
                                         <TableCell>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled title="PDF download coming soon">
                                                 <Download className="h-3.5 w-3.5 text-gray-400" />
                                             </Button>
                                         </TableCell>

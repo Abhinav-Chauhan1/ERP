@@ -197,16 +197,8 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
 
   return (
     <div className="space-y-8">
-      {/* Premium Header Controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-            Analytics Dashboard
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive business intelligence and performance metrics
-          </p>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center space-x-3">
           <Select value={selectedTimeRange} onValueChange={handleTimeRangeChange}>
             <SelectTrigger className="w-40 bg-[hsl(var(--card))]/80 backdrop-blur-sm">

@@ -287,11 +287,7 @@ export function SubscriptionPlansManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Subscription Plans</h2>
-          <p className="text-sm text-muted-foreground">Per-student pricing with feature differentiation</p>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleSeedPlans} disabled={seeding}>
             <Sprout className="h-4 w-4 mr-2" />

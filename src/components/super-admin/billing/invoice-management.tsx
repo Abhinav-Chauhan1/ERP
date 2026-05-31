@@ -39,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface InvoiceManagementProps {
   schoolId?: string;
@@ -227,11 +228,11 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
   };
 
   const handleDownloadInvoice = async (_invoiceId: string) => {
-    // No server-side PDF generation wired yet; open Razorpay short URL if available
+    toast.info("PDF download will be available once Razorpay billing integration is complete.");
   };
 
   const handleVoidInvoice = async (_invoiceId: string) => {
-    // Voiding requires Razorpay API integration — not yet wired
+    toast.info("Invoice voiding will be available once Razorpay billing integration is complete.");
   };
 
   const filteredInvoices = invoices.filter(invoice => {
