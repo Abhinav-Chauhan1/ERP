@@ -277,13 +277,23 @@ export class BillingService {
     const orderId = `SUB-${schoolId.slice(-8)}-${Date.now()}`;
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
 
+    // Mark any existing active subscription as cancel-at-period-end before a new checkout
+    await prisma.enhancedSubscription.updateMany({
+      where: { schoolId, status: SubscriptionStatus.ACTIVE, cancelAtPeriodEnd: false },
+      data: { cancelAtPeriodEnd: true },
+    });
+
+    // Cashfree requires a 10-digit phone (no spaces, no country code prefix)
+    const rawPhone = (school.phone || '').replace(/\D/g, ''); // strip all non-digits
+    const customerPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : '9999999999';
+
     const { cfOrderId, paymentSessionId } = await createCashfreeOrder({
       orderId,
       amount,
       currency: 'INR',
       customerName: school.name,
       customerEmail: school.email || `${school.schoolCode}@school.com`,
-      customerPhone: school.phone || '9999999999',
+      customerPhone,
       returnUrl: `${baseUrl}/admin/settings/billing/success?cfOrderId=${orderId}&planId=${planId}`,
       notifyUrl: `${baseUrl}/api/subscription/webhook`,
     });
@@ -291,7 +301,7 @@ export class BillingService {
     // Record a pending Payment for this checkout
     await prisma.payment.create({
       data: {
-        subscriptionId: await this.getOrCreatePendingSubscriptionId(schoolId, planId),
+        subscriptionId: await this.getOrCreatePendingSubscriptionId(schoolId, planId, studentCount),
         amount,
         currency: 'INR',
         status: PaymentStatus.PENDING,
@@ -303,14 +313,24 @@ export class BillingService {
     return { paymentSessionId, cfOrderId };
   }
 
-  private async getOrCreatePendingSubscriptionId(schoolId: string, planId: string): Promise<string> {
-    // Check for existing pending/incomplete subscription
+  private async getOrCreatePendingSubscriptionId(
+    schoolId: string,
+    planId: string,
+    studentCount: number
+  ): Promise<string> {
+    // Reuse an existing incomplete/past-due sub for the SAME plan; otherwise create fresh
     const existing = await prisma.enhancedSubscription.findFirst({
-      where: { schoolId, status: { in: [SubscriptionStatus.INCOMPLETE, SubscriptionStatus.PAST_DUE] } },
+      where: { schoolId, planId, status: { in: [SubscriptionStatus.INCOMPLETE, SubscriptionStatus.PAST_DUE] } },
       orderBy: { createdAt: 'desc' },
     });
 
-    if (existing) return existing.id;
+    if (existing) {
+      await prisma.enhancedSubscription.update({
+        where: { id: existing.id },
+        data: { studentCount },
+      });
+      return existing.id;
+    }
 
     const now = new Date();
     const periodEnd = new Date(now);
@@ -323,6 +343,7 @@ export class BillingService {
         status: SubscriptionStatus.INCOMPLETE,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
+        studentCount,
         metadata: {},
       }
     });
@@ -338,7 +359,7 @@ export class BillingService {
       where: { paymentSessionId: cfOrderId },
       include: {
         subscription: {
-          include: { plan: true }
+          include: { plan: true, school: { select: { id: true, _count: { select: { students: true } } } } }
         }
       }
     });
@@ -350,6 +371,7 @@ export class BillingService {
     const now = new Date();
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + 1);
+    const liveStudentCount = payment.subscription.school._count.students;
 
     await Promise.all([
       prisma.payment.update({
@@ -367,6 +389,7 @@ export class BillingService {
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
           cfOrderRef: cfOrderId,
+          studentCount: liveStudentCount,
         }
       }),
       prisma.school.update({
@@ -374,6 +397,9 @@ export class BillingService {
         data: { plan: payment.subscription.plan.name as PlanType }
       }),
     ]);
+
+    // Generate a paid invoice for this subscription cycle
+    await this.generateInvoice(payment.subscriptionId, payment.amount);
   }
 
   /**
@@ -423,9 +449,10 @@ export class BillingService {
   }
 
   /**
-   * Generate an invoice record (no external provider calls)
+   * Generate an invoice record for a subscription cycle.
+   * Pass the actual payment amount (INR) — the plan.amount field is deprecated.
    */
-  async generateInvoice(subscriptionId: string): Promise<Invoice> {
+  async generateInvoice(subscriptionId: string, amount: number): Promise<Invoice> {
     const subscription = await prisma.enhancedSubscription.findUnique({
       where: { id: subscriptionId },
       include: { plan: true, school: true }
@@ -435,16 +462,26 @@ export class BillingService {
       throw new Error(`Subscription not found: ${subscriptionId}`);
     }
 
+    // Build a human-readable sequential invoice number
+    const year = new Date().getFullYear();
+    const existingCount = await prisma.invoice.count({
+      where: { subscriptionId: { not: undefined } }
+    });
+    const invoiceNumber = `INV-${year}-${String(existingCount + 1).padStart(4, '0')}`;
+
     return prisma.invoice.create({
       data: {
         subscriptionId: subscription.id,
-        amount: subscription.plan.amount,
-        currency: subscription.plan.currency,
-        status: InvoiceStatus.OPEN,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        invoiceNumber,
+        amount,
+        currency: 'INR',
+        status: InvoiceStatus.PAID,
+        paidAt: new Date(),
+        dueDate: new Date(),
         metadata: {
           schoolName: subscription.school.name,
           planName: subscription.plan.name,
+          studentCount: subscription.studentCount,
         },
       },
     });

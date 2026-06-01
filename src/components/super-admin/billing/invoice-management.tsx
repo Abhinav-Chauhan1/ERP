@@ -211,7 +211,7 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: currency,
-    }).format(amount / 100);
+    }).format(amount); // Amount stored in INR
   };
 
   const getDaysOverdue = (dueDate: Date) => {
@@ -576,8 +576,8 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
               <Input
                 id="refund-amount"
                 type="number"
-                placeholder={selectedInvoice ? (selectedInvoice.amount / 100).toString() : "0"}
-                max={selectedInvoice ? selectedInvoice.amount / 100 : 0}
+                placeholder={selectedInvoice ? selectedInvoice.amount.toString() : "0"}
+                max={selectedInvoice ? selectedInvoice.amount : 0}
               />
               <p className="text-sm text-muted-foreground mt-1">
                 Maximum: {selectedInvoice ? formatCurrency(selectedInvoice.amount) : "₹0"}

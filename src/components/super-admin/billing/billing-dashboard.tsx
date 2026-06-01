@@ -130,7 +130,7 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 0,
-    }).format(amount / 100); // Convert paise to rupees
+    }).format(amount); // Amount already stored in INR
   };
 
   const getStatusBadgeVariant = (status: string) => {

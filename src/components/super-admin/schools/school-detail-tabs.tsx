@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -162,13 +163,13 @@ export interface SchoolDetailData {
     }>;
 }
 
-function formatINR(paise: number) {
+function formatINR(rupees: number) {
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
-    }).format(paise / 100);
+    }).format(rupees); // amounts stored in INR, not paise
 }
 
 function statusColor(s: string) {
@@ -595,7 +596,7 @@ export function SchoolDetailTabs({ school }: { school: SchoolDetailData }) {
                 <div className="flex items-center gap-3">
                     {school.logo && (
                         <img
-                            src={school.logo}
+                            src={resolveR2Url(school.logo) ?? school.logo}
                             alt={`${school.name} logo`}
                             className="w-11 h-11 rounded-lg object-cover border border-gray-200"
                         />

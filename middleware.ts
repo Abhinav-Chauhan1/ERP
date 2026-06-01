@@ -26,6 +26,7 @@ const publicRoutes = [
   /^\/api\/webhooks/,
   /^\/api\/payments\/webhook/,     // Cashfree fee payment webhook (called by Cashfree servers)
   /^\/api\/subscription\/webhook/, // Cashfree subscription webhook (called by Cashfree servers)
+  /^\/api\/r2\/image/,             // R2 image proxy (handles its own auth; logos needed before login)
   /^\/api\/csrf-token/,
   /^\/api\/web-vitals/,
   /^\/api\/subdomain/, // Subdomain validation API

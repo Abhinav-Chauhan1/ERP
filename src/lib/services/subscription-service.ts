@@ -7,7 +7,7 @@ import {
   PaymentStatus
 } from '@prisma/client';
 import { billingService } from './billing-service';
-import { PLAN_RANK, type PlanType } from '@/lib/config/plan-features';
+import { PLAN_RANK, calcMonthlyBill, type PlanType } from '@/lib/config/plan-features';
 
 function getPlanRank(planName: string): number {
   return PLAN_RANK[planName as PlanType] ?? 0;
@@ -233,8 +233,9 @@ export class SubscriptionService {
         newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
       }
 
-      // Create renewal invoice
-      const renewalInvoice = await billingService.generateInvoice(subscriptionId);
+      // Create renewal invoice with the correct calculated amount
+      const renewalAmount = calcMonthlyBill(subscription.plan.name as PlanType, subscription.studentCount || 1);
+      const renewalInvoice = await billingService.generateInvoice(subscriptionId, renewalAmount);
 
       // Update subscription period
       const renewedSubscription = await prisma.enhancedSubscription.update({
@@ -374,8 +375,9 @@ export class SubscriptionService {
         include: { plan: true, school: true }
       });
 
-      // Generate first paid invoice
-      await billingService.generateInvoice(data.subscriptionId);
+      // Generate first paid invoice with the calculated amount
+      const trialAmount = calcMonthlyBill(convertedSubscription.plan.name as PlanType, convertedSubscription.studentCount || 1);
+      await billingService.generateInvoice(data.subscriptionId, trialAmount);
 
       return convertedSubscription;
     } catch (error) {

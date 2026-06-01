@@ -1,28 +1,25 @@
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { planHasFeature, type FeatureKey, type PlanType } from "@/lib/config/plan-features";
 
-// Cache plan lookups within the same request to avoid redundant DB hits
-const planCache = new Map<string, PlanType>();
+// Request-scoped cache — safe in server components and API routes
+const getSchoolPlanCached = cache(async (schoolId: string): Promise<PlanType | null> => {
+  const school = await db.school.findUnique({
+    where: { id: schoolId },
+    select: { plan: true },
+  });
+  return school ? (school.plan as PlanType) : null;
+});
 
 export async function requirePlanFeature(schoolId: string, feature: FeatureKey): Promise<void> {
   if (!schoolId) {
     throw new Error("School context required to check plan features.");
   }
 
-  let plan = planCache.get(schoolId);
+  const plan = await getSchoolPlanCached(schoolId);
 
   if (!plan) {
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { plan: true },
-    });
-
-    if (!school) {
-      throw new Error("School not found.");
-    }
-
-    plan = school.plan as PlanType;
-    planCache.set(schoolId, plan);
+    throw new Error("School not found.");
   }
 
   if (!planHasFeature(plan, feature)) {

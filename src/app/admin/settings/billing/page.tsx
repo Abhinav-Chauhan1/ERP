@@ -15,7 +15,11 @@ import {
 } from "@/lib/config/plan-features";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Lock, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Lock, ArrowUpRight, CreditCard, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link";
+import { CancelSubscriptionButton } from "@/components/admin/settings/cancel-subscription-button";
 
 
 // ── Plan pill colours ─────────────────────────────────────────────────────────
@@ -138,13 +142,31 @@ export default async function BillingPage() {
           <CardTitle className="text-base">Current Plan</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${PLAN_BADGE_CLASS[plan]}`}>
-              {plan}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Active since {school.createdAt.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${PLAN_BADGE_CLASS[plan]}`}>
+                {plan}
+              </span>
+              {subscription && (
+                <Badge variant="outline" className={
+                  subscription.status === "ACTIVE"    ? "text-emerald-700 border-emerald-300" :
+                  subscription.status === "PAST_DUE"  ? "text-amber-700 border-amber-300" :
+                  subscription.status === "INCOMPLETE" ? "text-slate-600 border-slate-300" :
+                  "text-red-700 border-red-300"
+                }>
+                  {subscription.status === "ACTIVE" ? "✓ Active" : subscription.status}
+                </Badge>
+              )}
+              <span className="text-sm text-muted-foreground">
+                Since {school.createdAt.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+              </span>
+            </div>
+            <Link href="/admin/settings/plan">
+              <Button size="sm" className="gap-1.5">
+                <CreditCard className="h-4 w-4" />
+                {subscription?.status === "ACTIVE" ? "Manage Plan" : "Subscribe / Upgrade"}
+              </Button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -169,6 +191,31 @@ export default async function BillingPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Expiry / renewal warning ── */}
+      {subscription?.status === "ACTIVE" && (() => {
+        const daysLeft = Math.ceil((subscription.currentPeriodEnd.getTime() - Date.now()) / 86400000);
+        if (daysLeft > 14) return null;
+        return (
+          <Alert className="border-amber-300 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 flex flex-wrap items-center justify-between gap-3">
+              <span>
+                Your subscription expires on{" "}
+                <strong>{subscription.currentPeriodEnd.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</strong>
+                {daysLeft <= 3 ? " — access will be restricted soon." : "."}
+                {" "}Renew now to avoid interruption.
+              </span>
+              <Link
+                href="/admin/settings/plan"
+                className="shrink-0 inline-flex items-center gap-1 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+              >
+                Renew Now <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       {/* ── Section 2: Usage this month ── */}
       <Card>
@@ -242,13 +289,13 @@ export default async function BillingPage() {
                   ₹{PLAN_LIMITS[nudge.upgradesTo].pricePerStudent}/student/mo — Min ₹{PLAN_LIMITS[nudge.upgradesTo].minMonthly.toLocaleString()}/mo
                 </p>
               </div>
-              <a
-                href="mailto:support@sikshamitra.in?subject=Upgrade%20Request"
+              <Link
+                href="/admin/settings/plan"
                 className="inline-flex items-center gap-1.5 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors whitespace-nowrap"
               >
-                Contact us to upgrade
+                Upgrade Now
                 <ArrowUpRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -284,6 +331,25 @@ export default async function BillingPage() {
                 </div>
               </div>
 
+              {subscription.status === "ACTIVE" && !subscription.cancelAtPeriodEnd && (
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Renews on{" "}
+                    {subscription.currentPeriodEnd.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                  <CancelSubscriptionButton periodEnd={subscription.currentPeriodEnd.toISOString()} />
+                </div>
+              )}
+              {subscription.cancelAtPeriodEnd && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  Cancels on{" "}
+                  <strong>
+                    {subscription.currentPeriodEnd.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                  </strong>
+                  . You can re-subscribe anytime.
+                </p>
+              )}
+
               {subscription.invoices.length > 0 && (
                 <div>
                   <p className="text-sm font-medium mb-2">Recent invoices</p>
@@ -294,7 +360,7 @@ export default async function BillingPage() {
                           {inv.createdAt.toLocaleDateString("en-IN")}
                         </span>
                         <span className="font-medium">
-                          ₹{(inv.amount / 100).toLocaleString()}
+                          ₹{inv.amount.toLocaleString()}
                         </span>
                         <Badge
                           variant="outline"

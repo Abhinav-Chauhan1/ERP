@@ -225,6 +225,7 @@ export const adminRoutes: RouteItem[] = [
         icon: Settings,
         submenu: [
             { label: "Billing & Plan", href: "/admin/settings/billing" },
+            { label: "Choose / Upgrade Plan", href: "/admin/settings/plan" },
             { label: "General", href: "/admin/settings" },
             { label: "Branding", href: "/admin/settings/branding" },
             { label: "Permissions", href: "/admin/settings/permissions" },

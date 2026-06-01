@@ -9,6 +9,7 @@ import {
   AlertCircle, Eye, EyeOff, Loader2,
   CheckCircle2, School, ArrowLeft, ArrowRight,
 } from "lucide-react"
+import { resolveR2Url } from "@/lib/utils/r2-url"
 
 
 interface SchoolInfo {
@@ -224,7 +225,7 @@ export function UnifiedLoginForm() {
       >
         {validatedSchool.logo ? (
           <Image
-            src={validatedSchool.logo}
+            src={resolveR2Url(validatedSchool.logo) ?? validatedSchool.logo}
             alt={validatedSchool.name}
             width={40}
             height={40}

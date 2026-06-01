@@ -3,9 +3,9 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { getSystemSettings } from "@/lib/utils/cached-queries";
 import { encryptCredential, decryptCredential } from "@/lib/utils/encrypt-credentials";
 import { getSchoolCashfreeInstance } from "@/lib/utils/payment-gateway";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 /**
  * Payment Configuration Type
@@ -35,8 +35,9 @@ export async function getPaymentConfig() {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
     
-    // Use cached query for better performance with schoolId
-    const settings = await getSystemSettings(schoolId);
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin: false }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
     
     if (!settings) {
       return { 

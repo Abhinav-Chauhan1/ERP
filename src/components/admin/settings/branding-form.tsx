@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SchoolSettings } from "@prisma/client";
 import Image from "next/image";
+import { resolveR2Url } from "@/lib/utils/r2-url";
 import { updateSchoolInfo, updateAppearanceSettings } from "@/lib/actions/settingsActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,7 +173,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
             {formData.logo && (
               <div className="relative mt-2 h-16 w-48">
                 <Image
-                  src={formData.logo}
+                  src={resolveR2Url(formData.logo) ?? formData.logo}
                   alt="Logo preview"
                   fill
                   className="object-contain"

@@ -14,7 +14,8 @@ import { cache } from "react";
  */
 export const getSchoolSettingsRequestMemo = cache(async () => {
   const { getCurrentSchoolId } = await import("@/lib/auth/tenant");
-  const { getSchoolSettings } = await import("@/lib/utils/cached-queries");
+  const { runWithTenantContext } = await import("@/lib/tenant-context");
+  const { db } = await import("@/lib/db");
 
   const schoolId = await getCurrentSchoolId();
 
@@ -23,7 +24,13 @@ export const getSchoolSettingsRequestMemo = cache(async () => {
     return null;
   }
 
-  return getSchoolSettings(schoolId);
+  // Use runWithTenantContext with a direct db query (not the cachedQuery wrapper).
+  // unstable_cache severs AsyncLocalStorage propagation, so the Prisma RLS
+  // middleware inside cachedQuery can never see the context we set here.
+  // React.cache() above already provides per-request deduplication.
+  return runWithTenantContext({ schoolId, isSuperAdmin: false }, () =>
+    db.schoolSettings.findUnique({ where: { schoolId } })
+  );
 });
 
 // Backward compatibility alias
