@@ -282,7 +282,7 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                     Register this webhook URL in your Cashfree dashboard under Developers → Webhooks:
                     <br />
                     <code className="font-mono text-xs bg-muted px-1 rounded break-all">
-                      {typeof window !== "undefined" ? window.location.origin : ""}/api/payments/webhook
+                      {process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/payments/webhook
                     </code>
                   </AlertDescription>
                 </Alert>

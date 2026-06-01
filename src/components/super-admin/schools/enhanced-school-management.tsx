@@ -540,7 +540,8 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}>
+                          <DropdownMenuItem onClick={() => router.push(`/super-admin/schools/${school.id}`)}>
+
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
