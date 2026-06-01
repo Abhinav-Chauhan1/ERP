@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -176,6 +178,66 @@ function statusColor(s: string) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Activate Subscription Panel (shown when no subscription exists)      */
+/* ------------------------------------------------------------------ */
+
+function ActivateSubscriptionPanel({ schoolId, plan }: { schoolId: string; plan: string }) {
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+
+    const handleActivate = async () => {
+        setLoading(true);
+        try {
+            // Create subscription via super-admin subscriptions route, then activate it
+            const createRes = await fetch('/api/super-admin/billing/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolId, planId: await getPlanIdForName(plan) }),
+            });
+            if (!createRes.ok) throw new Error(await createRes.text());
+            const sub = await createRes.json();
+
+            const activateRes = await fetch(`/api/super-admin/billing/subscriptions/${sub.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'activate' }),
+            });
+            if (!activateRes.ok) throw new Error(await activateRes.text());
+
+            toast.success('Subscription activated successfully');
+            router.refresh();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to activate subscription');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="text-center py-4 space-y-3">
+            <AlertCircle className="h-7 w-7 text-amber-400 mx-auto" />
+            <div>
+                <p className="text-sm font-medium text-gray-700 capitalize">{plan.toLowerCase()} Plan</p>
+                <p className="text-xs text-gray-400">No active subscription record</p>
+            </div>
+            <Button size="sm" onClick={handleActivate} disabled={loading}>
+                {loading ? 'Activating…' : 'Activate Subscription'}
+            </Button>
+        </div>
+    );
+}
+
+async function getPlanIdForName(planName: string): Promise<string> {
+    const res = await fetch('/api/super-admin/plans');
+    if (!res.ok) throw new Error('Failed to fetch plans');
+    const data = await res.json();
+    const plans: Array<{ id: string; name: string }> = data.data ?? data;
+    const match = plans.find(p => p.name.toUpperCase() === planName.toUpperCase());
+    if (!match) throw new Error(`No plan found for ${planName}`);
+    return match.id;
+}
+
+/* ------------------------------------------------------------------ */
 /* Overview Tab                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -305,11 +367,7 @@ function OverviewTab({ school }: { school: SchoolDetailData }) {
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center py-4">
-                                <AlertCircle className="h-7 w-7 text-gray-300 mx-auto mb-2" />
-                                <p className="text-sm text-gray-500 capitalize">{school.plan.toLowerCase()} plan</p>
-                                <p className="text-xs text-gray-400">No active subscription record</p>
-                            </div>
+                            <ActivateSubscriptionPanel schoolId={school.id} plan={school.plan} />
                         )}
                     </CardContent>
                 </Card>

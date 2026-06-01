@@ -237,7 +237,7 @@ model School {
 
 model SubscriptionPlan {
   id                   String                 @id @default(cuid())
-  name                 String
+  name                 String                 @unique
   description          String?
   /// @deprecated — kept for backward compat with legacy data
   amount               Int                    @default(0)
@@ -264,7 +264,8 @@ model EnhancedSubscription {
   currentPeriodEnd       DateTime
   cancelAtPeriodEnd      Boolean            @default(false)
   trialEnd               DateTime?
-  metadata               Json?
+  studentCount           Int                @default(0)
+  metadata               Json               @default("{}")
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   cfOrderRef             String?
@@ -281,12 +282,13 @@ model EnhancedSubscription {
 model Invoice {
   id                String               @id @default(cuid())
   subscriptionId    String
+  invoiceNumber     String?              @unique
   amount            Int
   currency          String               @default("inr")
   status            InvoiceStatus
   dueDate           DateTime
   paidAt            DateTime?
-  metadata          Json?
+  metadata          Json                 @default("{}")
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)

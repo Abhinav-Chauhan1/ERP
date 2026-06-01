@@ -247,6 +247,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Create initial EnhancedSubscription so billing records exist from day one
+    try {
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      await db.enhancedSubscription.create({
+        data: {
+          schoolId: school.id,
+          planId: subscriptionPlan.id,
+          status: 'INCOMPLETE', // Becomes ACTIVE once first payment is made
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          metadata: {},
+        },
+      });
+    } catch (subError) {
+      console.error('Failed to create initial subscription record for school:', subError);
+      // Non-fatal — school still usable; subscription can be created later via billing UI
+    }
+
     // Log comprehensive school creation event
     await logSchoolManagementAction(
       session.user.id,

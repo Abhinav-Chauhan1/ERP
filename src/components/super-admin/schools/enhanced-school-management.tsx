@@ -93,15 +93,15 @@ interface School {
   };
   subscription: {
     id: string;
-    endDate: Date;
-    paymentStatus: string;
+    currentPeriodEnd: Date;
+    status: string;
   } | null;
   subscriptions: Array<{
     id: string;
     isActive: boolean;
     startDate: Date;
-    endDate: Date;
-    paymentStatus: string;
+    currentPeriodEnd: Date;
+    status: string;
   }>;
   primaryAdmin?: {
     id: string;
@@ -620,8 +620,8 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
 
                     {school.subscription && (
                       <div className="text-xs text-gray-500 mt-1.5 flex items-center justify-between">
-                        <span>₹{getPlanPrice(school.plan)}/mo</span>
-                        <span>Exp. {new Date(school.subscription.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</span>
+                        <span>{getPlanPrice(school.plan)}</span>
+                        <span>Exp. {new Date(school.subscription.currentPeriodEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</span>
                       </div>
                     )}
                   </div>

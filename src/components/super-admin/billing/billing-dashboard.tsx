@@ -339,9 +339,13 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
                     {data.subscriptionsByStatus.map((status) => (
                       <div key={status.status} className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <div 
-                            className={`w-3 h-3 rounded-full bg-${status.color}-500`}
-                          />
+                          <div className={`w-3 h-3 rounded-full ${
+                            status.color === 'green'  ? 'bg-green-500'  :
+                            status.color === 'red'    ? 'bg-red-500'    :
+                            status.color === 'yellow' ? 'bg-yellow-500' :
+                            status.color === 'blue'   ? 'bg-blue-500'   :
+                            'bg-gray-400'
+                          }`} />
                           <span className="text-sm font-medium">{status.status}</span>
                         </div>
                         <Badge variant="outline">{status.count}</Badge>

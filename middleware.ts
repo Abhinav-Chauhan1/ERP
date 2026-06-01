@@ -33,6 +33,7 @@ const publicRoutes = [
   /^\/api\/otp/, // OTP generation API
   /^\/api\/health/,
   /^\/api\/status/,
+  /^\/api\/cron\//,             // Cron jobs (protected by CRON_SECRET, not auth session)
   /^\/about/,
   /^\/contact/,
   /^\/privacy/,
