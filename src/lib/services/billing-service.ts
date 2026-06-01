@@ -1,20 +1,16 @@
-import Razorpay from 'razorpay';
 import { prisma } from '@/lib/db';
-import { 
-  EnhancedSubscription, 
-  Invoice, 
-  Payment, 
-  SubscriptionStatus, 
-  InvoiceStatus, 
+import {
+  EnhancedSubscription,
+  Invoice,
+  Payment,
+  SubscriptionStatus,
+  InvoiceStatus,
   PaymentStatus,
-  Prisma
+  Prisma,
+  PlanType
 } from '@prisma/client';
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+import { createCashfreeOrder, refundCashfreePayment } from '@/lib/utils/payment-gateway';
+import { calcMonthlyBill, PLAN_LIMITS, type PlanType as PlanTypeConfig } from '@/lib/config/plan-features';
 
 export interface SubscriptionData {
   schoolId: string;
@@ -90,6 +86,11 @@ export interface PaymentHistory {
   paymentMethod: string | null;
   failureReason: string | null;
   createdAt: Date;
+}
+
+export interface SubscriptionCheckoutResult {
+  paymentSessionId: string;
+  cfOrderId: string;
 }
 
 /**
@@ -228,7 +229,6 @@ export class BillingService {
   private validateSubscriptionFilters(filters: SubscriptionFilters): ValidatedSubscriptionFilters {
     const errors: string[] = [];
 
-    // Validate pagination
     const limit = Math.min(filters.limit || BillingService.DEFAULT_LIMIT, BillingService.MAX_LIMIT);
     const offset = Math.max(filters.offset || 0, 0);
 
@@ -240,16 +240,14 @@ export class BillingService {
       errors.push('Offset must be non-negative');
     }
 
-    // Validate sort parameters
-    const sortBy = BillingService.ALLOWED_SORT_FIELDS.includes(filters.sortBy as any) 
+    const sortBy = BillingService.ALLOWED_SORT_FIELDS.includes(filters.sortBy as any)
       ? filters.sortBy as typeof BillingService.ALLOWED_SORT_FIELDS[number]
       : 'createdAt';
 
-    const sortOrder = ['asc', 'desc'].includes(filters.sortOrder || 'desc') 
-      ? filters.sortOrder as 'asc' | 'desc' 
+    const sortOrder = ['asc', 'desc'].includes(filters.sortOrder || 'desc')
+      ? filters.sortOrder as 'asc' | 'desc'
       : 'desc';
 
-    // Validate status if provided
     if (filters.status && !Object.values(SubscriptionStatus).includes(filters.status as SubscriptionStatus)) {
       errors.push(`Invalid status: ${filters.status}. Valid values: ${Object.values(SubscriptionStatus).join(', ')}`);
     }
@@ -258,141 +256,124 @@ export class BillingService {
       throw new Error(`Validation errors: ${errors.join(', ')}`);
     }
 
-    return {
-      ...filters,
-      limit,
-      offset,
-      sortBy,
-      sortOrder
-    };
+    return { ...filters, limit, offset, sortBy, sortOrder };
   }
 
   /**
-   * Create a new subscription with Razorpay integration
+   * Create a subscription checkout session via Cashfree
    */
-  async createSubscription(data: SubscriptionData): Promise<EnhancedSubscription> {
-    try {
-      // Get the subscription plan
-      const plan = await prisma.subscriptionPlan.findUnique({
-        where: { id: data.planId }
-      });
+  async createSubscriptionCheckout(
+    schoolId: string,
+    planId: string,
+    studentCount: number
+  ): Promise<SubscriptionCheckoutResult> {
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) throw new Error(`Subscription plan not found: ${planId}`);
 
-      if (!plan) {
-        throw new Error(`Subscription plan not found: ${data.planId}`);
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) throw new Error(`School not found: ${schoolId}`);
+
+    const amount = calcMonthlyBill(plan.name as PlanTypeConfig, studentCount);
+    const orderId = `SUB-${schoolId.slice(-8)}-${Date.now()}`;
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
+
+    const { cfOrderId, paymentSessionId } = await createCashfreeOrder({
+      orderId,
+      amount,
+      currency: 'INR',
+      customerName: school.name,
+      customerEmail: school.email || `${school.schoolCode}@school.com`,
+      customerPhone: school.phone || '9999999999',
+      returnUrl: `${baseUrl}/admin/settings/billing/success?cfOrderId=${orderId}&planId=${planId}`,
+      notifyUrl: `${baseUrl}/api/subscription/webhook`,
+    });
+
+    // Record a pending Payment for this checkout
+    await prisma.payment.create({
+      data: {
+        subscriptionId: await this.getOrCreatePendingSubscriptionId(schoolId, planId),
+        amount,
+        currency: 'INR',
+        status: PaymentStatus.PENDING,
+        cfPaymentId: null,
+        paymentSessionId: cfOrderId, // store cfOrderId here for webhook lookup
       }
+    });
 
-      // Get the school
-      const school = await prisma.school.findUnique({
-        where: { id: data.schoolId }
-      });
+    return { paymentSessionId, cfOrderId };
+  }
 
-      if (!school) {
-        throw new Error(`School not found: ${data.schoolId}`);
+  private async getOrCreatePendingSubscriptionId(schoolId: string, planId: string): Promise<string> {
+    // Check for existing pending/incomplete subscription
+    const existing = await prisma.enhancedSubscription.findFirst({
+      where: { schoolId, status: { in: [SubscriptionStatus.INCOMPLETE, SubscriptionStatus.PAST_DUE] } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existing) return existing.id;
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    const sub = await prisma.enhancedSubscription.create({
+      data: {
+        schoolId,
+        planId,
+        status: SubscriptionStatus.INCOMPLETE,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        metadata: {},
       }
+    });
+    return sub.id;
+  }
 
-      // Create Razorpay subscription plan if not exists
-      let razorpayPlanId = plan.razorpayPlanId;
-      
-      if (!razorpayPlanId) {
-        const razorpayPlan = await razorpay.plans.create({
-          period: plan.interval === 'month' ? 'monthly' : 'yearly',
-          interval: 1,
-          item: {
-            name: plan.name,
-            amount: plan.amount,
-            currency: plan.currency.toUpperCase(),
-            description: plan.description || `${plan.name} subscription plan`
-          },
-          notes: {
-            planId: data.planId,
-            schoolId: data.schoolId
-          }
-        });
-        
-        razorpayPlanId = razorpayPlan.id;
-        
-        // Update plan with Razorpay plan ID
-        await prisma.subscriptionPlan.update({
-          where: { id: data.planId },
-          data: { razorpayPlanId }
-        });
-      }
-
-      // Create Razorpay customer if not exists
-      let razorpayCustomerId = school.razorpayCustomerId;
-      
-      if (!razorpayCustomerId) {
-        const customer = await razorpay.customers.create({
-          name: school.name,
-          email: school.email || `${school.schoolCode}@school.com`,
-          contact: school.phone || '',
-          notes: {
-            schoolId: data.schoolId,
-            schoolCode: school.schoolCode
-          }
-        });
-        
-        razorpayCustomerId = customer.id;
-        
-        // Update school with Razorpay customer ID
-        await prisma.school.update({
-          where: { id: data.schoolId },
-          data: { razorpayCustomerId }
-        });
-      }
-
-      // Create Razorpay subscription
-      const subscriptionParams: any = {
-        plan_id: razorpayPlanId,
-        customer_id: razorpayCustomerId,
-        quantity: 1,
-        notes: {
-          schoolId: data.schoolId,
-          planId: data.planId,
-          ...data.metadata
+  /**
+   * Activate a subscription after successful Cashfree payment
+   */
+  async activateSubscriptionFromPayment(cfOrderId: string, cfPaymentId: string): Promise<void> {
+    // Find pending Payment by cfOrderId stored in paymentSessionId field
+    const payment = await prisma.payment.findFirst({
+      where: { paymentSessionId: cfOrderId },
+      include: {
+        subscription: {
+          include: { plan: true }
         }
-      };
-
-      if (data.trialDays && data.trialDays > 0) {
-        const trialEnd = new Date();
-        trialEnd.setDate(trialEnd.getDate() + data.trialDays);
-        subscriptionParams.start_at = Math.floor(trialEnd.getTime() / 1000);
       }
+    });
 
-      const razorpaySubscription = await razorpay.subscriptions.create(subscriptionParams);
-
-      // Calculate period dates
-      const currentPeriodStart = new Date();
-      const currentPeriodEnd = new Date();
-      if (plan.interval === 'month') {
-        currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-      } else {
-        currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
-      }
-
-      // Create local subscription record
-      const subscription = await prisma.enhancedSubscription.create({
-        data: {
-          schoolId: data.schoolId,
-          planId: data.planId,
-          razorpaySubscriptionId: razorpaySubscription.id,
-          status: this.mapRazorpayStatusToLocal(razorpaySubscription.status),
-          currentPeriodStart,
-          currentPeriodEnd,
-          trialEnd: data.trialDays ? new Date(Date.now() + data.trialDays * 24 * 60 * 60 * 1000) : null,
-          metadata: data.metadata || {},
-        },
-        include: {
-          plan: true,
-          school: true
-        }
-      });
-
-      return subscription;
-    } catch (error) {
-      console.error('Error creating subscription:', error);
-      throw new Error(`Failed to create subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (!payment) {
+      throw new Error(`No pending payment found for cfOrderId: ${cfOrderId}`);
     }
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    await Promise.all([
+      prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.COMPLETED,
+          cfPaymentId,
+          processedAt: now,
+        }
+      }),
+      prisma.enhancedSubscription.update({
+        where: { id: payment.subscriptionId },
+        data: {
+          status: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          cfOrderRef: cfOrderId,
+        }
+      }),
+      prisma.school.update({
+        where: { id: payment.subscription.schoolId },
+        data: { plan: payment.subscription.plan.name as PlanType }
+      }),
+    ]);
   }
 
   /**
@@ -409,38 +390,18 @@ export class BillingService {
         throw new Error(`Subscription not found: ${subscriptionId}`);
       }
 
-      if (!subscription.razorpaySubscriptionId) {
-        throw new Error(`Razorpay subscription ID not found for subscription: ${subscriptionId}`);
-      }
-
       const updateParams: any = {};
 
-      // Handle plan change
       if (changes.planId) {
-        const newPlan = await prisma.subscriptionPlan.findUnique({
-          where: { id: changes.planId }
-        });
-
-        if (!newPlan) {
-          throw new Error(`Invalid plan: ${changes.planId}`);
-        }
-
-        // For Razorpay, we need to cancel current subscription and create new one
-        // This is a simplified approach - in production, you might want to handle this differently
-        await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, true);
-
+        const newPlan = await prisma.subscriptionPlan.findUnique({ where: { id: changes.planId } });
+        if (!newPlan) throw new Error(`Invalid plan: ${changes.planId}`);
         updateParams.planId = changes.planId;
       }
 
-      // Handle cancellation
       if (changes.cancelAtPeriodEnd !== undefined) {
-        if (changes.cancelAtPeriodEnd) {
-          await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, true);
-        }
         updateParams.cancelAtPeriodEnd = changes.cancelAtPeriodEnd;
       }
 
-      // Handle metadata
       if (changes.metadata) {
         updateParams.metadata = {
           ...subscription.metadata as Record<string, string>,
@@ -448,14 +409,10 @@ export class BillingService {
         };
       }
 
-      // Update local subscription record
       const updatedSubscription = await prisma.enhancedSubscription.update({
         where: { id: subscriptionId },
         data: updateParams,
-        include: {
-          plan: true,
-          school: true
-        }
+        include: { plan: true, school: true }
       });
 
       return updatedSubscription;
@@ -466,135 +423,31 @@ export class BillingService {
   }
 
   /**
-   * Process a payment using Razorpay
-   */
-  async processPayment(paymentData: PaymentData): Promise<PaymentResult> {
-    try {
-      const order = await razorpay.orders.create({
-        amount: paymentData.amount,
-        currency: paymentData.currency || 'INR',
-        receipt: paymentData.receipt || `receipt_${Date.now()}`,
-        notes: paymentData.notes || {}
-      });
-
-      return {
-        id: order.id,
-        status: order.status,
-        amount: typeof order.amount === 'string' ? parseInt(order.amount, 10) : order.amount,
-        currency: order.currency,
-        orderId: order.id,
-        receipt: order.receipt,
-      };
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      throw new Error(`Failed to process payment: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Generate an invoice for a subscription
+   * Generate an invoice record (no external provider calls)
    */
   async generateInvoice(subscriptionId: string): Promise<Invoice> {
-    try {
-      const subscription = await prisma.enhancedSubscription.findUnique({
-        where: { id: subscriptionId },
-        include: { plan: true, school: true }
-      });
+    const subscription = await prisma.enhancedSubscription.findUnique({
+      where: { id: subscriptionId },
+      include: { plan: true, school: true }
+    });
 
-      if (!subscription) {
-        throw new Error(`Subscription not found: ${subscriptionId}`);
-      }
-
-      // For Razorpay, we create invoices manually or use their invoice API
-      const invoiceData = {
-        type: 'invoice' as const,
-        description: `Invoice for ${subscription.plan.name} subscription`,
-        partial_payment: false,
-        customer: {
-          name: subscription.school.name,
-          email: subscription.school.email || `${subscription.school.schoolCode}@school.com`,
-          contact: subscription.school.phone || ''
-        },
-        line_items: [{
-          name: subscription.plan.name,
-          description: subscription.plan.description || `${subscription.plan.name} subscription`,
-          amount: subscription.plan.amount,
-          currency: subscription.plan.currency.toUpperCase(),
-          quantity: 1
-        }],
-        sms_notify: 1 as const,
-        email_notify: 1 as const,
-        expire_by: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
-        notes: {
-          subscriptionId: subscription.id,
-          schoolId: subscription.schoolId,
-          planId: subscription.planId
-        }
-      };
-
-      const razorpayInvoice = await razorpay.invoices.create(invoiceData) as any;
-
-      // Create local invoice record
-      const invoice = await prisma.invoice.create({
-        data: {
-          subscriptionId: subscription.id,
-          razorpayInvoiceId: razorpayInvoice.id,
-          amount: subscription.plan.amount,
-          currency: subscription.plan.currency,
-          status: this.mapRazorpayInvoiceStatusToLocal(razorpayInvoice.status),
-          dueDate: new Date(razorpayInvoice.expire_by * 1000),
-          metadata: {
-            razorpayInvoiceNumber: razorpayInvoice.invoice_number || '',
-            razorpayShortUrl: razorpayInvoice.short_url || '',
-          },
-        },
-      });
-
-      return invoice;
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      throw new Error(`Failed to generate invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${subscriptionId}`);
     }
-  }
 
-  /**
-   * Handle Razorpay webhooks
-   */
-  async handleWebhook(webhookData: { event: string; payload: { payment?: { entity: any }; subscription?: { entity: any }; invoice?: { entity: any } } }): Promise<void> {
-    try {
-      switch (webhookData.event) {
-        case 'payment.captured':
-          if (webhookData.payload.payment) {
-            await this.handlePaymentCaptured(webhookData.payload.payment.entity);
-          }
-          break;
-        case 'payment.failed':
-          if (webhookData.payload.payment) {
-            await this.handlePaymentFailed(webhookData.payload.payment.entity);
-          }
-          break;
-        case 'subscription.charged':
-          if (webhookData.payload.subscription) {
-            await this.handleSubscriptionCharged(webhookData.payload.subscription.entity);
-          }
-          break;
-        case 'subscription.cancelled':
-          if (webhookData.payload.subscription) {
-            await this.handleSubscriptionCancelled(webhookData.payload.subscription.entity);
-          }
-          break;
-        case 'invoice.paid':
-          if (webhookData.payload.invoice) {
-            await this.handleInvoicePaid(webhookData.payload.invoice.entity);
-          }
-          break;
-        default:
-          console.log(`Unhandled webhook event type: ${webhookData.event}`);
-      }
-    } catch (error) {
-      console.error('Error handling webhook:', error);
-      throw new Error(`Failed to handle webhook: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    return prisma.invoice.create({
+      data: {
+        subscriptionId: subscription.id,
+        amount: subscription.plan.amount,
+        currency: subscription.plan.currency,
+        status: InvoiceStatus.OPEN,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        metadata: {
+          schoolName: subscription.school.name,
+          planName: subscription.plan.name,
+        },
+      },
+    });
   }
 
   /**
@@ -603,27 +456,16 @@ export class BillingService {
   async getPaymentHistory(schoolId: string): Promise<PaymentHistory[]> {
     try {
       const payments = await prisma.payment.findMany({
-        where: {
-          subscription: {
-            schoolId: schoolId
-          }
-        },
+        where: { subscription: { schoolId } },
         include: {
           subscription: {
             include: {
               plan: true,
-              school: {
-                select: {
-                  name: true,
-                  schoolCode: true
-                }
-              }
+              school: { select: { name: true, schoolCode: true } }
             }
           }
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
+        orderBy: { createdAt: 'desc' }
       });
 
       return payments.map(payment => ({
@@ -635,7 +477,6 @@ export class BillingService {
         paymentMethod: payment.paymentMethod,
         failureReason: payment.failureReason,
         createdAt: payment.createdAt,
-        // Now we have access to subscription and plan data without additional queries
         subscription: payment.subscription,
       }));
     } catch (error) {
@@ -645,33 +486,22 @@ export class BillingService {
   }
 
   /**
-   * Process a refund
+   * Process a refund via Cashfree
    */
   async processRefund(paymentId: string, amount?: number): Promise<RefundResult> {
     try {
-      const payment = await prisma.payment.findUnique({
-        where: { id: paymentId }
-      });
+      const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
 
-      if (!payment) {
-        throw new Error(`Payment not found: ${paymentId}`);
-      }
+      if (!payment) throw new Error(`Payment not found: ${paymentId}`);
+      if (!payment.cfPaymentId) throw new Error(`Cashfree payment ID not found for payment: ${paymentId}`);
+      if (!payment.paymentSessionId) throw new Error(`Order ID not found for payment: ${paymentId}`);
 
-      if (!payment.razorpayPaymentId) {
-        throw new Error(`Razorpay payment ID not found for payment: ${paymentId}`);
-      }
+      const { refundId, status } = await refundCashfreePayment(
+        payment.paymentSessionId,
+        payment.cfPaymentId,
+        amount ?? payment.amount,
+      );
 
-      const refundParams: any = {
-        payment_id: payment.razorpayPaymentId,
-      };
-
-      if (amount) {
-        refundParams.amount = amount;
-      }
-
-      const refund = await razorpay.payments.refund(payment.razorpayPaymentId, refundParams);
-
-      // Update payment status
       await prisma.payment.update({
         where: { id: paymentId },
         data: {
@@ -679,156 +509,16 @@ export class BillingService {
         }
       });
 
-      return {
-        id: refund.id,
-        amount: refund.amount || 0,
-        status: refund.status,
-        reason: typeof refund.notes?.reason === 'string' ? refund.notes.reason : undefined,
-      };
+      return { id: refundId, amount: amount || payment.amount, status };
     } catch (error) {
       console.error('Error processing refund:', error);
       throw new Error(`Failed to process refund: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  // Private helper methods
-
-  private mapRazorpayStatusToLocal(razorpayStatus: string): SubscriptionStatus {
-    switch (razorpayStatus) {
-      case 'created':
-      case 'authenticated':
-      case 'active':
-        return SubscriptionStatus.ACTIVE;
-      case 'past_due':
-        return SubscriptionStatus.PAST_DUE;
-      case 'cancelled':
-        return SubscriptionStatus.CANCELED;
-      case 'completed':
-        return SubscriptionStatus.ACTIVE;
-      case 'expired':
-        return SubscriptionStatus.CANCELED;
-      case 'halted':
-        return SubscriptionStatus.PAUSED;
-      default:
-        return SubscriptionStatus.INCOMPLETE;
-    }
-  }
-
-  private mapRazorpayInvoiceStatusToLocal(razorpayStatus: string | null): InvoiceStatus {
-    switch (razorpayStatus) {
-      case 'draft':
-        return InvoiceStatus.DRAFT;
-      case 'issued':
-        return InvoiceStatus.OPEN;
-      case 'paid':
-        return InvoiceStatus.PAID;
-      case 'cancelled':
-        return InvoiceStatus.VOID;
-      case 'expired':
-        return InvoiceStatus.UNCOLLECTIBLE;
-      default:
-        return InvoiceStatus.DRAFT;
-    }
-  }
-
-  private async handlePaymentCaptured(payment: any): Promise<void> {
-    const subscription = await prisma.enhancedSubscription.findFirst({
-      where: { 
-        OR: [
-          { razorpaySubscriptionId: payment.subscription_id },
-          { school: { razorpayCustomerId: payment.customer_id } }
-        ]
-      }
-    });
-
-    if (subscription) {
-      // Create payment record
-      await prisma.payment.create({
-        data: {
-          subscriptionId: subscription.id,
-          razorpayPaymentId: payment.id,
-          amount: payment.amount,
-          currency: payment.currency,
-          status: PaymentStatus.COMPLETED,
-          paymentMethod: payment.method,
-          processedAt: new Date(),
-        }
-      });
-
-      // Update related invoice if exists
-      await prisma.invoice.updateMany({
-        where: { 
-          subscriptionId: subscription.id,
-          status: InvoiceStatus.OPEN
-        },
-        data: {
-          status: InvoiceStatus.PAID,
-          paidAt: new Date(),
-        }
-      });
-    }
-  }
-
-  private async handlePaymentFailed(payment: any): Promise<void> {
-    const subscription = await prisma.enhancedSubscription.findFirst({
-      where: { 
-        OR: [
-          { razorpaySubscriptionId: payment.subscription_id },
-          { school: { razorpayCustomerId: payment.customer_id } }
-        ]
-      }
-    });
-
-    if (subscription) {
-      // Create failed payment record
-      await prisma.payment.create({
-        data: {
-          subscriptionId: subscription.id,
-          razorpayPaymentId: payment.id,
-          amount: payment.amount,
-          currency: payment.currency,
-          status: PaymentStatus.FAILED,
-          paymentMethod: payment.method,
-          failureReason: payment.error_description || 'Payment failed',
-        }
-      });
-    }
-  }
-
-  private async handleSubscriptionCharged(subscription: any): Promise<void> {
-    await prisma.enhancedSubscription.updateMany({
-      where: { razorpaySubscriptionId: subscription.id },
-      data: {
-        status: this.mapRazorpayStatusToLocal(subscription.status),
-      }
-    });
-  }
-
-  private async handleSubscriptionCancelled(subscription: any): Promise<void> {
-    await prisma.enhancedSubscription.updateMany({
-      where: { razorpaySubscriptionId: subscription.id },
-      data: {
-        status: SubscriptionStatus.CANCELED,
-      }
-    });
-  }
-
-  private async handleInvoicePaid(invoice: any): Promise<void> {
-    await prisma.invoice.updateMany({
-      where: { razorpayInvoiceId: invoice.id },
-      data: {
-        status: InvoiceStatus.PAID,
-        paidAt: new Date(),
-      }
-    });
-  }
-
-  // Additional methods for super admin
   async getAllPayments(): Promise<Payment[]> {
     try {
-      return await prisma.payment.findMany({
-        orderBy: { createdAt: 'desc' }
-      });
+      return await prisma.payment.findMany({ orderBy: { createdAt: 'desc' } });
     } catch (error) {
       console.error('Error getting all payments:', error);
       throw new Error('Failed to get payments');
@@ -839,10 +529,7 @@ export class BillingService {
     try {
       return await prisma.enhancedSubscription.findUnique({
         where: { id },
-        include: {
-          plan: true,
-          school: true
-        }
+        include: { plan: true, school: true }
       });
     } catch (error) {
       console.error('Error getting subscription:', error);

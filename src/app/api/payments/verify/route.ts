@@ -1,23 +1,20 @@
 /**
  * Payment Verification API Route
- * Verifies Razorpay payment signature and updates payment status
- * Requirements: 1.3, 10.2
+ * Verifies Cashfree payment status and updates fee payment record
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
-import { verifyPaymentSignature, fetchPaymentDetails, fetchOrderDetails } from '@/lib/utils/payment-gateway';
+import { verifyCashfreePayment, getSchoolCashfreeInstance } from '@/lib/utils/payment-gateway';
 import { verifyPaymentSchema } from '@/lib/schemaValidation/parent-fee-schemas';
 import { verifyCsrfToken } from '@/lib/utils/csrf';
 import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
 import { getCurrentParent } from '@/lib/utils/payment-helpers';
+import { getSchoolCashfreeCredentials } from '@/lib/actions/paymentConfigActions';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-/**
- * Helper function to verify parent-child relationship
- */
 async function verifyParentChildRelationship(
   parentId: string,
   childId: string
@@ -30,11 +27,10 @@ async function verifyParentChildRelationship(
 
 /**
  * POST /api/payments/verify
- * Verify payment signature and update payment status
+ * Verify Cashfree payment status and record the fee payment
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get current parent
     const parent = await getCurrentParent();
 
     if (!parent) {
@@ -44,7 +40,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limiting check
     const rateLimitResult = await rateLimitMiddleware(parent.id, RateLimitPresets.PAYMENT);
 
     if (rateLimitResult.exceeded) {
@@ -65,10 +60,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Parse and validate request body
     const body = await req.json();
 
-    // Verify CSRF token
     const csrfToken = body.csrf_token || req.headers.get('x-csrf-token');
     const isCsrfValid = await verifyCsrfToken(csrfToken);
 
@@ -81,11 +74,7 @@ export async function POST(req: NextRequest) {
 
     const validated = verifyPaymentSchema.parse(body);
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(
-      parent.id,
-      validated.childId
-    );
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -94,57 +83,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify payment signature
-    const isValidSignature = verifyPaymentSignature({
-      orderId: validated.orderId,
-      paymentId: validated.paymentId,
-      signature: validated.signature,
-    });
-
-    if (!isValidSignature) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid payment signature' },
-        { status: 400 }
-      );
-    }
-
-    // CRITICAL: Validate amount via Razorpay — never trust the client-submitted amount.
-    // Fetch the authoritative order from Razorpay and verify the payment amount matches.
-    const [razorpayOrder, razorpayPayment] = await Promise.all([
-      fetchOrderDetails(validated.orderId),
-      fetchPaymentDetails(validated.paymentId),
-    ]);
-
-    const orderAmountPaise = (razorpayOrder as any).amount as number;
-    const paymentAmountPaise = (razorpayPayment as any).amount as number;
-
-    if (paymentAmountPaise !== orderAmountPaise) {
-      console.error(
-        `[PAYMENT-1] Amount mismatch: order=${orderAmountPaise} payment=${paymentAmountPaise} ` +
-        `paymentId=${validated.paymentId}`
-      );
-      return NextResponse.json(
-        { success: false, message: 'Payment amount does not match order amount' },
-        { status: 400 }
-      );
-    }
-
-    // CRITICAL: Get school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Check if payment already exists with this transaction ID - CRITICAL: Filter by school
+    // Use school's own Cashfree credentials for verification
+    const schoolCreds = await getSchoolCashfreeCredentials(schoolId);
+    if (!schoolCreds) {
+      return NextResponse.json(
+        { success: false, message: 'Payment gateway not configured for this school' },
+        { status: 400 }
+      );
+    }
+    const schoolCashfree = getSchoolCashfreeInstance(schoolCreds.appId, schoolCreds.secretKey);
+
+    // CRITICAL: Verify payment via Cashfree server-to-server — never trust client-submitted status
+    const verifyResult = await verifyCashfreePayment(validated.cfOrderId, schoolCashfree);
+
+    if (!verifyResult.success) {
+      return NextResponse.json(
+        { success: false, message: `Payment not completed. Status: ${verifyResult.status}` },
+        { status: 400 }
+      );
+    }
+
+    // Idempotency: check if payment already recorded for this cfOrderId
     const existingPayment = await db.feePayment.findFirst({
       where: {
-        transactionId: validated.paymentId,
-        schoolId, // CRITICAL: Ensure payment belongs to current school
+        transactionId: verifyResult.cfPaymentId,
+        schoolId,
       }
     });
 
     let payment;
 
     if (existingPayment) {
-      // Update existing payment if not already completed
       if (existingPayment.status === PaymentStatus.COMPLETED) {
         return NextResponse.json({
           success: true,
@@ -162,34 +134,32 @@ export async function POST(req: NextRequest) {
         where: { id: existingPayment.id },
         data: {
           status: PaymentStatus.COMPLETED,
-          transactionId: validated.paymentId,
-          remarks: `Online payment verified. Order ID: ${validated.orderId}`,
+          transactionId: verifyResult.cfPaymentId,
+          remarks: `Online payment verified. Cashfree order: ${validated.cfOrderId}`,
         }
       });
     } else {
-      // Create new payment record — use Razorpay-verified amount, not client-submitted amount
       const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-      const verifiedAmount = orderAmountPaise / 100; // Convert paise to INR
+      const verifiedAmount = verifyResult.amount; // Cashfree returns rupees directly
 
       payment = await db.feePayment.create({
         data: {
           studentId: validated.childId,
           feeStructureId: validated.feeStructureId,
-          schoolId, // CRITICAL: Use actual school context
+          schoolId,
           amount: verifiedAmount,
           paidAmount: verifiedAmount,
           balance: 0,
           paymentDate: new Date(),
           paymentMethod: PaymentMethod.ONLINE_PAYMENT,
-          transactionId: validated.paymentId,
+          transactionId: verifyResult.cfPaymentId,
           receiptNumber,
           status: PaymentStatus.COMPLETED,
-          remarks: `Online payment verified. Order ID: ${validated.orderId}`,
+          remarks: `Online payment verified. Cashfree order: ${validated.cfOrderId}`,
         }
       });
     }
 
-    // Revalidate fee pages
     revalidatePath('/parent/fees');
     revalidatePath('/parent/fees/overview');
     revalidatePath('/parent/fees/history');

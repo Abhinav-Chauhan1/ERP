@@ -1,12 +1,6 @@
-import Razorpay from 'razorpay';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+import { refundCashfreePayment } from '@/lib/utils/payment-gateway';
 
 export interface PaymentMethodData {
   schoolId: string;
@@ -75,31 +69,17 @@ export class PaymentMethodService {
         throw new Error(`School not found: ${data.schoolId}`);
       }
 
-      // Create or get Razorpay customer
-      let razorpayCustomerId = school.razorpayCustomerId;
-      
-      if (!razorpayCustomerId) {
-        const customer = await razorpay.customers.create({
-          name: school.name,
-          email: school.email || `${school.schoolCode}@school.com`,
-          contact: school.phone || '',
-          notes: {
-            schoolId: data.schoolId,
-            schoolCode: school.schoolCode
-          }
-        });
-        
-        razorpayCustomerId = customer.id;
-        
-        // Update school with Razorpay customer ID
+      // Generate or retrieve a customer reference for Cashfree
+      let cfCustomerId = school.cfCustomerId;
+
+      if (!cfCustomerId) {
+        cfCustomerId = `cf_cust_${data.schoolId.slice(-12)}_${Date.now()}`;
         await prisma.school.update({
           where: { id: data.schoolId },
-          data: { razorpayCustomerId }
+          data: { cfCustomerId }
         });
       }
 
-      // For Razorpay, we store payment method details securely
-      // In production, you would tokenize sensitive data
       const encryptedDetails = this.encryptPaymentDetails(data.details);
 
       // If this is set as default, unset other default methods
@@ -117,7 +97,7 @@ export class PaymentMethodService {
       const paymentMethod = await prisma.paymentMethodRecord.create({
         data: {
           schoolId: data.schoolId,
-          razorpayCustomerId,
+          cfCustomerId,
           type: data.type,
           encryptedDetails,
           last4: this.extractLast4(data.details),
@@ -372,32 +352,29 @@ export class PaymentMethodService {
         orderBy: { createdAt: 'desc' }
       });
 
-      if (!recentPayment || !recentPayment.razorpayPaymentId) {
+      if (!recentPayment || !recentPayment.cfPaymentId || !recentPayment.paymentSessionId) {
         throw new Error('No eligible payment found for refund');
       }
 
-      // Process refund through Razorpay
-      const refund = await razorpay.payments.refund(recentPayment.razorpayPaymentId, {
-        amount: amount,
-        notes: {
-          reason: reason || 'Refund requested',
-          paymentMethodId: paymentMethodId
-        }
-      });
+      const { refundId, status } = await refundCashfreePayment(
+        recentPayment.paymentSessionId,
+        recentPayment.cfPaymentId,
+        amount ?? recentPayment.amount,
+        reason || 'Refund requested'
+      );
 
-      // Update payment status
       await prisma.payment.update({
         where: { id: recentPayment.id },
         data: {
-          status: amount < recentPayment.amount ? 'PARTIAL' : 'REFUNDED'
+          status: amount && amount < recentPayment.amount ? 'PARTIAL' : 'REFUNDED'
         }
       });
 
       return {
-        id: refund.id,
-        amount: refund.amount,
-        status: refund.status,
-        reason: reason
+        id: refundId,
+        amount: amount || recentPayment.amount,
+        status,
+        reason,
       };
     } catch (error) {
       console.error('Error processing refund:', error);

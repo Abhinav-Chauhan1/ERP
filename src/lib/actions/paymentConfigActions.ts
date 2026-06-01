@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getSystemSettings } from "@/lib/utils/cached-queries";
+import { encryptCredential, decryptCredential } from "@/lib/utils/encrypt-credentials";
+import { getSchoolCashfreeInstance } from "@/lib/utils/payment-gateway";
 
 /**
  * Payment Configuration Type
@@ -15,6 +17,11 @@ export interface PaymentConfigType {
   maxReceiptSizeMB: number;
   allowedReceiptFormats: string;
   autoNotifyOnVerification: boolean;
+  // Cashfree per-school credentials (secrets never returned — only presence flags)
+  cashfreeEnabled: boolean;
+  cashfreeAppId?: string | null;
+  cashfreeSecretSet: boolean;
+  cashfreeWebhookSet: boolean;
 }
 
 /**
@@ -46,6 +53,10 @@ export async function getPaymentConfig() {
       maxReceiptSizeMB: settings.maxReceiptSizeMB,
       allowedReceiptFormats: settings.allowedReceiptFormats,
       autoNotifyOnVerification: settings.autoNotifyOnVerification,
+      cashfreeEnabled: settings.cashfreeEnabled,
+      cashfreeAppId: settings.cashfreeAppId,
+      cashfreeSecretSet: !!settings.cashfreeSecretEncrypted,
+      cashfreeWebhookSet: !!settings.cashfreeWebhookEncrypted,
     };
     
     return { 
@@ -168,6 +179,10 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
       maxReceiptSizeMB: updated.maxReceiptSizeMB,
       allowedReceiptFormats: updated.allowedReceiptFormats,
       autoNotifyOnVerification: updated.autoNotifyOnVerification,
+      cashfreeEnabled: updated.cashfreeEnabled,
+      cashfreeAppId: updated.cashfreeAppId,
+      cashfreeSecretSet: !!updated.cashfreeSecretEncrypted,
+      cashfreeWebhookSet: !!updated.cashfreeWebhookEncrypted,
     };
     
     return { 
@@ -237,11 +252,123 @@ function validatePaymentConfig(
 
   // Validate onlinePaymentGateway if online payment is enabled
   if (finalOnlineEnabled && config.onlinePaymentGateway !== undefined) {
-    const validGateways = ['RAZORPAY', 'STRIPE', 'PAYPAL', 'PAYTM'];
+    const validGateways = ['CASHFREE', 'STRIPE', 'PAYPAL', 'PAYTM'];
     if (config.onlinePaymentGateway && !validGateways.includes(config.onlinePaymentGateway)) {
       return `Invalid payment gateway: ${config.onlinePaymentGateway}. Allowed gateways: ${validGateways.join(', ')}`;
     }
   }
 
   return null;
+}
+
+/**
+ * Save per-school Cashfree credentials (encrypted at rest)
+ */
+export async function saveCashfreeCredentials(
+  appId: string,
+  secretKey: string,
+  webhookSecret: string
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { administrator: true },
+    });
+    if (!user?.administrator) return { success: false, error: "Admin access required" };
+
+    if (!appId.trim()) return { success: false, error: "App ID is required" };
+    if (!secretKey.trim()) return { success: false, error: "Secret Key is required" };
+    if (!webhookSecret.trim()) return { success: false, error: "Webhook Secret is required" };
+
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    await db.schoolSettings.update({
+      where: { schoolId },
+      data: {
+        cashfreeAppId: appId.trim(),
+        cashfreeSecretEncrypted: encryptCredential(secretKey.trim()),
+        cashfreeWebhookEncrypted: encryptCredential(webhookSecret.trim()),
+        cashfreeEnabled: true,
+        onlinePaymentGateway: 'CASHFREE',
+        enableOnlinePayment: true,
+      },
+    });
+
+    revalidatePath("/admin/settings/payment-configuration");
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving Cashfree credentials:", error);
+    return { success: false, error: "Failed to save credentials" };
+  }
+}
+
+/**
+ * Test per-school Cashfree credentials by creating and immediately voiding a test order
+ */
+export async function testCashfreeConnection(appId: string, secretKey: string) {
+  try {
+    if (!appId.trim() || !secretKey.trim()) {
+      return { success: false, error: "App ID and Secret Key are required" };
+    }
+
+    const { createCashfreeOrder } = await import('@/lib/utils/payment-gateway');
+    const instance = getSchoolCashfreeInstance(appId.trim(), secretKey.trim());
+
+    // Create a minimal ₹1 test order — if credentials are invalid, this will throw
+    const testOrderId = `TEST-${Date.now()}`;
+    await createCashfreeOrder(
+      {
+        orderId: testOrderId,
+        amount: 1,
+        currency: 'INR',
+        customerName: 'Test',
+        customerEmail: 'test@test.com',
+        customerPhone: '9999999999',
+        returnUrl: 'https://localhost',
+        notifyUrl: 'https://localhost',
+      },
+      instance
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Cashfree connection test failed:", error);
+    const message = error instanceof Error ? error.message : "Connection failed";
+    return { success: false, error: `Connection failed: ${message}` };
+  }
+}
+
+/**
+ * Get decrypted school Cashfree credentials for server-side use only.
+ * Never call this from a client component or return the result to the browser.
+ */
+export async function getSchoolCashfreeCredentials(schoolId: string) {
+  const settings = await db.schoolSettings.findUnique({
+    where: { schoolId },
+    select: {
+      cashfreeEnabled: true,
+      cashfreeAppId: true,
+      cashfreeSecretEncrypted: true,
+      cashfreeWebhookEncrypted: true,
+    },
+  });
+
+  if (
+    !settings?.cashfreeEnabled ||
+    !settings.cashfreeAppId ||
+    !settings.cashfreeSecretEncrypted ||
+    !settings.cashfreeWebhookEncrypted
+  ) {
+    return null;
+  }
+
+  return {
+    appId: settings.cashfreeAppId,
+    secretKey: decryptCredential(settings.cashfreeSecretEncrypted),
+    webhookSecret: decryptCredential(settings.cashfreeWebhookEncrypted),
+  };
 }

@@ -42,7 +42,7 @@ export default async function SchoolDetailPage({ params }: Props) {
             favicon: true,
             primaryColor: true,
             secondaryColor: true,
-            razorpayCustomerId: true,
+            cfCustomerId: true,
             createdAt: true,
             updatedAt: true,
             _count: {

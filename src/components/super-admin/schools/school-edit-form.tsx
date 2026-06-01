@@ -59,7 +59,7 @@ interface School {
   favicon: string | null;
   primaryColor: string;
   secondaryColor: string;
-  razorpayCustomerId: string | null;
+  cfCustomerId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,7 +87,7 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
     favicon: school.favicon || "",
     primaryColor: school.primaryColor,
     secondaryColor: school.secondaryColor,
-    razorpayCustomerId: school.razorpayCustomerId || "",
+    cfCustomerId: school.cfCustomerId || "",
   });
 
   const [showResetDialog, setShowResetDialog] = useState(false);

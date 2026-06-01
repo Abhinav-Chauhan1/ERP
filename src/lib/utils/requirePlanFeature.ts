@@ -31,4 +31,21 @@ export async function requirePlanFeature(schoolId: string, feature: FeatureKey):
     (err as any).status = 403;
     throw err;
   }
+
+  // STARTER is the free tier — no subscription required
+  if (plan === 'STARTER') return;
+
+  // For paid plans, verify there is an active, non-expired subscription
+  const subscription = await db.enhancedSubscription.findFirst({
+    where: { schoolId, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
+    select: { currentPeriodEnd: true },
+  });
+
+  if (!subscription || subscription.currentPeriodEnd < new Date()) {
+    const err = new Error("Subscription expired or inactive.");
+    (err as any).code = "PLAN_FEATURE_RESTRICTED";
+    (err as any).status = 403;
+    throw err;
+  }
 }

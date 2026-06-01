@@ -574,7 +574,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                 {[
                   { label: "Projected MRR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue), note: "Based on active schools × per-student rate" },
                   { label: "Projected ARR", value: formatCurrency(data.kpiData.monthlyRecurringRevenue * 12), note: "Annualised from MRR" },
-                  { label: "Collected Revenue", value: data.kpiData.hasPaymentData ? formatCurrency(data.kpiData.totalRevenue) : "₹0", note: data.kpiData.hasPaymentData ? "All-time from Payment records" : "No Razorpay payments yet" },
+                  { label: "Collected Revenue", value: data.kpiData.hasPaymentData ? formatCurrency(data.kpiData.totalRevenue) : "₹0", note: data.kpiData.hasPaymentData ? "All-time from Payment records" : "No Cashfree payments yet" },
                 ].map(({ label, value, note }) => (
                   <Card key={label} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle></CardHeader>

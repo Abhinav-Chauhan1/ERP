@@ -81,7 +81,7 @@ model School {
   updatedAt               DateTime                  @updatedAt
   dnsConfigured           Boolean                   @default(false)
   metadata                Json?
-  razorpayCustomerId      String?                   @unique
+  cfCustomerId            String?                   @unique
   sslConfigured           Boolean                   @default(false)
   sslExpiresAt            DateTime?
   subdomainStatus         SubdomainStatus           @default(PENDING)
@@ -239,7 +239,7 @@ model SubscriptionPlan {
   id                   String                 @id @default(cuid())
   name                 String
   description          String?
-  /// @deprecated — kept for backward compat with existing Razorpay subscriptions
+  /// @deprecated — kept for backward compat with legacy data
   amount               Int                    @default(0)
   currency             String                 @default("inr")
   interval             String                 @default("monthly")
@@ -247,7 +247,6 @@ model SubscriptionPlan {
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
-  razorpayPlanId       String?                @unique
   annualDiscountMonths Int                    @default(2)
   minimumMonthly       Int                    @default(50000)
   pricePerStudent      Int                    @default(400)
@@ -268,7 +267,7 @@ model EnhancedSubscription {
   metadata               Json?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
-  razorpaySubscriptionId String?            @unique
+  cfOrderRef             String?
   plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
   school                 School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   invoices               Invoice[]
@@ -290,7 +289,6 @@ model Invoice {
   metadata          Json?
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
-  razorpayInvoiceId String?              @unique
   subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   payments          Payment[]
 
@@ -310,7 +308,8 @@ model Payment {
   processedAt       DateTime?
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
-  razorpayPaymentId String?              @unique
+  cfPaymentId       String?              @unique
+  paymentSessionId  String?
   invoice           Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -320,10 +319,10 @@ model Payment {
 }
 
 model PaymentMethodRecord {
-  id                 String   @id @default(cuid())
-  schoolId           String
-  razorpayCustomerId String?
-  type               String
+  id               String   @id @default(cuid())
+  schoolId         String
+  cfCustomerId     String?
+  type             String
   encryptedDetails   String
   last4              String?
   brand              String?
@@ -2502,6 +2501,10 @@ model SchoolSettings {
   maxReceiptSizeMB               Int      @default(5)
   allowedReceiptFormats          String   @default("jpg,jpeg,png,pdf")
   autoNotifyOnVerification       Boolean  @default(true)
+  cashfreeEnabled                Boolean  @default(false)
+  cashfreeAppId                  String?
+  cashfreeSecretEncrypted        String?
+  cashfreeWebhookEncrypted       String?
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
   school                         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)

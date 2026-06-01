@@ -110,8 +110,8 @@ export class SubscriptionService {
       });
 
       // Update external subscription if exists
-      if (subscription.razorpaySubscriptionId) {
-        await this.updateExternalSubscription(subscription.razorpaySubscriptionId, newPlan);
+      if (subscription.cfOrderRef) {
+        await this.updateExternalSubscription(subscription.cfOrderRef, newPlan);
       }
 
       return updatedSubscription;
@@ -179,8 +179,8 @@ export class SubscriptionService {
       });
 
       // Update external subscription if exists and not applying at period end
-      if (subscription.razorpaySubscriptionId && !data.applyAtPeriodEnd) {
-        await this.updateExternalSubscription(subscription.razorpaySubscriptionId, newPlan);
+      if (subscription.cfOrderRef && !data.applyAtPeriodEnd) {
+        await this.updateExternalSubscription(subscription.cfOrderRef, newPlan);
       }
 
       return updatedSubscription;
@@ -295,19 +295,25 @@ export class SubscriptionService {
         throw new Error('Subscription has not expired yet');
       }
 
-      // Update subscription status to expired/cancelled
-      const expiredSubscription = await prisma.enhancedSubscription.update({
-        where: { id: subscriptionId },
-        data: {
-          status: SubscriptionStatus.CANCELED,
-          metadata: {
-            ...subscription.metadata as Record<string, any>,
-            expiredAt: now.toISOString(),
-            expirationReason: 'Automatic expiration due to non-payment or end of term',
-          }
-        },
-        include: { plan: true, school: true }
-      });
+      // Update subscription status to expired/cancelled and reset school plan to free tier
+      const [expiredSubscription] = await Promise.all([
+        prisma.enhancedSubscription.update({
+          where: { id: subscriptionId },
+          data: {
+            status: SubscriptionStatus.CANCELED,
+            metadata: {
+              ...subscription.metadata as Record<string, any>,
+              expiredAt: now.toISOString(),
+              expirationReason: 'Automatic expiration due to non-payment or end of term',
+            }
+          },
+          include: { plan: true, school: true }
+        }),
+        prisma.school.update({
+          where: { id: subscription.schoolId },
+          data: { plan: 'STARTER' }
+        }),
+      ]);
 
       return expiredSubscription;
     } catch (error) {
@@ -398,7 +404,7 @@ export class SubscriptionService {
       }
 
       // Update subscription status based on payment method availability
-      const hasPaymentMethod = subscription.school.razorpayCustomerId;
+      const hasPaymentMethod = subscription.school.cfCustomerId;
       
       const expiredSubscription = await prisma.enhancedSubscription.update({
         where: { id: subscriptionId },
@@ -532,7 +538,7 @@ export class SubscriptionService {
   }
 
   private async updateExternalSubscription(externalId: string, newPlan: SubscriptionPlan) {
-    // This would integrate with external payment provider (Razorpay, Stripe, etc.)
+    // This would integrate with external payment provider (Cashfree, Stripe, etc.)
     // For now, we'll just log the action
     console.log(`Updating external subscription ${externalId} to plan ${newPlan.id}`);
   }
@@ -645,10 +651,18 @@ export class SubscriptionService {
         include: { plan: true, school: true }
       });
 
+      // Reset school plan to free tier on immediate cancellation
+      if (options.immediate) {
+        await prisma.school.update({
+          where: { id: subscription.schoolId },
+          data: { plan: 'STARTER' }
+        });
+      }
+
       // Cancel external subscription if exists
-      if (subscription.razorpaySubscriptionId) {
+      if (subscription.cfOrderRef) {
         await this.cancelExternalSubscription(
-          subscription.razorpaySubscriptionId, 
+          subscription.cfOrderRef,
           options.immediate ?? false
         );
       }

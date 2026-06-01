@@ -6,15 +6,6 @@ import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 
-const processPaymentSchema = z.object({
-  amount: z.number().positive(),
-  currency: z.string().default('INR'),
-  description: z.string().optional(),
-  metadata: z.record(z.string()).optional(),
-  receipt: z.string().optional(),
-  notes: z.record(z.string()).optional(),
-});
-
 const rateLimitConfig = {
   windowMs: 15 * 60 * 1000,
   max: 50, // Lower limit for payment operations
@@ -68,42 +59,11 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/super-admin/billing/payments
- * Process a new payment
+ * Payments are initiated via /api/subscription/checkout — direct creation not supported.
  */
-export async function POST(request: NextRequest) {
-  try {
-    const rateLimitResult = await rateLimit(request, rateLimitConfig);
-    if (rateLimitResult) return rateLimitResult;
-
-    const session = await auth();
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const validatedData = processPaymentSchema.parse(body);
-
-    const paymentResult = await billingService.processPayment(validatedData);
-
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.CREATE,
-      resource: 'PAYMENT',
-      resourceId: paymentResult.id,
-      changes: validatedData,
-    });
-
-    return NextResponse.json(paymentResult, { status: 201 });
-  } catch (error) {
-    console.error('Error processing payment:', error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Use POST /api/subscription/checkout to initiate a payment' },
+    { status: 405 }
+  );
 }

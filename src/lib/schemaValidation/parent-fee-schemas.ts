@@ -62,13 +62,9 @@ export type PaymentGatewayOrderInput = z.infer<typeof paymentGatewayOrderSchema>
 
 // Verify Payment Schema
 export const verifyPaymentSchema = z.object({
-  orderId: z.string().min(1, "Order ID is required"),
-  paymentId: z.string().min(1, "Payment ID is required"),
-  signature: z.string().min(1, "Signature is required"),
+  cfOrderId: z.string().min(1, "Cashfree order ID is required"),
   childId: z.string().min(1, "Child ID is required"),
   feeStructureId: z.string().min(1, "Fee structure is required"),
-  amount: z.number().positive("Amount must be positive"),
-  feeTypeIds: z.array(z.string()).min(1, "At least one fee type must be selected"),
 });
 
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;

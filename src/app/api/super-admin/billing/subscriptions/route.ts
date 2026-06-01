@@ -6,9 +6,11 @@ import { getRequestMetadata } from '@/lib/utils/request-helpers';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 import { billingService } from '@/lib/services/billing-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
+import { db } from '@/lib/db';
+import { addDays, addMonths } from 'date-fns';
 import { AuditAction } from '@prisma/client';
-import { 
-  createSubscriptionSchema, 
+import {
+  createSubscriptionSchema,
   subscriptionQuerySchema,
   CreateSubscriptionData,
   SubscriptionQueryParams
@@ -115,8 +117,34 @@ export async function POST(request: NextRequest) {
     // Sanitize input data
     const sanitizedData = sanitizeRequest(validatedData);
 
-    // Create subscription
-    const subscription = await billingService.createSubscription(sanitizedData);
+    // Look up plan
+    const plan = await db.subscriptionPlan.findUnique({ where: { id: sanitizedData.planId } });
+    if (!plan) {
+      return NextResponse.json({ error: 'Subscription plan not found' }, { status: 404 });
+    }
+
+    const now = new Date();
+    const trialDays = sanitizedData.trialDays ?? 0;
+    const periodStart = trialDays > 0 ? addDays(now, trialDays) : now;
+    const periodEnd = addMonths(periodStart, 1);
+
+    // Create subscription and update school plan atomically
+    const [subscription] = await Promise.all([
+      db.enhancedSubscription.create({
+        data: {
+          schoolId: sanitizedData.schoolId,
+          planId: sanitizedData.planId,
+          status: trialDays > 0 ? 'TRIALING' : 'ACTIVE',
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          trialEnd: trialDays > 0 ? periodStart : null,
+        },
+      }),
+      db.school.update({
+        where: { id: sanitizedData.schoolId },
+        data: { plan: plan.name as any },
+      }),
+    ]);
 
     // Get request metadata for audit logging
     const metadata = getRequestMetadata(request);

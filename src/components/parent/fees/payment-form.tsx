@@ -178,7 +178,7 @@ export function PaymentForm({
                 <SelectItem value="ONLINE_PAYMENT">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4" />
-                    Online Payment (Razorpay)
+                    Online Payment (Cashfree)
                   </div>
                 </SelectItem>
                 <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>

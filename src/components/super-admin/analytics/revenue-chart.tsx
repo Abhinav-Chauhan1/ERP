@@ -46,7 +46,7 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
           <CardDescription>Total revenue and MRR trends</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground py-12">No payment data yet — revenue trends will appear once schools pay via Razorpay.</p>
+          <p className="text-center text-muted-foreground py-12">No payment data yet — revenue trends will appear once schools pay via Cashfree.</p>
         </CardContent>
       </Card>
     );

@@ -67,8 +67,8 @@ interface Invoice {
     };
   };
   metadata?: {
-    razorpayInvoiceNumber?: string;
-    razorpayShortUrl?: string;
+    cfInvoiceRef?: string;
+    cfPaymentUrl?: string;
     remindersSent?: number;
     lastReminderSent?: string;
   };
@@ -116,7 +116,7 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
         }
       },
       metadata: {
-        razorpayInvoiceNumber: "RZP-INV-001",
+        cfInvoiceRef: "CF-INV-001",
         remindersSent: 0
       }
     },
@@ -141,7 +141,7 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
         }
       },
       metadata: {
-        razorpayInvoiceNumber: "RZP-INV-002",
+        cfInvoiceRef: "CF-INV-002",
         remindersSent: 1,
         lastReminderSent: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
       }
@@ -167,7 +167,7 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
         }
       },
       metadata: {
-        razorpayInvoiceNumber: "RZP-INV-003",
+        cfInvoiceRef: "CF-INV-003",
         remindersSent: 3,
         lastReminderSent: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
       }
@@ -228,11 +228,11 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
   };
 
   const handleDownloadInvoice = async (_invoiceId: string) => {
-    toast.info("PDF download will be available once Razorpay billing integration is complete.");
+    toast.info("PDF download will be available once Cashfree billing integration is complete.");
   };
 
   const handleVoidInvoice = async (_invoiceId: string) => {
-    toast.info("Invoice voiding will be available once Razorpay billing integration is complete.");
+    toast.info("Invoice voiding will be available once Cashfree billing integration is complete.");
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -387,7 +387,7 @@ export function InvoiceManagement({ schoolId, showAllSchools = true }: InvoiceMa
                     <div>
                       <div className="font-medium">{invoice.invoiceNumber}</div>
                       <div className="text-sm text-muted-foreground">
-                        {invoice.metadata?.razorpayInvoiceNumber}
+                        {invoice.metadata?.cfInvoiceRef}
                       </div>
                     </div>
                   </TableCell>

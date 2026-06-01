@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         name:            validated.name,
         description:     validated.description,
         interval:        validated.interval,
-        // Keep amount in sync with minimumMonthly for Razorpay compat (convert paise → paise)
+        // Keep amount in sync with minimumMonthly for billing (in paise)
         amount:          validated.features.minimumMonthly,
         // NOTE: pricePerStudent, minimumMonthly, annualDiscountMonths are new schema fields.
         // Run `prisma migrate dev` then `prisma generate` to pick them up in the client types.

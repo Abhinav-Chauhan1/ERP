@@ -13,10 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, CreditCard, Receipt, AlertCircle } from "lucide-react";
+import { Loader2, CreditCard, Receipt, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
-import { updatePaymentConfig, type PaymentConfigType } from "@/lib/actions/paymentConfigActions";
+import { updatePaymentConfig, saveCashfreeCredentials, testCashfreeConnection, type PaymentConfigType } from "@/lib/actions/paymentConfigActions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 interface PaymentConfigurationFormProps {
   initialData: PaymentConfigType;
@@ -30,6 +31,15 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
   const [maxReceiptSizeMB, setMaxReceiptSizeMB] = useState(initialData.maxReceiptSizeMB);
   const [allowedReceiptFormats, setAllowedReceiptFormats] = useState(initialData.allowedReceiptFormats);
   const [autoNotifyOnVerification, setAutoNotifyOnVerification] = useState(initialData.autoNotifyOnVerification);
+
+  // Cashfree credentials state
+  const [cfAppId, setCfAppId] = useState("");
+  const [cfSecret, setCfSecret] = useState("");
+  const [cfWebhookSecret, setCfWebhookSecret] = useState("");
+  const [showCfSecret, setShowCfSecret] = useState(false);
+  const [showCfWebhook, setShowCfWebhook] = useState(false);
+  const [cfLoading, setCfLoading] = useState(false);
+  const [cfTestLoading, setCfTestLoading] = useState(false);
 
   // Parse allowed formats for display
   const formatsList = allowedReceiptFormats.split(',').map(f => f.trim());
@@ -56,6 +66,47 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
   const isFormatSelected = (format: string) => {
     const formats = allowedReceiptFormats.split(',').map(f => f.trim().toLowerCase());
     return formats.includes(format.toLowerCase());
+  };
+
+  const handleTestConnection = async () => {
+    if (!cfAppId.trim() || !cfSecret.trim()) {
+      toast.error("Enter App ID and Secret Key to test");
+      return;
+    }
+    setCfTestLoading(true);
+    try {
+      const result = await testCashfreeConnection(cfAppId, cfSecret);
+      if (result.success) {
+        toast.success("Connection successful! Credentials are valid.");
+      } else {
+        toast.error(result.error || "Connection failed");
+      }
+    } finally {
+      setCfTestLoading(false);
+    }
+  };
+
+  const handleSaveCashfreeCredentials = async () => {
+    if (!cfAppId.trim() || !cfSecret.trim() || !cfWebhookSecret.trim()) {
+      toast.error("All three Cashfree fields are required");
+      return;
+    }
+    setCfLoading(true);
+    try {
+      const result = await saveCashfreeCredentials(cfAppId, cfSecret, cfWebhookSecret);
+      if (result.success) {
+        toast.success("Cashfree credentials saved successfully");
+        setCfAppId("");
+        setCfSecret("");
+        setCfWebhookSecret("");
+      } else {
+        toast.error(result.error || "Failed to save credentials");
+      }
+    } catch {
+      toast.error("Failed to save credentials");
+    } finally {
+      setCfLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -154,7 +205,7 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                     <SelectValue placeholder="Select a payment gateway" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="RAZORPAY">Razorpay</SelectItem>
+                    <SelectItem value="CASHFREE">Cashfree</SelectItem>
                     <SelectItem value="STRIPE">Stripe</SelectItem>
                     <SelectItem value="PAYPAL">PayPal</SelectItem>
                     <SelectItem value="PAYTM">Paytm</SelectItem>
@@ -163,6 +214,120 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                 <p className="text-sm text-muted-foreground">
                   Select the payment gateway to process online payments
                 </p>
+              </div>
+            )}
+
+            {/* Cashfree credentials (shown when Cashfree is selected) */}
+            {enableOnlinePayment && onlinePaymentGateway === "CASHFREE" && (
+              <div className="ml-6 rounded-lg border p-4 space-y-4 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">Cashfree API Credentials</p>
+                    <p className="text-xs text-muted-foreground">
+                      Your school&apos;s Cashfree account — fee payments go directly to your bank
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {initialData.cashfreeSecretSet && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                        Configured
+                      </Badge>
+                    )}
+                    {!initialData.cashfreeSecretSet && (
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                        Not set
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cfAppId">App ID</Label>
+                    <Input
+                      id="cfAppId"
+                      placeholder={initialData.cashfreeAppId || "CF App ID from Cashfree dashboard"}
+                      value={cfAppId}
+                      onChange={(e) => setCfAppId(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cfSecret">Secret Key</Label>
+                    <div className="relative">
+                      <Input
+                        id="cfSecret"
+                        type={showCfSecret ? "text" : "password"}
+                        placeholder={initialData.cashfreeSecretSet ? "••••••••••••••••" : "Secret Key from Cashfree dashboard"}
+                        value={cfSecret}
+                        onChange={(e) => setCfSecret(e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCfSecret(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showCfSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cfWebhook">Webhook Secret</Label>
+                    <div className="relative">
+                      <Input
+                        id="cfWebhook"
+                        type={showCfWebhook ? "text" : "password"}
+                        placeholder={initialData.cashfreeWebhookSet ? "••••••••••••••••" : "Webhook secret from Cashfree dashboard"}
+                        value={cfWebhookSecret}
+                        onChange={(e) => setCfWebhookSecret(e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCfWebhook(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showCfWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <Alert className="py-2">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <AlertDescription className="text-xs">
+                    Register this webhook URL in your Cashfree dashboard under Developers → Webhooks:
+                    <br />
+                    <code className="font-mono text-xs bg-muted px-1 rounded break-all">
+                      {typeof window !== "undefined" ? window.location.origin : ""}/api/payments/webhook
+                    </code>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestConnection}
+                    disabled={cfTestLoading || !cfAppId.trim() || !cfSecret.trim()}
+                  >
+                    {cfTestLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                    Test Connection
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSaveCashfreeCredentials}
+                    disabled={cfLoading || !cfAppId.trim() || !cfSecret.trim() || !cfWebhookSecret.trim()}
+                  >
+                    {cfLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                    Save Credentials
+                  </Button>
+                </div>
               </div>
             )}
           </div>

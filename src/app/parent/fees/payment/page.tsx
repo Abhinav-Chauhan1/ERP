@@ -1,11 +1,10 @@
 "use client";
 
-
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentForm } from "@/components/parent/fees/payment-form";
 import { PaymentGatewayModal } from "@/components/parent/fees/payment-gateway-modal";
-import { getFeeOverview, createPayment, verifyPayment } from "@/lib/actions/parent-fee-actions";
+import { getFeeOverview, createPayment } from "@/lib/actions/parent-fee-actions";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -49,26 +48,21 @@ export default function MakePaymentPage() {
 
   // Payment gateway modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentOrderId, setPaymentOrderId] = useState("");
+  const [paymentSessionId, setPaymentSessionId] = useState("");
+  const [cfOrderId, setCfOrderId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState(0);
-  const [pendingPaymentData, setPendingPaymentData] = useState<any>(null);
 
   const fetchChildren = useCallback(async () => {
     try {
       const response = await fetch("/api/parent/children");
       if (response.ok) {
         const data = await response.json();
-
-        // Map API response to expected format
         const mappedChildren = (data.children || []).map((child: any) => ({
           id: child.id,
           name: `${child.user.firstName} ${child.user.lastName}`,
           class: child.enrollments?.[0]?.class?.name || "N/A",
         }));
-
         setChildren(mappedChildren);
-
-        // Set selected child
         if (childId && mappedChildren.find((c: Child) => c.id === childId)) {
           setSelectedChildId(childId);
         } else if (mappedChildren.length > 0) {
@@ -83,11 +77,9 @@ export default function MakePaymentPage() {
 
   const fetchFeeOverview = useCallback(async () => {
     if (!selectedChildId) return;
-
     setIsLoading(true);
     try {
       const result = await getFeeOverview({ childId: selectedChildId });
-
       if (result.success && result.data) {
         setFeeStructureId(result.data.feeStructureId || "");
         setFeeItems(result.data.feeItems);
@@ -102,12 +94,10 @@ export default function MakePaymentPage() {
     }
   }, [selectedChildId]);
 
-  // Fetch children on mount
   useEffect(() => {
     fetchChildren();
   }, [fetchChildren]);
 
-  // Fetch fee overview when child changes
   useEffect(() => {
     if (selectedChildId) {
       fetchFeeOverview();
@@ -133,14 +123,10 @@ export default function MakePaymentPage() {
     setIsSubmitting(true);
 
     try {
-      // If online payment, create payment order first
       if (data.paymentMethod === "ONLINE_PAYMENT") {
-        // Create payment order via API
         const orderResponse = await fetch("/api/payments/create", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             childId: selectedChildId,
             feeStructureId,
@@ -150,29 +136,19 @@ export default function MakePaymentPage() {
           }),
         });
 
-        if (!orderResponse.ok) {
-          throw new Error("Failed to create payment order");
-        }
-
         const orderData = await orderResponse.json();
 
-        if (!orderData.success || !orderData.orderId) {
+        if (!orderResponse.ok || !orderData.success) {
           throw new Error(orderData.message || "Failed to create payment order");
         }
 
-        // Store payment data for later verification
-        setPendingPaymentData({
-          ...data,
-          childId: selectedChildId,
-          feeStructureId,
-        });
+        const { cfOrderId: newCfOrderId, paymentSessionId: newSessionId } = orderData.data;
 
-        // Show payment gateway modal
-        setPaymentOrderId(orderData.orderId);
+        setPaymentSessionId(newSessionId);
+        setCfOrderId(newCfOrderId);
         setPaymentAmount(data.amount);
         setShowPaymentModal(true);
       } else {
-        // For other payment methods, create payment directly
         const result = await createPayment({
           childId: selectedChildId,
           feeStructureId,
@@ -194,42 +170,6 @@ export default function MakePaymentPage() {
       toast.error("Failed to process payment");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePaymentSuccess = async (paymentData: {
-    orderId: string;
-    paymentId: string;
-    signature: string;
-  }) => {
-    if (!pendingPaymentData) {
-      toast.error("Payment data not found");
-      return;
-    }
-
-    try {
-      // Verify payment
-      const result = await verifyPayment({
-        orderId: paymentData.orderId,
-        paymentId: paymentData.paymentId,
-        signature: paymentData.signature,
-        childId: pendingPaymentData.childId,
-        feeStructureId: pendingPaymentData.feeStructureId,
-        amount: pendingPaymentData.amount,
-        feeTypeIds: pendingPaymentData.feeTypeIds,
-      });
-
-      if (result.success) {
-        toast.success("Payment completed successfully");
-        router.push(`/parent/fees/payment/success?receiptNumber=${result.data?.receiptNumber}`);
-      } else {
-        toast.error(result.message || "Payment verification failed");
-        router.push("/parent/fees/payment/failed");
-      }
-    } catch (error) {
-      console.error("Error verifying payment:", error);
-      toast.error("Payment verification failed");
-      router.push("/parent/fees/payment/failed");
     }
   };
 
@@ -274,7 +214,6 @@ export default function MakePaymentPage() {
           <p className="text-gray-600 mt-1">Pay pending fees securely</p>
         </div>
 
-        {/* Child Selector */}
         {children.length > 1 && (
           <Select value={selectedChildId} onValueChange={handleChildChange}>
             <SelectTrigger className="w-full md:w-64">
@@ -306,18 +245,17 @@ export default function MakePaymentPage() {
         />
       </div>
 
-      {/* Payment Gateway Modal */}
+      {/* Payment Gateway Modal (redirect-based Cashfree checkout) */}
       <PaymentGatewayModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
-        orderId={paymentOrderId}
+        paymentSessionId={paymentSessionId}
+        cfOrderId={cfOrderId}
         amount={paymentAmount}
         currency="INR"
         studentName={selectedChild.name}
-        onSuccess={handlePaymentSuccess}
         onFailure={handlePaymentFailure}
       />
     </div>
   );
 }
-

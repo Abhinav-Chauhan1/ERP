@@ -1,225 +1,170 @@
-/**
- * Payment Gateway Integration Utility
- * Handles Razorpay payment processing, order creation, and signature verification
- * Requirements: 1.3
- */
-
-import Razorpay from 'razorpay';
+import { Cashfree, CFEnvironment, CreateOrderRequest } from 'cashfree-pg';
 import crypto from 'crypto';
 
-// Lazy-load Razorpay instance to avoid initialization during build
-let razorpayInstance: Razorpay | null = null;
+let cashfreeInstance: Cashfree | null = null;
 
-function getRazorpayInstance(): Razorpay {
-  if (!razorpayInstance) {
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    
-    if (!keyId || !keySecret) {
-      throw new Error('Razorpay credentials not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.');
+function getCashfreeEnv(): CFEnvironment {
+  return process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production'
+    ? CFEnvironment.PRODUCTION
+    : CFEnvironment.SANDBOX;
+}
+
+// Platform-level instance (for SaaS subscription billing)
+function getCashfreeInstance(): Cashfree {
+  if (!cashfreeInstance) {
+    const appId = process.env.CASHFREE_APP_ID;
+    const secretKey = process.env.CASHFREE_SECRET_KEY;
+
+    if (!appId || !secretKey) {
+      throw new Error('Cashfree credentials not configured. Please set CASHFREE_APP_ID and CASHFREE_SECRET_KEY.');
     }
-    
-    razorpayInstance = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
+
+    cashfreeInstance = new Cashfree(getCashfreeEnv(), appId, secretKey);
   }
-  
-  return razorpayInstance;
+
+  return cashfreeInstance;
 }
 
-/**
- * Interface for payment order creation
- */
-export interface CreatePaymentOrderParams {
-  amount: number; // Amount in INR
-  currency?: string;
-  receipt: string;
-  notes?: Record<string, string>;
+// Per-school instance (for school fee payments)
+export function getSchoolCashfreeInstance(appId: string, secretKey: string): Cashfree {
+  return new Cashfree(getCashfreeEnv(), appId, secretKey);
 }
 
-/**
- * Interface for payment order response
- */
-export interface PaymentOrder {
-  id: string;
-  entity: string;
-  amount: number;
-  amount_paid: number;
-  amount_due: number;
-  currency: string;
-  receipt: string;
-  status: string;
-  attempts: number;
-  notes: Record<string, string>;
-  created_at: number;
-}
-
-/**
- * Interface for payment verification
- */
-export interface VerifyPaymentParams {
+export interface CreateCashfreeOrderParams {
   orderId: string;
-  paymentId: string;
-  signature: string;
+  amount: number; // Amount in INR (rupees, not paise)
+  currency?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  returnUrl: string;
+  notifyUrl: string;
+  tags?: Record<string, string>;
 }
 
-/**
- * Create a payment order in Razorpay
- * This generates an order ID that will be used for payment processing
- * 
- * @param params - Payment order parameters
- * @returns Payment order details
- */
-export async function createPaymentOrder(
-  params: CreatePaymentOrderParams
-): Promise<PaymentOrder> {
-  try {
-    const razorpay = getRazorpayInstance();
-    
-    // Convert amount to paise (Razorpay expects amount in smallest currency unit)
-    const amountInPaise = Math.round(params.amount * 100);
-    
-    const order = await razorpay.orders.create({
-      amount: amountInPaise,
-      currency: params.currency || 'INR',
-      receipt: params.receipt,
-      notes: params.notes || {},
-      payment_capture: true, // Auto capture payment
-    });
-    
-    return order as PaymentOrder;
-  } catch (error) {
-    console.error('Error creating payment order:', error);
-    throw new Error('Failed to create payment order');
+export interface CashfreeOrderResult {
+  cfOrderId: string;
+  paymentSessionId: string;
+}
+
+export async function createCashfreeOrder(
+  params: CreateCashfreeOrderParams,
+  cashfree?: Cashfree
+): Promise<CashfreeOrderResult> {
+  cashfree = cashfree ?? getCashfreeInstance();
+
+  const customerId = `cust_${params.orderId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+  const request: CreateOrderRequest = {
+    order_id: params.orderId,
+    order_amount: params.amount,
+    order_currency: params.currency || 'INR',
+    customer_details: {
+      customer_id: customerId,
+      customer_name: params.customerName,
+      customer_email: params.customerEmail,
+      customer_phone: params.customerPhone,
+    },
+    order_meta: {
+      return_url: params.returnUrl,
+      notify_url: params.notifyUrl,
+    },
+    ...(params.tags ? { order_tags: params.tags } : {}),
+  };
+
+  const response = await cashfree.PGCreateOrder(request);
+  const order = response.data;
+
+  if (!order.payment_session_id || !order.order_id) {
+    throw new Error('Cashfree order creation failed: missing payment_session_id or order_id');
   }
+
+  return {
+    cfOrderId: order.order_id,
+    paymentSessionId: order.payment_session_id,
+  };
 }
 
-/**
- * Verify payment signature from Razorpay
- * This ensures the payment callback is authentic and not tampered with
- * 
- * @param params - Payment verification parameters
- * @returns Boolean indicating if signature is valid
- */
-export function verifyPaymentSignature(params: VerifyPaymentParams): boolean {
-  try {
-    const { orderId, paymentId, signature } = params;
-    
-    // Generate expected signature
-    const text = `${orderId}|${paymentId}`;
-    const secret = process.env.RAZORPAY_KEY_SECRET || '';
-    
-    const generatedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(text)
-      .digest('hex');
-    
-    // Compare signatures
-    return generatedSignature === signature;
-  } catch (error) {
-    console.error('Error verifying payment signature:', error);
-    return false;
+export interface CashfreePaymentVerifyResult {
+  success: boolean;
+  amount: number;
+  cfPaymentId: string;
+  status: string;
+}
+
+export async function verifyCashfreePayment(
+  cfOrderId: string,
+  cashfree?: Cashfree
+): Promise<CashfreePaymentVerifyResult> {
+  cashfree = cashfree ?? getCashfreeInstance();
+
+  const orderResponse = await cashfree.PGFetchOrder(cfOrderId);
+  const order = orderResponse.data;
+
+  if (order.order_status !== 'PAID') {
+    return {
+      success: false,
+      amount: order.order_amount || 0,
+      cfPaymentId: '',
+      status: order.order_status || 'UNKNOWN',
+    };
   }
+
+  // Fetch payment details to get cf_payment_id
+  const paymentsResponse = await cashfree.PGOrderFetchPayments(cfOrderId);
+  const payments = paymentsResponse.data;
+  const successfulPayment = payments.find(p => p.payment_status === 'SUCCESS');
+
+  return {
+    success: true,
+    amount: order.order_amount || 0,
+    cfPaymentId: successfulPayment?.cf_payment_id || '',
+    status: 'PAID',
+  };
 }
 
-/**
- * Verify webhook signature from Razorpay
- * This ensures webhook callbacks are authentic
- * 
- * @param body - Webhook request body
- * @param signature - Signature from webhook header
- * @returns Boolean indicating if webhook is valid
- */
-export function verifyWebhookSignature(
-  body: string,
-  signature: string
+export function verifyCashfreeWebhook(
+  rawBody: string,
+  signature: string,
+  timestamp: string,
+  secret?: string
 ): boolean {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
-    
+    const resolvedSecret = secret ?? process.env.CASHFREE_WEBHOOK_SECRET ?? '';
+    const signedPayload = timestamp + rawBody;
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex');
-    
+      .createHmac('sha256', resolvedSecret)
+      .update(signedPayload)
+      .digest('base64');
     return expectedSignature === signature;
-  } catch (error) {
-    console.error('Error verifying webhook signature:', error);
+  } catch {
     return false;
   }
 }
 
-/**
- * Fetch payment details from Razorpay
- * 
- * @param paymentId - Razorpay payment ID
- * @returns Payment details
- */
-export async function fetchPaymentDetails(paymentId: string) {
-  try {
-    const razorpay = getRazorpayInstance();
-    const payment = await razorpay.payments.fetch(paymentId);
-    return payment;
-  } catch (error) {
-    console.error('Error fetching payment details:', error);
-    throw new Error('Failed to fetch payment details');
-  }
+export interface CashfreeRefundResult {
+  refundId: string;
+  status: string;
 }
 
-/**
- * Fetch order details from Razorpay
- * 
- * @param orderId - Razorpay order ID
- * @returns Order details
- */
-export async function fetchOrderDetails(orderId: string) {
-  try {
-    const razorpay = getRazorpayInstance();
-    const order = await razorpay.orders.fetch(orderId);
-    return order;
-  } catch (error) {
-    console.error('Error fetching order details:', error);
-    throw new Error('Failed to fetch order details');
-  }
-}
+export async function refundCashfreePayment(
+  cfOrderId: string,
+  cfPaymentId: string,
+  amount?: number,
+  refundNote?: string
+): Promise<CashfreeRefundResult> {
+  const cashfree = getCashfreeInstance();
 
-/**
- * Refund a payment
- * 
- * @param paymentId - Razorpay payment ID
- * @param amount - Amount to refund in INR (optional, full refund if not specified)
- * @returns Refund details
- */
-export async function refundPayment(
-  paymentId: string,
-  amount?: number
-) {
-  try {
-    const razorpay = getRazorpayInstance();
-    
-    const refundData: any = {
-      payment_id: paymentId,
-    };
-    
-    if (amount) {
-      // Convert to paise
-      refundData.amount = Math.round(amount * 100);
-    }
-    
-    const refund = await razorpay.payments.refund(paymentId, refundData);
-    return refund;
-  } catch (error) {
-    console.error('Error processing refund:', error);
-    throw new Error('Failed to process refund');
-  }
-}
+  const refundId = `refund_${Date.now()}`;
+  const response = await cashfree.PGOrderCreateRefund(cfOrderId, {
+    refund_amount: amount || 0,
+    refund_id: refundId,
+    refund_note: refundNote || 'Refund requested',
+  });
+  const refund = response.data;
 
-/**
- * Get Razorpay public key for client-side integration
- * 
- * @returns Razorpay key ID
- */
-export function getRazorpayKeyId(): string {
-  return process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+  return {
+    refundId: refund.cf_refund_id || refundId,
+    status: refund.refund_status || 'PENDING',
+  };
 }

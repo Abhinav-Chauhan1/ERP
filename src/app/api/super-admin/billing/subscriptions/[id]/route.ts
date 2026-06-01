@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { db } from '@/lib/db';
 import { billingService } from '@/lib/services/billing-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
+import { addMonths } from 'date-fns';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 
@@ -10,6 +12,8 @@ const updateSubscriptionSchema = z.object({
   planId: z.string().optional(),
   cancelAtPeriodEnd: z.boolean().optional(),
   metadata: z.record(z.string()).optional(),
+  action: z.literal('activate').optional(),
+  endDate: z.string().datetime().optional(),
 });
 
 const rateLimitConfig = {
@@ -73,14 +77,50 @@ export async function PUT(
 
     const body = await request.json();
     const validatedData = updateSubscriptionSchema.parse(body);
+    const subscriptionId = (await params).id;
 
-    const subscription = await billingService.updateSubscription((await params).id, validatedData);
+    if (validatedData.action === 'activate') {
+      const sub = await db.enhancedSubscription.findUnique({
+        where: { id: subscriptionId },
+        include: { plan: { select: { name: true } } },
+      });
+
+      if (!sub) {
+        return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+      }
+
+      const now = new Date();
+      const periodEnd = validatedData.endDate ? new Date(validatedData.endDate) : addMonths(now, 1);
+
+      await Promise.all([
+        db.enhancedSubscription.update({
+          where: { id: subscriptionId },
+          data: { status: 'ACTIVE', currentPeriodStart: now, currentPeriodEnd: periodEnd },
+        }),
+        db.school.update({
+          where: { id: sub.schoolId },
+          data: { plan: sub.plan.name as any },
+        }),
+      ]);
+
+      await logAuditEvent({
+        userId: session.user.id,
+        action: AuditAction.UPDATE,
+        resource: 'SUBSCRIPTION',
+        resourceId: subscriptionId,
+        changes: { action: 'activate', periodEnd: periodEnd.toISOString() },
+      });
+
+      return NextResponse.json({ message: 'Subscription activated successfully' });
+    }
+
+    const subscription = await billingService.updateSubscription(subscriptionId, validatedData);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SUBSCRIPTION',
-      resourceId: (await params).id,
+      resourceId: subscriptionId,
       changes: validatedData,
     });
 

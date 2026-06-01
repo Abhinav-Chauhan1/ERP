@@ -22,7 +22,7 @@ const updateSchoolSchema = z.object({
   favicon: z.string().optional(),
   primaryColor: z.string().optional(),
   secondaryColor: z.string().optional(),
-  razorpayCustomerId: z.string().optional(),
+  cfCustomerId: z.string().optional(),
 });
 
 const rateLimitConfig = {

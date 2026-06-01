@@ -57,7 +57,7 @@ export interface SchoolDetailData {
     favicon: string | null;
     primaryColor: string;
     secondaryColor: string;
-    razorpayCustomerId: string | null;
+    cfCustomerId: string | null;
     createdAt: Date;
     updatedAt: Date;
     _count: {

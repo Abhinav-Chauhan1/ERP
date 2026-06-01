@@ -1,106 +1,92 @@
 /**
  * Payment Webhook API Route
- * Handles Razorpay webhook callbacks for payment status updates
- * Requirements: 1.3, 10.2
+ * Handles Cashfree webhook callbacks for fee payment status updates
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
-import { verifyWebhookSignature } from '@/lib/utils/payment-gateway';
+import { verifyCashfreeWebhook } from '@/lib/utils/payment-gateway';
+import { decryptCredential } from '@/lib/utils/encrypt-credentials';
 import { revalidatePath } from 'next/cache';
 
-/**
- * Webhook event types from Razorpay
- */
-type WebhookEvent = 
-  | 'payment.authorized'
-  | 'payment.captured'
-  | 'payment.failed'
-  | 'order.paid'
-  | 'refund.created'
-  | 'refund.processed';
-
-/**
- * Webhook payload structure
- */
-interface WebhookPayload {
-  entity: string;
-  account_id: string;
-  event: WebhookEvent;
-  contains: string[];
-  payload: {
-    payment: {
-      entity: {
-        id: string;
-        entity: string;
-        amount: number;
-        currency: string;
-        status: string;
-        order_id: string;
-        invoice_id: string | null;
-        international: boolean;
-        method: string;
-        amount_refunded: number;
-        refund_status: string | null;
-        captured: boolean;
-        description: string | null;
-        card_id: string | null;
-        bank: string | null;
-        wallet: string | null;
-        vpa: string | null;
-        email: string;
-        contact: string;
-        notes: Record<string, string>;
-        fee: number;
-        tax: number;
-        error_code: string | null;
-        error_description: string | null;
-        error_source: string | null;
-        error_step: string | null;
-        error_reason: string | null;
-        created_at: number;
-      };
+interface CashfreeWebhookPayload {
+  type: string;
+  data: {
+    order: {
+      order_id: string;
+      order_amount: number;
+      order_currency: string;
+      order_tags?: Record<string, string>;
     };
-    order?: {
-      entity: {
-        id: string;
-        entity: string;
-        amount: number;
-        amount_paid: number;
-        amount_due: number;
-        currency: string;
-        receipt: string;
-        status: string;
-        attempts: number;
-        notes: Record<string, string>;
-        created_at: number;
-      };
+    payment: {
+      cf_payment_id: string;
+      payment_status: string;
+      payment_amount: number;
+      payment_method?: string;
+      payment_message?: string;
+      bank_reference?: string;
+    };
+    refund?: {
+      cf_refund_id: string;
+      refund_id: string;
+      refund_amount: number;
+      refund_status: string;
     };
   };
-  created_at: number;
 }
 
 /**
  * POST /api/payments/webhook
- * Handle Razorpay webhook callbacks
+ * Handle Cashfree webhook callbacks for school fee payments
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get raw body for signature verification
     const body = await req.text();
-    const signature = req.headers.get('x-razorpay-signature');
+    const signature = req.headers.get('x-webhook-signature');
+    const timestamp = req.headers.get('x-webhook-timestamp');
 
-    if (!signature) {
-      console.error('Webhook signature missing');
+    if (!signature || !timestamp) {
+      console.error('Webhook signature or timestamp missing');
       return NextResponse.json(
-        { success: false, message: 'Signature missing' },
+        { success: false, message: 'Signature or timestamp missing' },
         { status: 400 }
       );
     }
 
-    // Verify webhook signature
-    const isValid = verifyWebhookSignature(body, signature);
+    // Parse payload first (untrusted) to extract schoolId for credential lookup
+    let payload: CashfreeWebhookPayload;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return NextResponse.json({ success: false, message: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const schoolId = payload.data?.order?.order_tags?.schoolId;
+    if (!schoolId) {
+      console.error('[webhook] Missing schoolId in order_tags');
+      return NextResponse.json(
+        { success: false, message: 'Missing schoolId in order tags' },
+        { status: 400 }
+      );
+    }
+
+    // Look up this school's webhook secret for signature verification
+    const settings = await db.schoolSettings.findUnique({
+      where: { schoolId },
+      select: { cashfreeWebhookEncrypted: true },
+    });
+
+    if (!settings?.cashfreeWebhookEncrypted) {
+      console.error(`[webhook] No Cashfree webhook secret configured for school: ${schoolId}`);
+      return NextResponse.json(
+        { success: false, message: 'Payment gateway not configured for this school' },
+        { status: 400 }
+      );
+    }
+
+    const webhookSecret = decryptCredential(settings.cashfreeWebhookEncrypted);
+    const isValid = verifyCashfreeWebhook(body, signature, timestamp, webhookSecret);
 
     if (!isValid) {
       console.error('Invalid webhook signature');
@@ -109,47 +95,30 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const eventType = payload.type;
+    const { order, payment, refund } = payload.data;
 
-    // Parse webhook payload
-    const payload: WebhookPayload = JSON.parse(body);
-    const event = payload.event;
-    const paymentEntity = payload.payload.payment?.entity;
+    console.log(`Processing webhook event: ${eventType} for order: ${order?.order_id}`);
 
-    if (!paymentEntity) {
-      console.error('Payment entity missing in webhook payload');
-      return NextResponse.json(
-        { success: false, message: 'Invalid payload' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`Processing webhook event: ${event} for payment: ${paymentEntity.id}`);
-
-    // Handle different webhook events
-    switch (event) {
-      case 'payment.captured':
-      case 'order.paid':
-        await handlePaymentSuccess(paymentEntity);
+    switch (eventType) {
+      case 'PAYMENT_SUCCESS_WEBHOOK':
+        await handlePaymentSuccess(order, payment);
         break;
 
-      case 'payment.failed':
-        await handlePaymentFailure(paymentEntity);
+      case 'PAYMENT_FAILED_WEBHOOK':
+      case 'PAYMENT_USER_DROPPED_WEBHOOK':
+        await handlePaymentFailure(order, payment);
         break;
 
-      case 'refund.created':
-      case 'refund.processed':
-        await handleRefund(paymentEntity);
+      case 'REFUND_SUCCESS_WEBHOOK':
+        if (refund) await handleRefund(payment, refund);
         break;
 
       default:
-        console.log(`Unhandled webhook event: ${event}`);
+        console.log(`Unhandled webhook event: ${eventType}`);
     }
 
-    // Return success response
-    return NextResponse.json({
-      success: true,
-      message: 'Webhook processed successfully'
-    });
+    return NextResponse.json({ success: true, message: 'Webhook processed successfully' });
 
   } catch (error) {
     console.error('Error processing webhook:', error);
@@ -160,168 +129,124 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Handle successful payment
- */
-async function handlePaymentSuccess(paymentEntity: any) {
-  try {
-    const paymentId = paymentEntity.id;
-    const orderId = paymentEntity.order_id;
-    const amount = paymentEntity.amount / 100; // Convert from paise to INR
-    const notes = paymentEntity.notes || {};
+async function handlePaymentSuccess(
+  order: CashfreeWebhookPayload['data']['order'],
+  payment: CashfreeWebhookPayload['data']['payment']
+) {
+  const cfPaymentId = payment.cf_payment_id;
+  const orderId = order.order_id;
+  // Cashfree amount is in INR (rupees)
+  const amount = payment.payment_amount;
 
-    // Check if payment already exists
-    const existingPayment = await db.feePayment.findFirst({
-      where: {
-        transactionId: paymentId
-      }
-    });
+  const existingPayment = await db.feePayment.findFirst({
+    where: { transactionId: cfPaymentId }
+  });
 
-    if (existingPayment) {
-      // Update existing payment
-      if (existingPayment.status !== PaymentStatus.COMPLETED) {
-        await db.feePayment.update({
-          where: { id: existingPayment.id },
-          data: {
-            status: PaymentStatus.COMPLETED,
-            remarks: `Payment captured via webhook. Order ID: ${orderId}`,
-          }
-        });
-
-        console.log(`Updated existing payment: ${existingPayment.id}`);
-      }
-    } else {
-      // Require studentId and feeStructureId — return a non-200 so Razorpay retries
-      if (!notes.studentId || !notes.feeStructureId) {
-        console.error('[webhook] Missing required notes fields (studentId/feeStructureId)', { notes });
-        throw new Error('Missing required payment notes: studentId and feeStructureId are required');
-      }
-
-      // Create new payment record if notes contain required information
-      if (notes.studentId && notes.feeStructureId) {
-        // H6 FIX: Always derive schoolId from the verified student record in the DB.
-        // Never trust notes.schoolId from the Razorpay payload — it is attacker-controlled.
-        const student = await db.student.findUnique({
-          where: { id: notes.studentId },
-          select: { schoolId: true }
-        });
-
-        if (!student) {
-          console.error(`Student not found for payment: ${notes.studentId}`);
-          throw new Error('Student not found for payment processing');
-        }
-
-        const schoolId = student.schoolId;
-
-        const receiptNumber = `RCP-${Date.now()}-${notes.studentId.slice(-6)}`;
-
-        await db.feePayment.create({
-          data: {
-            studentId: notes.studentId,
-            feeStructureId: notes.feeStructureId,
-            schoolId: schoolId,
-            amount: amount,
-            paidAmount: amount,
-            balance: 0,
-            paymentDate: new Date(paymentEntity.created_at * 1000),
-            paymentMethod: PaymentMethod.ONLINE_PAYMENT,
-            transactionId: paymentId,
-            receiptNumber,
-            status: PaymentStatus.COMPLETED,
-            remarks: `Payment captured via webhook. Order ID: ${orderId}`,
-          }
-        });
-
-        console.log(`Created new payment record for student: ${notes.studentId}, school: ${schoolId}`);
-      }
-    }
-
-    // Revalidate fee pages
-    revalidatePath('/parent/fees');
-    revalidatePath('/parent/fees/overview');
-    revalidatePath('/parent/fees/history');
-
-  } catch (error) {
-    console.error('Error handling payment success:', error);
-    throw error;
-  }
-}
-
-/**
- * Handle failed payment
- */
-async function handlePaymentFailure(paymentEntity: any) {
-  try {
-    const paymentId = paymentEntity.id;
-    const orderId = paymentEntity.order_id;
-    const errorDescription = paymentEntity.error_description || 'Payment failed';
-
-    // Check if payment exists
-    const existingPayment = await db.feePayment.findFirst({
-      where: {
-        transactionId: paymentId
-      }
-    });
-
-    if (existingPayment) {
-      // Update payment status to failed
+  if (existingPayment) {
+    if (existingPayment.status !== PaymentStatus.COMPLETED) {
       await db.feePayment.update({
         where: { id: existingPayment.id },
         data: {
-          status: PaymentStatus.FAILED,
-          remarks: `Payment failed: ${errorDescription}. Order ID: ${orderId}`,
+          status: PaymentStatus.COMPLETED,
+          remarks: `Payment captured via webhook. Order: ${orderId}`,
         }
       });
+    }
+  } else {
+    // Extract studentId and feeStructureId from order_id pattern: FEE-{timestamp}-{childIdSlice}
+    // The full student/fee info is embedded in order tags if present
+    const tags = order.order_tags || {};
+    const studentId = tags.studentId;
+    const feeStructureId = tags.feeStructureId;
 
-      console.log(`Updated payment to failed: ${existingPayment.id}`);
+    if (!studentId || !feeStructureId) {
+      console.error('[webhook] Missing required order tags (studentId/feeStructureId)', { tags });
+      throw new Error('Missing required order tags: studentId and feeStructureId are required');
     }
 
-    // Revalidate fee pages
-    revalidatePath('/parent/fees');
-    revalidatePath('/parent/fees/overview');
-    revalidatePath('/parent/fees/history');
-
-  } catch (error) {
-    console.error('Error handling payment failure:', error);
-    throw error;
-  }
-}
-
-/**
- * Handle refund
- */
-async function handleRefund(paymentEntity: any) {
-  try {
-    const paymentId = paymentEntity.id;
-    const refundedAmount = paymentEntity.amount_refunded / 100; // Convert from paise to INR
-
-    // Find payment by transaction ID
-    const existingPayment = await db.feePayment.findFirst({
-      where: {
-        transactionId: paymentId
-      }
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      select: { schoolId: true }
     });
 
-    if (existingPayment) {
-      // Update payment status to refunded
-      await db.feePayment.update({
-        where: { id: existingPayment.id },
-        data: {
-          status: PaymentStatus.REFUNDED,
-          remarks: `Payment refunded: ₹${refundedAmount}`,
-        }
-      });
-
-      console.log(`Updated payment to refunded: ${existingPayment.id}`);
+    if (!student) {
+      console.error(`Student not found for payment: ${studentId}`);
+      throw new Error('Student not found for payment processing');
     }
 
-    // Revalidate fee pages
-    revalidatePath('/parent/fees');
-    revalidatePath('/parent/fees/overview');
-    revalidatePath('/parent/fees/history');
+    const receiptNumber = `RCP-${Date.now()}-${studentId.slice(-6)}`;
 
-  } catch (error) {
-    console.error('Error handling refund:', error);
-    throw error;
+    await db.feePayment.create({
+      data: {
+        studentId,
+        feeStructureId,
+        schoolId: student.schoolId,
+        amount,
+        paidAmount: amount,
+        balance: 0,
+        paymentDate: new Date(),
+        paymentMethod: PaymentMethod.ONLINE_PAYMENT,
+        transactionId: cfPaymentId,
+        receiptNumber,
+        status: PaymentStatus.COMPLETED,
+        remarks: `Payment captured via webhook. Order: ${orderId}`,
+      }
+    });
   }
+
+  revalidatePath('/parent/fees');
+  revalidatePath('/parent/fees/overview');
+  revalidatePath('/parent/fees/history');
+}
+
+async function handlePaymentFailure(
+  order: CashfreeWebhookPayload['data']['order'],
+  payment: CashfreeWebhookPayload['data']['payment']
+) {
+  const cfPaymentId = payment.cf_payment_id;
+  const errorDescription = payment.payment_message || 'Payment failed';
+
+  const existingPayment = await db.feePayment.findFirst({
+    where: { transactionId: cfPaymentId }
+  });
+
+  if (existingPayment) {
+    await db.feePayment.update({
+      where: { id: existingPayment.id },
+      data: {
+        status: PaymentStatus.FAILED,
+        remarks: `Payment failed: ${errorDescription}. Order: ${order.order_id}`,
+      }
+    });
+  }
+
+  revalidatePath('/parent/fees');
+  revalidatePath('/parent/fees/overview');
+  revalidatePath('/parent/fees/history');
+}
+
+async function handleRefund(
+  payment: CashfreeWebhookPayload['data']['payment'],
+  refund: NonNullable<CashfreeWebhookPayload['data']['refund']>
+) {
+  const cfPaymentId = payment.cf_payment_id;
+  const refundedAmount = refund.refund_amount;
+
+  const existingPayment = await db.feePayment.findFirst({
+    where: { transactionId: cfPaymentId }
+  });
+
+  if (existingPayment) {
+    await db.feePayment.update({
+      where: { id: existingPayment.id },
+      data: {
+        status: PaymentStatus.REFUNDED,
+        remarks: `Payment refunded: ₹${refundedAmount}`,
+      }
+    });
+  }
+
+  revalidatePath('/parent/fees');
+  revalidatePath('/parent/fees/overview');
+  revalidatePath('/parent/fees/history');
 }

@@ -1,21 +1,18 @@
 /**
  * Payment Order Creation API Route
- * Creates a Razorpay order for payment processing
- * Requirements: 1.3, 10.2
+ * Creates a Cashfree order for payment processing
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { createPaymentOrder } from '@/lib/utils/payment-gateway';
+import { createCashfreeOrder, getSchoolCashfreeInstance } from '@/lib/utils/payment-gateway';
 import { paymentGatewayOrderSchema } from '@/lib/schemaValidation/parent-fee-schemas';
 import { verifyCsrfToken } from '@/lib/utils/csrf';
 import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
 import { getCurrentParent } from '@/lib/utils/payment-helpers';
+import { getSchoolCashfreeCredentials } from '@/lib/actions/paymentConfigActions';
 import { z } from 'zod';
 
-/**
- * Helper function to verify parent-child relationship
- */
 async function verifyParentChildRelationship(
   parentId: string,
   childId: string
@@ -28,11 +25,10 @@ async function verifyParentChildRelationship(
 
 /**
  * POST /api/payments/create
- * Create a payment order for fee payment
+ * Create a Cashfree order for fee payment
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get current parent
     const parent = await getCurrentParent();
 
     if (!parent) {
@@ -42,7 +38,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limiting check
     const rateLimitResult = await rateLimitMiddleware(parent.id, RateLimitPresets.PAYMENT);
 
     if (rateLimitResult.exceeded) {
@@ -63,10 +58,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Parse and validate request body
     const body = await req.json();
 
-    // Verify CSRF token
     const csrfToken = body.csrf_token || req.headers.get('x-csrf-token');
     const isCsrfValid = await verifyCsrfToken(csrfToken);
 
@@ -79,11 +72,7 @@ export async function POST(req: NextRequest) {
 
     const validated = paymentGatewayOrderSchema.parse(body);
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(
-      parent.id,
-      validated.childId
-    );
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -92,22 +81,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // CRITICAL: Get school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Verify fee structure exists and is active - CRITICAL: Filter by school
     const feeStructure = await db.feeStructure.findFirst({
-      where: { 
+      where: {
         id: validated.feeStructureId,
-        schoolId, // CRITICAL: Ensure fee structure belongs to current school
+        schoolId,
       },
       include: {
-        items: {
-          include: {
-            feeType: true
-          }
-        },
+        items: { include: { feeType: true } },
         academicYear: true
       }
     });
@@ -119,11 +102,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify fee type IDs are valid
     const validFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
-    const invalidFeeTypes = validated.feeTypeIds.filter(
-      id => !validFeeTypeIds.includes(id)
-    );
+    const invalidFeeTypes = validated.feeTypeIds.filter(id => !validFeeTypeIds.includes(id));
 
     if (invalidFeeTypes.length > 0) {
       return NextResponse.json(
@@ -132,20 +112,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get student details for receipt - CRITICAL: Filter by school
     const student = await db.student.findFirst({
-      where: { 
-        id: validated.childId,
-        schoolId, // CRITICAL: Ensure student belongs to current school
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
+      where: { id: validated.childId, schoolId },
+      include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } }
     });
 
     if (!student) {
@@ -155,33 +124,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate receipt number
-    const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
+    // Fetch school's own Cashfree credentials
+    const schoolCreds = await getSchoolCashfreeCredentials(schoolId);
+    if (!schoolCreds) {
+      return NextResponse.json(
+        { success: false, message: 'Online payments are not configured for this school. Please contact the school administrator.' },
+        { status: 400 }
+      );
+    }
 
-    // Create payment order in Razorpay
-    const order = await createPaymentOrder({
-      amount: validated.amount,
-      currency: validated.currency,
-      receipt: receiptNumber,
-      notes: {
-        studentId: validated.childId,
-        studentName: `${student.user.firstName} ${student.user.lastName}`,
-        feeStructureId: validated.feeStructureId,
-        feeStructureName: feeStructure.name,
-        academicYear: feeStructure.academicYear.name,
-        parentId: parent.id,
-      }
-    });
+    const schoolCashfree = getSchoolCashfreeInstance(schoolCreds.appId, schoolCreds.secretKey);
 
-    // Return order details to client
+    const orderId = `FEE-${Date.now()}-${validated.childId.slice(-6)}`;
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
+    const returnUrl =
+      `${baseUrl}/parent/fees/payment/success` +
+      `?cfOrderId=${orderId}` +
+      `&childId=${validated.childId}` +
+      `&feeStructureId=${validated.feeStructureId}`;
+
+    const { cfOrderId, paymentSessionId } = await createCashfreeOrder(
+      {
+        orderId,
+        amount: validated.amount,
+        currency: validated.currency || 'INR',
+        customerName: `${student.user.firstName} ${student.user.lastName}`,
+        customerEmail: student.user.email || `${validated.childId}@student.school`,
+        customerPhone: student.user.phone || '9999999999',
+        returnUrl,
+        notifyUrl: `${baseUrl}/api/payments/webhook`,
+        tags: {
+          studentId: validated.childId,
+          feeStructureId: validated.feeStructureId,
+          schoolId,
+        },
+      },
+      schoolCashfree
+    );
+
     return NextResponse.json({
       success: true,
       data: {
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        receipt: order.receipt,
-        keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        cfOrderId,
+        paymentSessionId,
+        amount: validated.amount,
+        currency: validated.currency || 'INR',
       },
       message: 'Payment order created successfully'
     });

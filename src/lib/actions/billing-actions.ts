@@ -310,7 +310,6 @@ export async function getInvoices(limit: number = 100) {
         paidAt: true,
         createdAt: true,
         metadata: true,
-        razorpayInvoiceId: true,
         subscription: {
           select: {
             id: true,
@@ -325,7 +324,7 @@ export async function getInvoices(limit: number = 100) {
       success: true,
       data: invoices.map((inv, idx) => ({
         id: inv.id,
-        invoiceNumber: inv.razorpayInvoiceId ?? `INV-${String(idx + 1).padStart(4, "0")}`,
+        invoiceNumber: `INV-${String(idx + 1).padStart(4, "0")}`,
         amount: inv.amount,
         currency: inv.currency.toUpperCase(),
         status: inv.status as "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE",
@@ -342,7 +341,7 @@ export async function getInvoices(limit: number = 100) {
           plan: { name: inv.subscription.plan.name },
         },
         metadata: {
-          razorpayInvoiceNumber: inv.razorpayInvoiceId ?? undefined,
+          cfInvoiceRef: (inv.metadata as any)?.cfInvoiceRef ?? undefined,
           remindersSent: (inv.metadata as any)?.remindersSent ?? 0,
           lastReminderSent: (inv.metadata as any)?.lastReminderSent,
         },

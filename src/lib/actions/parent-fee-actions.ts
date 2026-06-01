@@ -456,66 +456,58 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
     if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // H-1: Verify feeStructure belongs to this school
     const feeStructureValid = await verifyFeeStructureOwnership(validated.feeStructureId, parent.schoolId);
     if (!feeStructureValid) return { success: false, message: "Invalid fee structure" };
 
+    // Verify payment status with Cashfree (server-to-server)
+    const { verifyCashfreePayment } = await import("@/lib/utils/payment-gateway");
+    const cashfreeResult = await verifyCashfreePayment(validated.cfOrderId);
+
+    if (!cashfreeResult.success) {
+      return { success: false, message: "Payment not completed or verification failed" };
+    }
+
+    const sanitizedCfPaymentId = sanitizeAlphanumeric(cashfreeResult.cfPaymentId, "-_");
+
+    // Idempotency: webhook may have already created the record
     const existingPayment = await db.feePayment.findFirst({
       where: {
-        transactionId: validated.paymentId,
+        transactionId: sanitizedCfPaymentId,
         schoolId: parent.schoolId
       }
     });
 
     if (existingPayment) {
-      if (existingPayment.status === PaymentStatus.COMPLETED) {
-        return {
-          success: true,
-          data: {
-            paymentId: existingPayment.id,
-            receiptNumber: existingPayment.receiptNumber,
-            status: existingPayment.status
-          },
-          message: "Payment already verified"
-        };
-      }
-
-      const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
-      const updatedPayment = await db.feePayment.update({
-        where: { id: existingPayment.id },
-        data: { status: PaymentStatus.COMPLETED, transactionId: sanitizedPaymentId }
-      });
-
-      revalidatePath("/parent/fees");
-
       return {
         success: true,
         data: {
-          paymentId: updatedPayment.id,
-          receiptNumber: updatedPayment.receiptNumber,
-          status: updatedPayment.status
+          paymentId: existingPayment.id,
+          receiptNumber: existingPayment.receiptNumber,
+          status: existingPayment.status,
+          amount: existingPayment.paidAmount,
+          transactionId: existingPayment.transactionId,
         },
-        message: "Payment verified successfully"
+        message: "Payment already verified"
       };
     }
 
+    // Webhook hasn't fired yet — create the record now
     const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-    const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
-    const sanitizedOrderId = sanitizeAlphanumeric(validated.orderId, "-_");
+    const sanitizedCfOrderId = sanitizeAlphanumeric(validated.cfOrderId, "-_");
 
     const payment = await db.feePayment.create({
       data: {
         studentId: validated.childId,
         feeStructureId: validated.feeStructureId,
-        amount: validated.amount,
-        paidAmount: validated.amount,
+        amount: cashfreeResult.amount,
+        paidAmount: cashfreeResult.amount,
         balance: 0,
         paymentDate: new Date(),
         paymentMethod: PaymentMethod.ONLINE_PAYMENT,
-        transactionId: sanitizedPaymentId,
+        transactionId: sanitizedCfPaymentId,
         receiptNumber,
         status: PaymentStatus.COMPLETED,
-        remarks: `Online payment verified. Order ID: ${sanitizedOrderId}`,
+        remarks: `Online payment via Cashfree. Order ID: ${sanitizedCfOrderId}`,
         schoolId: parent.schoolId
       }
     });
@@ -527,7 +519,9 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
       data: {
         paymentId: payment.id,
         receiptNumber: payment.receiptNumber,
-        status: payment.status
+        status: payment.status,
+        amount: payment.paidAmount,
+        transactionId: payment.transactionId,
       },
       message: "Payment verified successfully"
     };
