@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCashfreeWebhook } from '@/lib/utils/payment-gateway';
 import { billingService } from '@/lib/services/billing-service';
 
+export async function GET() {
+  return NextResponse.json({ status: 'ok', endpoint: 'subscription-webhook' });
+}
+
 /**
  * POST /api/subscription/webhook
  * Cashfree webhook handler for SaaS subscription payments.

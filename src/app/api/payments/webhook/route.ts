@@ -36,6 +36,10 @@ interface CashfreeWebhookPayload {
   };
 }
 
+export async function GET() {
+  return NextResponse.json({ status: 'ok', endpoint: 'fee-payment-webhook' });
+}
+
 /**
  * POST /api/payments/webhook
  * Handle Cashfree webhook callbacks for school fee payments
