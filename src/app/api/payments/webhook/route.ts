@@ -75,21 +75,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Look up this school's webhook secret for signature verification
+    // Look up this school's Cashfree secret key for signature verification
+    // Cashfree signs webhooks with the same key used for API calls
     const settings = await db.schoolSettings.findUnique({
       where: { schoolId },
-      select: { cashfreeWebhookEncrypted: true },
+      select: { cashfreeSecretEncrypted: true },
     });
 
-    if (!settings?.cashfreeWebhookEncrypted) {
-      console.error(`[webhook] No Cashfree webhook secret configured for school: ${schoolId}`);
+    if (!settings?.cashfreeSecretEncrypted) {
+      console.error(`[webhook] No Cashfree credentials configured for school: ${schoolId}`);
       return NextResponse.json(
         { success: false, message: 'Payment gateway not configured for this school' },
         { status: 400 }
       );
     }
 
-    const webhookSecret = decryptCredential(settings.cashfreeWebhookEncrypted);
+    const webhookSecret = decryptCredential(settings.cashfreeSecretEncrypted);
     const isValid = verifyCashfreeWebhook(body, signature, timestamp, webhookSecret);
 
     if (!isValid) {

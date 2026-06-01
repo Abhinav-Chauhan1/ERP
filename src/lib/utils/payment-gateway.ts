@@ -130,7 +130,8 @@ export function verifyCashfreeWebhook(
   secret?: string
 ): boolean {
   try {
-    const resolvedSecret = secret ?? process.env.CASHFREE_WEBHOOK_SECRET ?? '';
+    // Cashfree signs webhooks with the same Secret Key used for API calls
+    const resolvedSecret = secret ?? process.env.CASHFREE_SECRET_KEY ?? '';
     const signedPayload = timestamp + rawBody;
     const expectedSignature = crypto
       .createHmac('sha256', resolvedSecret)

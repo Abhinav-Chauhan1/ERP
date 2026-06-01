@@ -35,9 +35,7 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
   // Cashfree credentials state
   const [cfAppId, setCfAppId] = useState("");
   const [cfSecret, setCfSecret] = useState("");
-  const [cfWebhookSecret, setCfWebhookSecret] = useState("");
   const [showCfSecret, setShowCfSecret] = useState(false);
-  const [showCfWebhook, setShowCfWebhook] = useState(false);
   const [cfLoading, setCfLoading] = useState(false);
   const [cfTestLoading, setCfTestLoading] = useState(false);
 
@@ -87,18 +85,17 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
   };
 
   const handleSaveCashfreeCredentials = async () => {
-    if (!cfAppId.trim() || !cfSecret.trim() || !cfWebhookSecret.trim()) {
-      toast.error("All three Cashfree fields are required");
+    if (!cfAppId.trim() || !cfSecret.trim()) {
+      toast.error("App ID and Secret Key are required");
       return;
     }
     setCfLoading(true);
     try {
-      const result = await saveCashfreeCredentials(cfAppId, cfSecret, cfWebhookSecret);
+      const result = await saveCashfreeCredentials(cfAppId, cfSecret, cfSecret);
       if (result.success) {
         toast.success("Cashfree credentials saved successfully");
         setCfAppId("");
         setCfSecret("");
-        setCfWebhookSecret("");
       } else {
         toast.error(result.error || "Failed to save credentials");
       }
@@ -274,27 +271,10 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cfWebhook">Webhook Secret</Label>
-                    <div className="relative">
-                      <Input
-                        id="cfWebhook"
-                        type={showCfWebhook ? "text" : "password"}
-                        placeholder={initialData.cashfreeWebhookSet ? "••••••••••••••••" : "Webhook secret from Cashfree dashboard"}
-                        value={cfWebhookSecret}
-                        onChange={(e) => setCfWebhookSecret(e.target.value)}
-                        className="pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCfWebhook(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showCfWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Cashfree uses the same Secret Key for both API calls and webhook signatures — no separate webhook secret needed.
+                </p>
 
                 <Alert className="py-2">
                   <AlertCircle className="h-3.5 w-3.5" />
@@ -322,7 +302,7 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                     type="button"
                     size="sm"
                     onClick={handleSaveCashfreeCredentials}
-                    disabled={cfLoading || !cfAppId.trim() || !cfSecret.trim() || !cfWebhookSecret.trim()}
+                    disabled={cfLoading || !cfAppId.trim() || !cfSecret.trim()}
                   >
                     {cfLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                     Save Credentials
