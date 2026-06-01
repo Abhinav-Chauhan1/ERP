@@ -937,49 +937,38 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
       failed: [] as { id: string; error: string }[],
     };
 
-    // Process each receipt
+    // Pre-fetch all receipts in one query to avoid N+1 inside the loop
+    const allReceipts = await db.paymentReceipt.findMany({
+      where: { id: { in: receiptIds } },
+      select: {
+        id: true,
+        status: true,
+        studentId: true,
+        feeStructureId: true,
+        amount: true,
+        paymentDate: true,
+        paymentMethod: true,
+        transactionRef: true,
+        remarks: true,
+      },
+    });
+    const receiptMap = new Map(allReceipts.map((r) => [r.id, r]));
+
+    // Process each receipt using pre-fetched data
     for (const receiptId of receiptIds) {
+      const receipt = receiptMap.get(receiptId);
       try {
-        const result = await db.$transaction(async (tx) => {
-          // Fetch receipt
-          const receipt = await tx.paymentReceipt.findUnique({
-            where: { id: receiptId },
-            include: {
-              student: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
-              feeStructure: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          });
+        if (!receipt) throw new Error("Receipt not found");
+        if (receipt.status !== ReceiptStatus.PENDING_VERIFICATION) {
+          throw new Error("Receipt is not pending verification");
+        }
 
-          if (!receipt) {
-            throw new Error("Receipt not found");
-          }
-
-          if (receipt.status !== ReceiptStatus.PENDING_VERIFICATION) {
-            throw new Error("Receipt is not pending verification");
-          }
-
-          // Create payment record
+        await db.$transaction(async (tx) => {
           const payment = await tx.feePayment.create({
             data: {
               studentId: receipt.studentId,
               feeStructureId: receipt.feeStructureId,
-              schoolId: schoolId, // Add required schoolId
+              schoolId,
               amount: receipt.amount,
               paidAmount: receipt.amount,
               paymentDate: receipt.paymentDate,
@@ -991,7 +980,6 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
             },
           });
 
-          // Update receipt status
           await tx.paymentReceipt.update({
             where: { id: receiptId },
             data: {
@@ -1001,11 +989,9 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
               feePaymentId: payment.id,
             },
           });
-
-          return { receiptId, paymentId: payment.id };
         });
 
-        results.successful.push(result.receiptId);
+        results.successful.push(receiptId);
       } catch (error) {
         results.failed.push({
           id: receiptId,
@@ -1109,39 +1095,38 @@ export async function bulkRejectReceipts(
       failed: [] as { id: string; error: string }[],
     };
 
-    // Process each receipt
+    // Pre-fetch all receipts in one query
+    const allReceipts = await db.paymentReceipt.findMany({
+      where: { id: { in: receiptIds } },
+      select: { id: true, status: true },
+    });
+    const receiptMap = new Map(allReceipts.map((r) => [r.id, r]));
+
+    // Validate each receipt in memory; split into valid and invalid
+    const validIds: string[] = [];
     for (const receiptId of receiptIds) {
-      try {
-        const receipt = await db.paymentReceipt.findUnique({
-          where: { id: receiptId },
-        });
-
-        if (!receipt) {
-          throw new Error("Receipt not found");
-        }
-
-        if (receipt.status !== ReceiptStatus.PENDING_VERIFICATION) {
-          throw new Error("Receipt is not pending verification");
-        }
-
-        // Update receipt status
-        await db.paymentReceipt.update({
-          where: { id: receiptId },
-          data: {
-            status: ReceiptStatus.REJECTED,
-            verifiedAt: new Date(),
-            verifiedBy: user.id,
-            rejectionReason: sanitizedReason,
-          },
-        });
-
-        results.successful.push(receiptId);
-      } catch (error) {
-        results.failed.push({
-          id: receiptId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+      const receipt = receiptMap.get(receiptId);
+      if (!receipt) {
+        results.failed.push({ id: receiptId, error: "Receipt not found" });
+      } else if (receipt.status !== ReceiptStatus.PENDING_VERIFICATION) {
+        results.failed.push({ id: receiptId, error: "Receipt is not pending verification" });
+      } else {
+        validIds.push(receiptId);
       }
+    }
+
+    // Bulk-update all valid receipts in a single query
+    if (validIds.length > 0) {
+      await db.paymentReceipt.updateMany({
+        where: { id: { in: validIds } },
+        data: {
+          status: ReceiptStatus.REJECTED,
+          verifiedAt: new Date(),
+          verifiedBy: user.id,
+          rejectionReason: sanitizedReason,
+        },
+      });
+      results.successful.push(...validIds);
     }
 
     // Revalidate paths

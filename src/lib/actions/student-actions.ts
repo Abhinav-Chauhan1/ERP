@@ -215,48 +215,44 @@ export async function getStudentSubjectPerformance(studentId: string) {
 
   // Get subjects for the student's class
   const subjectClasses = await db.subjectClass.findMany({
-    where: {
-      classId: enrollment.classId,
-    },
-    include: {
-      subject: true,
-    },
+    where: { classId: enrollment.classId },
+    select: { subject: { select: { id: true, name: true } } },
   });
 
   const subjects = subjectClasses.map(sc => sc.subject);
+  if (subjects.length === 0) return [];
 
-  // Calculate performance for each subject
-  const performance = await Promise.all(
-    subjects.map(async (subject) => {
-      // Get exam results for this subject
-      const examResults = await db.examResult.findMany({
-        where: {
-          studentId,
-          exam: {
-            subjectId: subject.id,
-          },
-        },
-        include: {
-          exam: true,
-        },
-      });
+  const subjectIds = subjects.map(s => s.id);
 
-      // Calculate average percentage for exams
-      const totalMarks = examResults.reduce((sum, result) => sum + result.marks, 0);
-      const totalPossibleMarks = examResults.reduce((sum, result) => sum + result.exam.totalMarks, 0);
+  // Fetch all exam results for all subjects in one query instead of one-per-subject
+  const allExamResults = await db.examResult.findMany({
+    where: {
+      studentId,
+      exam: { subjectId: { in: subjectIds } },
+    },
+    select: {
+      marks: true,
+      exam: { select: { subjectId: true, totalMarks: true } },
+    },
+  });
 
-      const percentage = totalPossibleMarks > 0
-        ? Math.round((totalMarks / totalPossibleMarks) * 100)
-        : 0;
+  // Group results by subjectId in-memory
+  const resultsBySubject = new Map<string, { marks: number; totalMarks: number }[]>();
+  for (const result of allExamResults) {
+    const sid = result.exam.subjectId;
+    if (!resultsBySubject.has(sid)) resultsBySubject.set(sid, []);
+    resultsBySubject.get(sid)!.push({ marks: result.marks, totalMarks: result.exam.totalMarks });
+  }
 
-      return {
-        subject: subject.name,
-        subjectId: subject.id,
-        percentage,
-        examCount: examResults.length,
-      };
-    })
-  );
+  const performance = subjects.map((subject) => {
+    const results = resultsBySubject.get(subject.id) ?? [];
+    const totalMarks = results.reduce((sum, r) => sum + r.marks, 0);
+    const totalPossibleMarks = results.reduce((sum, r) => sum + r.totalMarks, 0);
+    const percentage = totalPossibleMarks > 0
+      ? Math.round((totalMarks / totalPossibleMarks) * 100)
+      : 0;
+    return { subject: subject.name, subjectId: subject.id, percentage, examCount: results.length };
+  });
 
   return performance;
 }

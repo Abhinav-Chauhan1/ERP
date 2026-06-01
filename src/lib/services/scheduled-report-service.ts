@@ -214,8 +214,12 @@ async function checkScheduledReports() {
     // SECURITY: Limit the number of reports processed per run to prevent resource exhaustion
     const MAX_REPORTS_PER_RUN = 10;
 
+    // This runs as a background cron with no HTTP request context.
+    // runWithSuperAdminContext bypasses per-tenant RLS so the query can scan all schools.
+    const { runWithSuperAdminContext } = await import('@/lib/tenant-context');
+
     // Find all active reports that are due
-    const dueReports = await prisma.scheduledReport.findMany({
+    const dueReports = await runWithSuperAdminContext(() => prisma.scheduledReport.findMany({
       where: {
         active: true,
         nextRunAt: {
@@ -226,7 +230,7 @@ async function checkScheduledReports() {
       orderBy: {
         nextRunAt: 'asc', // Process oldest first
       },
-    });
+    }));
 
     console.log(`Found ${dueReports.length} due scheduled reports`);
 
@@ -255,6 +259,15 @@ export function initializeScheduledReportService() {
   // Most scheduled reports don't need minute-level precision
   cron.schedule("*/5 * * * *", async () => {
     await checkScheduledReports();
+  });
+
+  // Keep Neon compute warm — fires every 3 minutes so the 5-min autosuspend never triggers
+  cron.schedule("*/3 * * * *", async () => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+    } catch {
+      // Silently ignore — just a keep-alive
+    }
   });
 
   console.log("Scheduled report service initialized with 5-minute intervals");

@@ -2,65 +2,52 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 
+// Optional React.cache — works in React render context, falls back to identity elsewhere
+let reactCache: typeof import('react').cache | undefined;
+try {
+  reactCache = require('react').cache;
+} catch {
+  reactCache = undefined;
+}
+function memoize<T extends (...args: any[]) => any>(fn: T): T {
+  return reactCache ? reactCache(fn) : fn;
+}
+
 /**
  * Get the current user's active school ID from session
  * This should never be called from client components - only server actions and API routes
  */
-export async function getCurrentSchoolId(): Promise<string | null> {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return null;
-    }
-
-    // Check if user is SUPER_ADMIN (can access any school)
-    if (session.user.role === "SUPER_ADMIN") {
-      // For super admin, we need to get the active school from a different source
-      // This could be from URL params, cookies, or a default school
-      // For now, return null and let the caller handle it
-      return null;
-    }
-
-    // For regular users, get their active school from UserSchool
-    const userSchool = await db.userSchool.findFirst({
-      where: {
-        userId: session.user.id,
-        isActive: true,
-      },
-      select: {
-        schoolId: true,
-      },
-    });
-
-    return userSchool?.schoolId || null;
-  } catch (error) {
-    console.error("Error getting current school ID:", error);
-    return null;
-  }
-}
+export const getCurrentSchoolId = memoize(async (): Promise<string | null> => {
+  // Delegate to the memoized context lookup — avoids a second user_schools query
+  const ctx = await getCurrentUserSchoolContext();
+  return ctx?.schoolId ?? null;
+});
 
 /**
- * Get the current user's school context including role
+ * Get the current user's school context including role.
+ * Memoized with React.cache() so the DB is hit only once per render tree —
+ * all server actions in the same request share this result.
  */
-export async function getCurrentUserSchoolContext() {
+export const getCurrentUserSchoolContext = memoize(async () => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return null;
     }
 
-    // For SUPER_ADMIN, return special context
+    // Super admin doesn't need a school lookup
     if (session.user.role === "SUPER_ADMIN") {
       return {
-        schoolId: null,
+        schoolId: null as string | null,
         role: "SUPER_ADMIN" as UserRole,
+        school: null as null,
         isSuperAdmin: true,
         user: session.user,
         userId: session.user.id,
       };
     }
 
-    // For regular users, get their active school and role
+    // Single query — no school include; wrappers only need schoolId + role
     const userSchool = await db.userSchool.findFirst({
       where: {
         userId: session.user.id,
@@ -69,15 +56,6 @@ export async function getCurrentUserSchoolContext() {
       select: {
         schoolId: true,
         role: true,
-        school: {
-          select: {
-            id: true,
-            name: true,
-            schoolCode: true,
-            status: true,
-            plan: true,
-          },
-        },
       },
     });
 
@@ -86,9 +64,9 @@ export async function getCurrentUserSchoolContext() {
     }
 
     return {
-      schoolId: userSchool.schoolId,
+      schoolId: userSchool.schoolId as string | null,
       role: userSchool.role,
-      school: userSchool.school,
+      school: null as null,
       isSuperAdmin: false,
       user: session.user,
       userId: session.user.id,
@@ -97,7 +75,7 @@ export async function getCurrentUserSchoolContext() {
     console.error("Error getting user school context:", error);
     return null;
   }
-}
+});
 
 /**
  * Require school access - throws error if user doesn't have access to the specified school

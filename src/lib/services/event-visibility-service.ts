@@ -26,6 +26,14 @@ export interface EventFilterOptions {
   categoryIds?: string[];
   searchTerm?: string;
   sortOptions?: SortOptions;
+  /** DB-level pagination — used for admin queries where no in-memory filtering is needed */
+  skip?: number;
+  take?: number;
+}
+
+export interface PagedEvents {
+  events: CalendarEvent[];
+  total: number;
 }
 
 /** Resolved context used for in-memory visibility checks — fetched once per request. */
@@ -212,7 +220,7 @@ function isEventVisibleSync(event: CalendarEvent, ctx: ResolvedVisibilityContext
 export async function getEventsForUser(
   userId: string,
   options: EventFilterOptions = {}
-): Promise<CalendarEvent[]> {
+): Promise<PagedEvents> {
   const userContext = await getUserContext(userId);
   if (!userContext) throw new Error('User not found');
 
@@ -234,17 +242,23 @@ export async function getEventsForUser(
     ];
   }
 
-  // For admin: no visibility filtering needed, skip context build
+  // For admin: no visibility filtering — paginate at DB level
   if (userContext.role === UserRole.ADMIN) {
-    const events = await db.calendarEvent.findMany({
-      where,
-      include: { category: true },
-      orderBy: { startDate: 'asc' },
-    });
-    return options.sortOptions ? sortEvents(events as any, options.sortOptions) : events as any;
+    const [events, total] = await Promise.all([
+      db.calendarEvent.findMany({
+        where,
+        include: { category: true },
+        orderBy: { startDate: 'asc' },
+        skip: options.skip,
+        take: options.take,
+      }),
+      db.calendarEvent.count({ where }),
+    ]);
+    const sorted = options.sortOptions ? sortEvents(events as any, options.sortOptions) : (events as any);
+    return { events: sorted, total };
   }
 
-  // Add role filter at DB level to reduce result set before in-memory filtering
+  // Add role filter at DB level to reduce result set before in-memory visibility filtering
   where.visibleToRoles = { has: userContext.role.toString() };
 
   // Fetch events and build visibility context in parallel
@@ -258,8 +272,15 @@ export async function getEventsForUser(
   ]);
 
   const visibleEvents = (events as any[]).filter(e => isEventVisibleSync(e, visCtx));
+  const sorted = options.sortOptions ? sortEvents(visibleEvents, options.sortOptions) : visibleEvents;
 
-  return options.sortOptions ? sortEvents(visibleEvents, options.sortOptions) : visibleEvents;
+  // Apply pagination in-memory (visibility filtering requires seeing all events first)
+  const total = sorted.length;
+  const skip = options.skip ?? 0;
+  const take = options.take;
+  const paged = take !== undefined ? sorted.slice(skip, skip + take) : sorted;
+
+  return { events: paged, total };
 }
 
 /**
@@ -269,7 +290,7 @@ export async function getEventsForParentChild(
   parentId: string,
   studentId: string,
   options: EventFilterOptions = {}
-): Promise<CalendarEvent[]> {
+): Promise<PagedEvents> {
   const relationship = await db.studentParent.findFirst({ where: { parentId, studentId } });
   if (!relationship) throw new Error('Parent-child relationship not found');
 

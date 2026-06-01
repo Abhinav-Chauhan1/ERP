@@ -5,14 +5,28 @@
 
 import { cache } from "react";
 
+/** Narrow type — only the fields consumed by the root layout and branding context. */
+export type BrandingSettings = {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  tagline: string | null;
+  schoolLogo: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  accentColor: string | null;
+  defaultTheme: string | null;
+  defaultColorTheme: string | null;
+};
+
 /**
- * Memoized version of getSchoolSettings for request-level caching
- * This prevents duplicate queries within the same request (e.g., layout + page)
- * 
- * Resolves schoolId from auth context OUTSIDE the cache scope to avoid
- * calling headers() inside unstable_cache().
+ * Memoized version of getSchoolSettings for request-level caching.
+ * Selects only the fields needed by layout + branding — avoiding a 100-column SELECT * on every page.
+ * React.cache() deduplicates within the same render tree (layout + page).
  */
-export const getSchoolSettingsRequestMemo = cache(async () => {
+export const getSchoolSettingsRequestMemo = cache(async (): Promise<BrandingSettings | null> => {
   const { getCurrentSchoolId } = await import("@/lib/auth/tenant");
   const { runWithTenantContext } = await import("@/lib/tenant-context");
   const { db } = await import("@/lib/db");
@@ -20,16 +34,27 @@ export const getSchoolSettingsRequestMemo = cache(async () => {
   const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
-    // No auth context (e.g., public/unauthenticated pages) — return null
     return null;
   }
 
-  // Use runWithTenantContext with a direct db query (not the cachedQuery wrapper).
-  // unstable_cache severs AsyncLocalStorage propagation, so the Prisma RLS
-  // middleware inside cachedQuery can never see the context we set here.
-  // React.cache() above already provides per-request deduplication.
   return runWithTenantContext({ schoolId, isSuperAdmin: false }, () =>
-    db.schoolSettings.findUnique({ where: { schoolId } })
+    db.schoolSettings.findUnique({
+      where: { schoolId },
+      select: {
+        id: true,
+        schoolId: true,
+        schoolName: true,
+        tagline: true,
+        schoolLogo: true,
+        logoUrl: true,
+        faviconUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        accentColor: true,
+        defaultTheme: true,
+        defaultColorTheme: true,
+      },
+    })
   );
 });
 

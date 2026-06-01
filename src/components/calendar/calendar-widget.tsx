@@ -6,11 +6,16 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, ArrowRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { CalendarEvent, CalendarEventCategory } from "@prisma/client";
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
 
-interface CalendarEventWithCategory extends CalendarEvent {
-  category: CalendarEventCategory;
+interface CalendarEventWithCategory {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  isAllDay: boolean;
+  location: string | null;
+  category: { name: string; color: string } | null;
 }
 
 interface CalendarWidgetProps {
@@ -115,9 +120,9 @@ export function CalendarWidget({
                   )}
                 >
                   {/* Category color indicator */}
-                  <div 
+                  <div
                     className="h-2 w-2 mt-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: event.category.color }}
+                    style={{ backgroundColor: event.category?.color ?? '#6b7280' }}
                     aria-hidden="true"
                   />
                   
@@ -145,15 +150,17 @@ export function CalendarWidget({
                     )}
                     
                     <div className="flex items-center gap-2 mt-1">
-                      <span 
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                        style={{ 
-                          backgroundColor: `${event.category.color}20`,
-                          color: event.category.color
-                        }}
-                      >
-                        {event.category.name}
-                      </span>
+                      {event.category && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                          style={{
+                            backgroundColor: `${event.category.color}20`,
+                            color: event.category.color,
+                          }}
+                        >
+                          {event.category.name}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

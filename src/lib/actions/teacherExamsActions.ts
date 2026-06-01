@@ -425,32 +425,31 @@ export async function updateExamResults(examId: string, results: any[]) {
       throw new Error("Unauthorized access to this exam");
     }
 
-    // Update or create each result
-    for (const result of results) {
-      await db.examResult.upsert({
-        where: {
-          examId_studentId: {
+    // Batch all upserts in a single transaction instead of one-per-result
+    await db.$transaction(
+      results.map((result) =>
+        db.examResult.upsert({
+          where: {
+            examId_studentId: { examId, studentId: result.studentId },
+          },
+          update: {
+            marks: result.marks,
+            grade: result.grade,
+            remarks: result.remarks,
+            isAbsent: result.isAbsent,
+          },
+          create: {
             examId,
             studentId: result.studentId,
+            marks: result.marks,
+            grade: result.grade,
+            remarks: result.remarks,
+            isAbsent: result.isAbsent,
+            schoolId,
           },
-        },
-        update: {
-          marks: result.marks,
-          grade: result.grade,
-          remarks: result.remarks,
-          isAbsent: result.isAbsent,
-        },
-        create: {
-          examId,
-          studentId: result.studentId,
-          marks: result.marks,
-          grade: result.grade,
-          remarks: result.remarks,
-          isAbsent: result.isAbsent,
-          schoolId, // Add required schoolId (from context above)
-        },
-      });
-    }
+        })
+      )
+    );
 
     revalidatePath(`/teacher/assessments/exams/${examId}`);
 

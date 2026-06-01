@@ -207,7 +207,7 @@ export class AnalyticsService {
         totalActiveSchools,
         previousPeriodPayments
       ] = await Promise.all([
-        // Current period payments (real collected revenue)
+        // Current period payments (real collected revenue) — select only needed fields
         prisma.payment.findMany({
           where: {
             status: PaymentStatus.COMPLETED,
@@ -216,14 +216,7 @@ export class AnalyticsService {
               lte: timeRange.endDate,
             },
           },
-          include: {
-            subscription: {
-              include: {
-                plan: true,
-                school: true,
-              },
-            },
-          },
+          select: { amount: true, processedAt: true },
         }),
         // Active schools with student counts for calcMonthlyBill
         prisma.school.findMany({
@@ -246,6 +239,7 @@ export class AnalyticsService {
               lte: previousPeriodEnd,
             },
           },
+          select: { amount: true },
         })
       ]);
 
@@ -626,38 +620,45 @@ export class AnalyticsService {
   }
 
   private async getRevenueTrends(timeRange: TimeRange) {
-    // Implementation for monthly revenue trends
-    const trends = [];
-    const current = new Date(timeRange.startDate);
-    
-    while (current <= timeRange.endDate) {
-      const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
-      const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-
-      const monthlyPayments = await prisma.payment.findMany({
+    // Fetch all payments and active-subscription snapshots in two queries instead of 2-per-month
+    const [allPayments, allSubscriptions] = await Promise.all([
+      prisma.payment.findMany({
         where: {
           status: PaymentStatus.COMPLETED,
-          processedAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
+          processedAt: { gte: timeRange.startDate, lte: timeRange.endDate },
         },
-      });
-
-      const revenue = monthlyPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      const subscriptions = await prisma.enhancedSubscription.count({
+        select: { amount: true, processedAt: true },
+      }),
+      prisma.enhancedSubscription.findMany({
         where: {
           status: SubscriptionStatus.ACTIVE,
-          createdAt: { lte: monthEnd },
+          createdAt: { lte: timeRange.endDate },
         },
-      });
+        select: { createdAt: true },
+      }),
+    ]);
 
-      trends.push({
-        period: `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`,
-        revenue,
-        subscriptions,
-      });
+    // Group payments by month key
+    const revenueByMonth = new Map<string, number>();
+    for (const payment of allPayments) {
+      if (!payment.processedAt) continue;
+      const d = payment.processedAt;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + payment.amount);
+    }
 
+    // Build trend array month-by-month from in-memory data
+    const trends = [];
+    const current = new Date(timeRange.startDate);
+    while (current <= timeRange.endDate) {
+      const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+
+      const revenue = revenueByMonth.get(key) ?? 0;
+      // Count subscriptions created on or before end of this month
+      const subscriptions = allSubscriptions.filter((s) => s.createdAt <= monthEnd).length;
+
+      trends.push({ period: key, revenue, subscriptions });
       current.setMonth(current.getMonth() + 1);
     }
 

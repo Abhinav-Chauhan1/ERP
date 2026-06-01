@@ -30,18 +30,20 @@ export async function getAdminCalendarEvents(limit: number = 5) {
     const now = new Date();
     const events = await prisma.calendarEvent.findMany({
       where: {
-        schoolId, // CRITICAL: Filter by current school
-        startDate: {
-          gte: now
-        }
+        schoolId,
+        startDate: { gte: now },
       },
-      include: {
-        category: true
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        endDate: true,
+        isAllDay: true,
+        location: true,
+        category: { select: { name: true, color: true } },
       },
-      orderBy: {
-        startDate: 'asc'
-      },
-      take: limit
+      orderBy: { startDate: 'asc' },
+      take: limit,
     });
 
     return { success: true, data: events };

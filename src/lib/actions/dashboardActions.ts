@@ -269,43 +269,29 @@ export const getRecentAnnouncementsCount = withSchoolAuthAction(async (schoolId:
 
 export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    // Get attendance data for the last 12 months
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-    const attendanceRecords = await db.studentAttendance.findMany({
-      where: {
-        schoolId,
-
-        date: {
-          gte: twelveMonthsAgo,
-
-        },
-      },
-      select: {
-        date: true,
-        status: true,
-      },
+    // groupBy(date, status) instead of findMany — returns at most 365×2 rows instead of N×students rows
+    const attendanceSummary = await db.studentAttendance.groupBy({
+      by: ['date', 'status'],
+      where: { schoolId, date: { gte: twelveMonthsAgo } },
+      _count: { id: true },
     });
 
-    // Group by month and calculate percentage
-    const monthlyData = new Map<string, { present: number; total: number }>();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyData = new Map<string, { present: number; total: number }>();
 
-    attendanceRecords.forEach((record) => {
-      const month = months[record.date.getMonth()];
-      if (!monthlyData.has(month)) {
-        monthlyData.set(month, { present: 0, total: 0 });
-      }
+    for (const row of attendanceSummary) {
+      const month = months[row.date.getMonth()];
+      if (!monthlyData.has(month)) monthlyData.set(month, { present: 0, total: 0 });
       const data = monthlyData.get(month)!;
-      data.total++;
-      if (record.status === 'PRESENT') {
-        data.present++;
-      }
-    });
+      data.total += row._count.id;
+      if (row.status === 'PRESENT') data.present += row._count.id;
+    }
 
     const chartData = months.map((month) => {
-      const data = monthlyData.get(month) || { present: 0, total: 0 };
+      const data = monthlyData.get(month) ?? { present: 0, total: 0 };
       const percentage = data.total > 0 ? Math.round((data.present / data.total) * 100) : 0;
       return { month, present: percentage };
     });
@@ -423,28 +409,21 @@ export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: s
 
 export const getRecentActivities = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    // Get recent activities from various sources with timeout protection
+    // Get recent activities — select only the fields actually used in the return mapping
     const [recentExams, recentAssignments, recentAnnouncements] = await Promise.all([
       db.exam.findMany({
         where: { schoolId },
         take: 2,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          createdAt: true,
           creator: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-          },
-          subject: {
             select: {
-              name: true,
+              user: { select: { firstName: true, lastName: true } },
             },
           },
+          subject: { select: { name: true } },
         },
       }).catch(err => {
         console.error('[Dashboard] Failed to fetch recent exams:', err);
@@ -454,39 +433,33 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
         where: { schoolId },
         take: 2,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          createdAt: true,
           creator: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-          },
-          subject: {
             select: {
-              name: true,
+              user: { select: { firstName: true, lastName: true } },
             },
           },
+          subject: { select: { name: true } },
         },
       }).catch(err => {
         console.error('[Dashboard] Failed to fetch recent assignments:', err);
         return [] as any;
       }),
       db.announcement.findMany({
+        where: { schoolId },
         take: 1,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
           publisher: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
+            select: {
+              user: { select: { firstName: true, lastName: true } },
             },
           },
         },

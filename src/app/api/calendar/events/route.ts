@@ -100,21 +100,22 @@ export const GET = withSchoolAuth(async (request, context) => {
     if (searchTerm) options.searchTerm = searchTerm;
     options.sortOptions = parseSortOptions(sortBy, sortOrder);
 
-    let allEvents;
+    // Pass pagination hints so admin queries paginate at DB level
+    options.skip = (page - 1) * limit;
+    options.take = limit;
+
+    let result;
 
     if (childId && user.role === UserRole.PARENT) {
       const parent = await db.parent.findFirst({ where: { userId: user.id }, select: { id: true } });
       if (!parent) return NextResponse.json({ error: 'Parent record not found' }, { status: 404 });
       const { getEventsForParentChild } = await import('@/lib/services/event-visibility-service');
-      allEvents = await getEventsForParentChild(parent.id, childId, options);
+      result = await getEventsForParentChild(parent.id, childId, options);
     } else {
-      allEvents = await getEventsForUser(user.id, options);
+      result = await getEventsForUser(user.id, options);
     }
 
-    // Paginate in memory (events already filtered by visibility)
-    const total = allEvents.length;
-    const startIndex = (page - 1) * limit;
-    const paginatedEvents = allEvents.slice(startIndex, startIndex + limit);
+    const { events: paginatedEvents, total } = result;
 
     return NextResponse.json(
       {

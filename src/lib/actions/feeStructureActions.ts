@@ -591,39 +591,33 @@ export const bulkCreateFeeStructuresByClass = withSchoolAuthAction(async (school
       return { success: false, error: "Academic year not found" };
     }
 
+    // Pre-fetch all referenced class IDs and fee type IDs in two queries
+    const allClassIds = [...new Set(structures.flatMap((s) => s.classIds))];
+    const allFeeTypeIds = [...new Set(structures.flatMap((s) => s.items.map((i) => i.feeTypeId)))];
+
+    const [existingClasses, existingFeeTypes] = await Promise.all([
+      db.class.findMany({ where: { schoolId, id: { in: allClassIds } }, select: { id: true } }),
+      db.feeType.findMany({ where: { id: { in: allFeeTypeIds } }, select: { id: true } }),
+    ]);
+    const existingClassIds = new Set(existingClasses.map((c) => c.id));
+    const existingFeeTypeIds = new Set(existingFeeTypes.map((f) => f.id));
+
     // Create all fee structures
     const createdStructures = [];
     const errors: string[] = [];
 
     for (const structure of structures) {
       try {
-        // Validate all classes exist
+        // Validate all classes exist using pre-fetched data
         const classIds = structure.classIds;
-        const classCount = await db.class.count({
-          where: {
-            schoolId,
-            id: {
-              in: classIds
-            }
-          },
-        });
-
-        if (classCount !== classIds.length) {
+        if (!classIds.every((id) => existingClassIds.has(id))) {
           errors.push(`${structure.name}: One or more classes not found`);
           continue;
         }
 
-        // Validate all fee types exist
+        // Validate all fee types exist using pre-fetched data
         const feeTypeIds = structure.items.map((item) => item.feeTypeId);
-        const feeTypeCount = await db.feeType.count({
-          where: {
-            id: {
-              in: feeTypeIds
-            }
-          },
-        });
-
-        if (feeTypeCount !== feeTypeIds.length) {
+        if (!feeTypeIds.every((id) => existingFeeTypeIds.has(id))) {
           errors.push(`${structure.name}: One or more fee types not found`);
           continue;
         }

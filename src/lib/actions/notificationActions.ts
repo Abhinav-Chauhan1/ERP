@@ -111,6 +111,7 @@ export async function createNotification(data: any) {
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
+      select: { id: true },
     });
 
     if (!dbUser) {
@@ -252,22 +253,26 @@ export async function getUserNotifications() {
       return { success: false, error: "Unauthorized" };
     }
 
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId } = await requireSchoolAccess();
 
     const notifications = await db.notification.findMany({
       where: {
-        userId: dbUser.id,
+        userId: user.id,
+        ...(schoolId ? { schoolId } : {}),
       },
-      orderBy: {
-        createdAt: "desc",
+      select: {
+        id: true,
+        title: true,
+        message: true,
+        type: true,
+        isRead: true,
+        readAt: true,
+        link: true,
+        createdAt: true,
+        schoolId: true,
       },
-      take: 50, // Limit to 50 most recent notifications
+      orderBy: { createdAt: "desc" },
+      take: 50,
     });
 
     return { success: true, data: notifications };
@@ -287,6 +292,7 @@ export async function markNotificationAsRead(notificationId: string) {
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
+      select: { id: true },
     });
 
     if (!dbUser) {
@@ -332,6 +338,7 @@ export async function markAllNotificationsAsRead() {
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
+      select: { id: true },
     });
 
     if (!dbUser) {
@@ -372,6 +379,7 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
+      select: { id: true },
     });
 
     if (!dbUser) {

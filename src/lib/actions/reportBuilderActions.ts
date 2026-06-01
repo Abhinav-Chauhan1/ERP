@@ -133,13 +133,23 @@ async function queryStudents(config: ReportConfig, schoolId: string) {
   const students = await prisma.student.findMany({
     where,
     orderBy,
-    include: {
-      user: true,
+    select: {
+      id: true,
+      admissionId: true,
+      rollNumber: true,
+      dateOfBirth: true,
+      gender: true,
+      address: true,
+      phone: true,
+      user: {
+        select: { firstName: true, lastName: true, email: true },
+      },
       enrollments: {
-        include: {
-          class: true,
-          section: true,
+        select: {
+          class: { select: { name: true } },
+          section: { select: { name: true } },
         },
+        take: 1,
       },
     },
   });
@@ -204,20 +214,26 @@ async function queryAttendance(config: ReportConfig, schoolId: string) {
   const attendance = await prisma.studentAttendance.findMany({
     where,
     orderBy,
-    include: {
+    select: {
+      id: true,
+      studentId: true,
+      date: true,
+      status: true,
+      reason: true,
       student: {
-        include: {
-          user: true,
+        select: {
+          user: { select: { firstName: true, lastName: true } },
           enrollments: {
-            include: {
-              class: true,
-              section: true,
+            select: {
+              class: { select: { name: true } },
+              section: { select: { name: true } },
             },
+            take: 1,
           },
         },
       },
     },
-    take: 1000, // Limit for performance
+    take: 1000,
   });
 
   return attendance.map((record: any) => {
@@ -230,7 +246,7 @@ async function queryAttendance(config: ReportConfig, schoolId: string) {
       status: record.status,
       class: enrollment?.class.name || "N/A",
       section: enrollment?.section?.name || "N/A",
-      remarks: record.remarks || "N/A",
+      remarks: record.reason || "N/A",
     };
   });
 }
@@ -245,14 +261,19 @@ async function queryFees(config: ReportConfig, schoolId: string) {
   const payments = await prisma.feePayment.findMany({
     where,
     orderBy,
-    include: {
+    select: {
+      id: true,
+      studentId: true,
+      amount: true,
+      paymentDate: true,
+      status: true,
+      paymentMethod: true,
       student: {
-        include: {
-          user: true,
+        select: {
+          user: { select: { firstName: true, lastName: true } },
           enrollments: {
-            include: {
-              class: true,
-            },
+            select: { class: { select: { name: true } } },
+            take: 1,
           },
         },
       },
@@ -269,7 +290,7 @@ async function queryFees(config: ReportConfig, schoolId: string) {
       amount: payment.amount.toString(),
       paymentDate: payment.paymentDate.toLocaleDateString(),
       status: payment.status,
-      method: payment.method,
+      method: payment.paymentMethod,
       class: enrollment?.class.name || "N/A",
     };
   });
@@ -326,20 +347,24 @@ async function queryClasses(config: ReportConfig, schoolId: string) {
   const classes = await prisma.class.findMany({
     where,
     orderBy,
-    include: {
+    select: {
+      id: true,
+      name: true,
       sections: {
-        include: {
-          enrollments: true,
+        select: {
+          name: true,
+          _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } },
         },
       },
       teachers: {
-        include: {
+        select: {
           teacher: {
-            include: {
-              user: true,
+            select: {
+              user: { select: { firstName: true, lastName: true } },
             },
           },
         },
+        take: 1,
       },
     },
   });
@@ -352,7 +377,7 @@ async function queryClasses(config: ReportConfig, schoolId: string) {
       ? `${cls.teachers[0].teacher.user.firstName} ${cls.teachers[0].teacher.user.lastName}`
       : "N/A",
     studentCount: cls.sections
-      .reduce((sum, section) => sum + section.enrollments.length, 0)
+      .reduce((sum, section) => sum + section._count.enrollments, 0)
       .toString(),
   }));
 }
@@ -367,19 +392,18 @@ async function queryAssignments(config: ReportConfig, schoolId: string) {
   const assignments = await prisma.assignment.findMany({
     where,
     orderBy,
-    include: {
-      subject: true,
+    select: {
+      id: true,
+      title: true,
+      dueDate: true,
+      subject: { select: { name: true } },
       classes: {
-        include: {
-          class: true,
-        },
+        select: { class: { select: { name: true } } },
       },
       creator: {
-        include: {
-          user: true,
-        },
+        select: { user: { select: { firstName: true, lastName: true } } },
       },
-      submissions: true,
+      _count: { select: { submissions: true } },
     },
     take: 1000,
   });
@@ -391,7 +415,7 @@ async function queryAssignments(config: ReportConfig, schoolId: string) {
     class: assignment.classes.map(c => c.class.name).join(", ") || "N/A",
     dueDate: assignment.dueDate.toLocaleDateString(),
     status: new Date() > assignment.dueDate ? "Overdue" : "Active",
-    submissionCount: assignment.submissions.length.toString(),
+    submissionCount: assignment._count.submissions.toString(),
     teacher: assignment.creator ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : "N/A",
   }));
 }

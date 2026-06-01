@@ -9,7 +9,6 @@ import { startOfDay, endOfDay, subDays } from "date-fns";
  */
 export async function getReceiptWidgetData() {
   try {
-    // Get required school context
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
@@ -18,134 +17,74 @@ export async function getReceiptWidgetData() {
     const todayEnd = endOfDay(now);
     const yesterdayStart = startOfDay(subDays(now, 1));
     const yesterdayEnd = endOfDay(subDays(now, 1));
+    const sevenDaysAgo = subDays(now, 7);
 
-    // Get pending receipts count
-    const pendingReceipts = await db.paymentReceipt.findMany({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: ReceiptStatus.PENDING_VERIFICATION,
-      },
-      select: {
-        id: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    // Run all 4 independent queries in parallel instead of 8 sequential ones
+    const [
+      pendingReceipts,
+      todayByStatus,
+      yesterdayByStatus,
+      recentVerified,
+    ] = await Promise.all([
+      // 1. Pending receipts (for count + oldest-pending age)
+      db.paymentReceipt.findMany({
+        where: { schoolId, status: ReceiptStatus.PENDING_VERIFICATION },
+        select: { id: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      // 2. Today's verified/rejected — one groupBy replaces two count queries
+      db.paymentReceipt.groupBy({
+        by: ["status"],
+        where: {
+          schoolId,
+          status: { in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED] },
+          verifiedAt: { gte: todayStart, lte: todayEnd },
+        },
+        _count: { id: true },
+      }),
+      // 3. Yesterday's verified/rejected — one groupBy replaces two count queries
+      db.paymentReceipt.groupBy({
+        by: ["status"],
+        where: {
+          schoolId,
+          status: { in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED] },
+          verifiedAt: { gte: yesterdayStart, lte: yesterdayEnd },
+        },
+        _count: { id: true },
+      }),
+      // 4. Last-7-days receipts for avg verification time + rejection rate
+      db.paymentReceipt.findMany({
+        where: {
+          schoolId,
+          status: { in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED] },
+          verifiedAt: { gte: sevenDaysAgo, lte: now },
+        },
+        select: { createdAt: true, verifiedAt: true, status: true },
+      }),
+    ]);
 
+    // Derive all values in memory — no extra queries needed
     const pendingCount = pendingReceipts.length;
-
-    // Calculate oldest pending receipt days
     const oldestPendingDays = pendingReceipts.length > 0
       ? Math.floor((now.getTime() - pendingReceipts[0].createdAt.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
-    // Get today's verified receipts
-    const verifiedToday = await db.paymentReceipt.count({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: ReceiptStatus.VERIFIED,
-        verifiedAt: {
-          gte: todayStart,
-          lte: todayEnd,
-        },
-      },
-    });
+    const verifiedToday = todayByStatus.find(r => r.status === ReceiptStatus.VERIFIED)?._count.id ?? 0;
+    const rejectedToday = todayByStatus.find(r => r.status === ReceiptStatus.REJECTED)?._count.id ?? 0;
 
-    // Get today's rejected receipts
-    const rejectedToday = await db.paymentReceipt.count({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: ReceiptStatus.REJECTED,
-        verifiedAt: {
-          gte: todayStart,
-          lte: todayEnd,
-        },
-      },
-    });
+    const yesterdayTotal = yesterdayByStatus.reduce((s, r) => s + r._count.id, 0);
+    const yesterdayRejected = yesterdayByStatus.find(r => r.status === ReceiptStatus.REJECTED)?._count.id ?? 0;
+    const yesterdayRejectionRate = yesterdayTotal > 0 ? (yesterdayRejected / yesterdayTotal) * 100 : 0;
 
-    // Get yesterday's rejection rate for trend
-    const yesterdayTotal = await db.paymentReceipt.count({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        verifiedAt: {
-          gte: yesterdayStart,
-          lte: yesterdayEnd,
-        },
-        status: {
-          in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED],
-        },
-      },
-    });
-
-    const yesterdayRejected = await db.paymentReceipt.count({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: ReceiptStatus.REJECTED,
-        verifiedAt: {
-          gte: yesterdayStart,
-          lte: yesterdayEnd,
-        },
-      },
-    });
-
-    const yesterdayRejectionRate = yesterdayTotal > 0
-      ? (yesterdayRejected / yesterdayTotal) * 100
-      : 0;
-
-    // Calculate average verification time (last 7 days)
-    const sevenDaysAgo = subDays(now, 7);
-    const recentVerified = await db.paymentReceipt.findMany({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: {
-          in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED],
-        },
-        verifiedAt: {
-          gte: sevenDaysAgo,
-          lte: now,
-        },
-      },
-      select: {
-        createdAt: true,
-        verifiedAt: true,
-      },
-    });
-
-    const totalVerificationTime = recentVerified.reduce((sum, receipt) => {
-      if (receipt.verifiedAt) {
-        const diff = receipt.verifiedAt.getTime() - receipt.createdAt.getTime();
-        return sum + diff / (1000 * 60 * 60); // Convert to hours
-      }
+    const recentTotal = recentVerified.length;
+    const recentRejectedCount = recentVerified.filter(r => r.status === ReceiptStatus.REJECTED).length;
+    const totalVerificationTime = recentVerified.reduce((sum, r) => {
+      if (r.verifiedAt) return sum + (r.verifiedAt.getTime() - r.createdAt.getTime()) / (1000 * 60 * 60);
       return sum;
     }, 0);
+    const averageVerificationTime = recentTotal > 0 ? totalVerificationTime / recentTotal : 0;
+    const rejectionRate = recentTotal > 0 ? (recentRejectedCount / recentTotal) * 100 : 0;
 
-    const averageVerificationTime = recentVerified.length > 0
-      ? totalVerificationTime / recentVerified.length
-      : 0;
-
-    // Calculate current rejection rate (last 7 days)
-    const recentTotal = recentVerified.length;
-
-
-    // Simpler approach: get rejection rate from last 7 days
-    const recentRejectedCount = await db.paymentReceipt.count({
-      where: {
-        schoolId, // CRITICAL: Filter by current school
-        status: ReceiptStatus.REJECTED,
-        verifiedAt: {
-          gte: sevenDaysAgo,
-          lte: now,
-        },
-      },
-    });
-
-    const rejectionRate = recentTotal > 0
-      ? (recentRejectedCount / recentTotal) * 100
-      : 0;
-
-    // Determine trend
     let trend: "up" | "down" | "stable" = "stable";
     if (rejectionRate > yesterdayRejectionRate + 5) {
       trend = "up";

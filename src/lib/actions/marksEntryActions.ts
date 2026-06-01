@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { PermissionAction } from "@prisma/client";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
 import { logUpdate, logCreate } from "@/lib/utils/audit-log";
@@ -153,25 +153,21 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return createErrorResponse("School context required", "SCHOOL_REQUIRED");
 
-    const canCreateMarks = await hasPermission(userId, 'MARKS', 'CREATE');
+    const canCreateMarks = await hasPermissionCached(userId, 'MARKS', 'CREATE');
     if (!canCreateMarks) {
       return createErrorResponse("You do not have permission to enter marks", "PERMISSION_DENIED");
     }
 
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
+    // Fetch user, exam, and grade scale in parallel
+    const [user, exam, gradeScaleResult] = await Promise.all([
+      db.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      db.exam.findUnique({ where: { id: input.examId, schoolId }, include: { subject: true } }),
+      getGradeScale(),
+    ]);
 
     if (!user) {
       return createErrorResponse("User not found", "USER_NOT_FOUND");
     }
-
-    // Verify exam belongs to this school
-    const exam = await db.exam.findUnique({
-      where: { id: input.examId, schoolId },
-      include: { subject: true },
-    });
 
     if (!exam) {
       return createErrorResponse("Exam not found", "EXAM_NOT_FOUND");
@@ -218,34 +214,40 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
       return createErrorResponse("Validation failed for one or more entries", "VALIDATION_ERROR", formattedErrors);
     }
 
-    const results = await db.$transaction(async (tx) => {
-      const allResults = [];
+    // Pre-fetch all existing results in one query to avoid N+1 inside the transaction
+    const studentIds = input.marks.map((m) => m.studentId);
+    const existingResults = await db.examResult.findMany({
+      where: { examId: input.examId, studentId: { in: studentIds } },
+    });
+    const existingResultMap = new Map(existingResults.map((r) => [r.studentId, r]));
 
-      for (const entry of input.marks) {
-        const existingResult = await tx.examResult.findUnique({
-          where: {
-            examId_studentId: { examId: input.examId, studentId: entry.studentId },
-          },
-        });
+    // Pre-compute all marks data without any DB calls (grade scale already loaded)
+    const marksDataList = input.marks.map((entry) => {
+      let totalMarks = 0;
+      let percentage = 0;
+      let grade = "";
 
-        let totalMarks = 0;
-        let percentage = 0;
-        let grade = "";
-
-        if (!entry.isAbsent) {
-          totalMarks =
-            (entry.theoryMarks || 0) +
-            (entry.practicalMarks || 0) +
-            (entry.internalMarks || 0);
-          // Cap at exam.totalMarks when no SubjectMarkConfig provides component-level limits
-          if (!markConfig && totalMarks > exam.totalMarks) {
-            totalMarks = exam.totalMarks;
-          }
-          percentage = calculatePercentage(totalMarks, exam.totalMarks);
-          grade = await calculateGradeForPercentage(percentage);
+      if (!entry.isAbsent) {
+        totalMarks =
+          (entry.theoryMarks || 0) +
+          (entry.practicalMarks || 0) +
+          (entry.internalMarks || 0);
+        // Cap at exam.totalMarks when no SubjectMarkConfig provides component-level limits
+        if (!markConfig && totalMarks > exam.totalMarks) {
+          totalMarks = exam.totalMarks;
         }
+        percentage = calculatePercentage(totalMarks, exam.totalMarks);
+        if (gradeScaleResult.success && gradeScaleResult.data) {
+          grade = calculateGradeFromScale(percentage, gradeScaleResult.data) || calculateGrade(percentage);
+        } else {
+          grade = calculateGrade(percentage);
+        }
+      }
 
-        const newData = {
+      return {
+        entry,
+        existingResult: existingResultMap.get(entry.studentId) ?? null,
+        newData: {
           examId: input.examId,
           studentId: entry.studentId,
           marks: totalMarks,
@@ -258,18 +260,30 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
           isAbsent: entry.isAbsent,
           remarks: entry.remarks || null,
           schoolId: schoolId || "",
-        };
+        },
+        computedGrade: grade,
+        computedTotalMarks: totalMarks,
+        computedPercentage: percentage,
+      };
+    });
 
-        const result = await tx.examResult.upsert({
-          where: {
-            examId_studentId: { examId: input.examId, studentId: entry.studentId },
-          },
+    // Run all upserts in a single batched transaction
+    const results = await db.$transaction(
+      marksDataList.map(({ newData }) =>
+        db.examResult.upsert({
+          where: { examId_studentId: { examId: input.examId, studentId: newData.studentId } },
           create: newData,
           update: newData,
-        });
+        })
+      )
+    );
 
+    // Fire all audit logs in parallel after transaction completes
+    await Promise.all(
+      marksDataList.map(({ entry, existingResult, newData, computedGrade, computedTotalMarks, computedPercentage }, i) => {
+        const result = results[i];
         if (existingResult) {
-          await logUpdate(user.id, "ExamResult", result.id, {
+          return logUpdate(user.id, "ExamResult", result.id, {
             before: {
               theoryMarks: existingResult.theoryMarks,
               practicalMarks: existingResult.practicalMarks,
@@ -284,33 +298,29 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
               theoryMarks: entry.theoryMarks,
               practicalMarks: entry.practicalMarks,
               internalMarks: entry.internalMarks,
-              totalMarks,
-              percentage,
-              grade: entry.isAbsent ? null : grade,
+              totalMarks: computedTotalMarks,
+              percentage: computedPercentage,
+              grade: entry.isAbsent ? null : computedGrade,
               isAbsent: entry.isAbsent,
               remarks: entry.remarks || null,
             },
           });
         } else {
-          await logCreate(user.id, "ExamResult", result.id, {
+          return logCreate(user.id, "ExamResult", result.id, {
             examId: input.examId,
             studentId: entry.studentId,
             theoryMarks: entry.theoryMarks,
             practicalMarks: entry.practicalMarks,
             internalMarks: entry.internalMarks,
-            totalMarks,
-            percentage,
-            grade: entry.isAbsent ? null : grade,
+            totalMarks: computedTotalMarks,
+            percentage: computedPercentage,
+            grade: entry.isAbsent ? null : computedGrade,
             isAbsent: entry.isAbsent,
             remarks: entry.remarks || null,
           });
         }
-
-        allResults.push(result);
-      }
-
-      return allResults;
-    });
+      })
+    );
 
     revalidatePath("/admin/assessment/marks-entry");
     revalidatePath(`/admin/assessment/exams/${input.examId}`);

@@ -364,14 +364,11 @@ export class DashboardService {
         throw new Error(`Dashboard not found: ${dashboardId}`);
       }
 
-      const widgets: WidgetData[] = [];
-
-      for (const widget of dashboard.widgets) {
-        if (widget.isVisible) {
-          const widgetData = await this.getWidgetData(dashboardId, widget.id);
-          widgets.push(widgetData);
-        }
-      }
+      const widgets = await Promise.all(
+        dashboard.widgets
+          .filter((w) => w.isVisible)
+          .map((w) => this.getWidgetData(dashboardId, w.id))
+      );
 
       return {
         dashboardId,
