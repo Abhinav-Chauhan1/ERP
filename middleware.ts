@@ -24,6 +24,8 @@ const publicRoutes = [
   /^\/sd/, // Super admin login
   /^\/api\/auth/,
   /^\/api\/webhooks/,
+  /^\/api\/payments\/webhook/,     // Cashfree fee payment webhook (called by Cashfree servers)
+  /^\/api\/subscription\/webhook/, // Cashfree subscription webhook (called by Cashfree servers)
   /^\/api\/csrf-token/,
   /^\/api\/web-vitals/,
   /^\/api\/subdomain/, // Subdomain validation API
