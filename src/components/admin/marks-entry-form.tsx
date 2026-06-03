@@ -14,11 +14,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import {
-  getExamsForMarksEntry,
-  getClassesForMarksEntry,
+  getMarksEntryPageData,
   getEnrolledStudentsForMarks,
-  getTermsForMarksEntry,
-  getExamTypesForMarksEntry,
   getSubjectsByClassForMarksEntry,
 } from "@/lib/actions/marksEntryActions";
 import { MarksEntryGrid } from "./marks-entry-grid";
@@ -74,6 +71,17 @@ interface Subject {
   code?: string | null;
 }
 
+type MarksEntryPageDataResult = Awaited<ReturnType<typeof getMarksEntryPageData>>;
+
+let initialDataRequest: Promise<MarksEntryPageDataResult> | null = null;
+
+function loadInitialMarksEntryData() {
+  initialDataRequest ??= getMarksEntryPageData().finally(() => {
+    initialDataRequest = null;
+  });
+  return initialDataRequest;
+}
+
 export function MarksEntryForm() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -99,23 +107,34 @@ export function MarksEntryForm() {
 
   // Load all data on mount
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
       setIsLoading(true);
-      const [examsResult, classesResult, termsResult, examTypesResult] =
-        await Promise.all([
-          getExamsForMarksEntry(),
-          getClassesForMarksEntry(),
-          getTermsForMarksEntry(),
-          getExamTypesForMarksEntry(),
-        ]);
+      try {
+        const result = await loadInitialMarksEntryData();
+        if (cancelled) return;
 
-      if (examsResult.success) setExams(examsResult.data || []);
-      if (classesResult.success) setClasses(classesResult.data || []);
-      if (termsResult.success) setTerms(termsResult.data || []);
-      if (examTypesResult.success) setExamTypes(examTypesResult.data || []);
-      setIsLoading(false);
+        if (result.success) {
+          setExams(result.data?.exams || []);
+          setClasses(result.data?.classes || []);
+          setTerms(result.data?.terms || []);
+          setExamTypes(result.data?.examTypes || []);
+        } else {
+          setError(result.error || "Failed to load marks entry data");
+        }
+      } catch (err) {
+        if (!cancelled) setError("Failed to load marks entry data");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
+
     loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Load subjects when filter class changes

@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   PlusCircle, BarChart, ArrowUpRight,
   CalendarClock, FileText, CheckSquare, ClipboardList,
-  FileQuestion, Badge as BadgeIcon, Settings, FileSpreadsheet, History
+  FileQuestion, Badge as BadgeIcon, Settings, FileSpreadsheet, History,
+  BookOpen, PenLine, LayoutList, Trophy, ChevronRight
 } from "lucide-react";
 import { getAssessmentOverview, getRecentAssessments, getAssessmentMetrics } from "@/lib/actions/assessmentActions";
 import { getUpcomingExams } from "@/lib/actions/examsActions";
@@ -39,97 +40,46 @@ export default async function AssessmentPage() {
     reportCards: 0,
   };
 
-  const assessmentCategories = [
+  const workflowSteps = [
     {
-      title: "Exam Types",
-      icon: <ClipboardList className="h-5 w-5 text-indigo-600" />,
-      description: "Standardized exam formats",
-      href: "/admin/assessment/exam-types",
-      count: overview.examTypes
-    },
-    {
-      title: "Exams",
-      icon: <FileText className="h-5 w-5 text-primary" />,
-      description: "Scheduled assessments",
+      step: 1,
+      title: "Exam Setup",
+      description: "Create exam types & schedule exams",
+      icon: <BookOpen className="h-6 w-6 text-primary" />,
       href: "/admin/assessment/exams",
-      count: overview.exams
+      stat: overview.exams,
+      statLabel: overview.exams === 1 ? "exam" : "exams",
+      color: "bg-primary/10 border-primary/20",
     },
     {
-      title: "Mark Config",
-      icon: <Settings className="h-5 w-5 text-blue-600" />,
-      description: "Subject mark components",
-      href: "/admin/assessment/subject-mark-config",
-      count: 0
+      step: 2,
+      title: "Mark Components",
+      description: "Configure theory / practical splits",
+      icon: <Settings className="h-6 w-6 text-blue-600" />,
+      href: "/admin/assessment/exams",
+      stat: overview.examTypes,
+      statLabel: "exam types",
+      color: "bg-blue-50 border-blue-200",
     },
     {
+      step: 3,
       title: "Marks Entry",
-      icon: <ClipboardList className="h-5 w-5 text-teal-600" />,
-      description: "Enter exam marks in bulk",
+      description: "Enter bulk marks per class",
+      icon: <PenLine className="h-6 w-6 text-teal-600" />,
       href: "/admin/assessment/marks-entry",
-      count: 0
+      stat: overview.results,
+      statLabel: "results recorded",
+      color: "bg-teal-50 border-teal-200",
     },
     {
-      title: "Marks Audit",
-      icon: <History className="h-5 w-5 text-slate-600" />,
-      description: "View marks entry history",
-      href: "/admin/assessment/marks-audit",
-      count: 0
-    },
-    {
-      title: "Mark Sheet",
-      icon: <FileSpreadsheet className="h-5 w-5 text-orange-600" />,
-      description: "Consolidated mark sheet",
-      href: "/admin/assessment/consolidated-mark-sheet",
-      count: 0
-    },
-    {
-      title: "Subject Performance",
-      icon: <BarChart className="h-5 w-5 text-cyan-600" />,
-      description: "Subject-wise analytics",
-      href: "/admin/assessment/subject-performance",
-      count: 0
-    },
-    {
-      title: "Co-Scholastic",
-      icon: <BadgeIcon className="h-5 w-5 text-pink-600" />,
-      description: "Non-academic activities",
-      href: "/admin/assessment/co-scholastic",
-      count: 0
-    },
-    {
-      title: "Assignments",
-      icon: <CheckSquare className="h-5 w-5 text-green-600" />,
-      description: "Homework and projects",
-      href: "/admin/assessment/assignments",
-      count: overview.assignments
-    },
-    {
-      title: "Results",
-      icon: <BarChart className="h-5 w-5 text-amber-600" />,
-      description: "Grade management",
+      step: 4,
+      title: "Results & Reports",
+      description: "View, publish, and generate report cards",
+      icon: <Trophy className="h-6 w-6 text-amber-600" />,
       href: "/admin/assessment/results",
-      count: overview.results
-    },
-    {
-      title: "Report Cards",
-      icon: <BadgeIcon className="h-5 w-5 text-teal-600" />,
-      description: "Student performance reports",
-      href: "/admin/assessment/report-cards",
-      count: overview.reportCards
-    },
-    {
-      title: "Assessment Rules",
-      icon: <Settings className="h-5 w-5 text-indigo-700" />,
-      description: "Configure Best of X & Aggregation",
-      href: "/admin/assessment/assessment-rules",
-      count: 0
-    },
-    {
-      title: "Question Bank",
-      icon: <FileQuestion className="h-5 w-5 text-red-600" />,
-      description: "Question repository",
-      href: "/admin/assessment/question-bank",
-      count: overview.questionBank
+      stat: overview.reportCards,
+      statLabel: "published",
+      color: "bg-amber-50 border-amber-200",
     },
   ];
 
@@ -156,28 +106,37 @@ export default async function AssessmentPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {assessmentCategories.map((category) => (
-          <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-accent rounded-md">
-                  {category.icon}
-                </div>
-                <Badge variant="outline">{category.count}</Badge>
+      {/* 4-step workflow */}
+      <div className="grid gap-0 grid-cols-1 md:grid-cols-4">
+        {workflowSteps.map((step, index) => (
+          <div key={step.step} className="flex items-stretch">
+            <Link href={step.href} className="flex-1">
+              <Card className={`h-full border-2 hover:shadow-md transition-shadow cursor-pointer ${step.color}`}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/70 text-sm font-bold text-muted-foreground border">
+                        {step.step}
+                      </div>
+                      <div className="p-1.5 bg-white/70 rounded-md">
+                        {step.icon}
+                      </div>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-semibold text-base mb-0.5">{step.title}</h3>
+                  <p className="text-xs text-muted-foreground mb-3">{step.description}</p>
+                  <p className="text-2xl font-bold">{step.stat}</p>
+                  <p className="text-xs text-muted-foreground">{step.statLabel}</p>
+                </CardContent>
+              </Card>
+            </Link>
+            {index < workflowSteps.length - 1 && (
+              <div className="hidden md:flex items-center px-1 text-muted-foreground">
+                <ChevronRight className="h-5 w-5" />
               </div>
-              <CardTitle className="text-base mt-2">{category.title}</CardTitle>
-              <CardDescription>{category.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href={category.href}>
-                <Button variant="outline" size="sm" className="w-full">
-                  Manage
-                  <ArrowUpRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         ))}
       </div>
 

@@ -19,6 +19,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db } from '@/lib/db';
 import type { ReportCardData } from './report-card-data-aggregation';
+import { fetchLogoBase64 } from '@/lib/utils/fetch-logo-base64';
 
 /**
  * Template configuration interfaces
@@ -120,6 +121,14 @@ export async function generateReportCardPDF(
       };
     }
 
+    // Resolve logo/header images to base64 so jsPDF can embed them server-side
+    if (template.schoolLogo) {
+      template.schoolLogo = (await fetchLogoBase64(template.schoolLogo)) ?? null;
+    }
+    if (template.headerImage) {
+      template.headerImage = (await fetchLogoBase64(template.headerImage)) ?? null;
+    }
+
     // Generate PDF based on template type
     const pdfBuffer = await generatePDFByType(template, options.data, options);
 
@@ -158,6 +167,14 @@ export async function generateBatchReportCardsPDF(
         success: false,
         error: `Template with ID ${templateId} not found`,
       };
+    }
+
+    // Resolve logo/header images to base64 so jsPDF can embed them server-side
+    if (template.schoolLogo) {
+      template.schoolLogo = (await fetchLogoBase64(template.schoolLogo)) ?? null;
+    }
+    if (template.headerImage) {
+      template.headerImage = (await fetchLogoBase64(template.headerImage)) ?? null;
     }
 
     // Create PDF document
@@ -348,7 +365,9 @@ async function renderHeader(
     let textStartX = 15;
     if (template.schoolLogo) {
       try {
-        doc.addImage(template.schoolLogo, 'PNG', 15, currentY + 5, 30, 30);
+        const logoFmt = template.schoolLogo.startsWith('data:image/png') ? 'PNG'
+          : template.schoolLogo.startsWith('data:image/webp') ? 'WEBP' : 'JPEG';
+        doc.addImage(template.schoolLogo, logoFmt, 15, currentY + 5, 30, 30);
         textStartX += 40;
       } catch (e) { console.warn('Logo error', e); }
     }
@@ -403,9 +422,11 @@ async function renderHeader(
     if (template.headerImage) {
       try {
         const headerHeight = styling.headerHeight || 30;
+        const headerFmt = template.headerImage.startsWith('data:image/png') ? 'PNG'
+          : template.headerImage.startsWith('data:image/webp') ? 'WEBP' : 'JPEG';
         doc.addImage(
           template.headerImage,
-          'PNG',
+          headerFmt,
           10,
           currentY,
           pageWidth - 20,
@@ -420,9 +441,11 @@ async function renderHeader(
     // Add school logo if provided
     if (template.schoolLogo) {
       try {
+        const logoFmt = template.schoolLogo.startsWith('data:image/png') ? 'PNG'
+          : template.schoolLogo.startsWith('data:image/webp') ? 'WEBP' : 'JPEG';
         doc.addImage(
           template.schoolLogo,
-          'PNG',
+          logoFmt,
           pageWidth / 2 - 15,
           currentY,
           30,

@@ -1,0 +1,571 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  PlusCircle, Edit, Trash2,
+  MoreVertical, ClipboardList, BarChart,
+  AlertCircle, Loader2, Sparkles
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
+
+import { examTypeSchema, ExamTypeFormValues, examTypeUpdateSchema, ExamTypeUpdateFormValues } from "@/lib/schemaValidation/examTypesSchemaValidation";
+import {
+  getExamTypes,
+  createExamType,
+  updateExamType,
+  deleteExamType,
+  getAvailableCBSEExamTypeTemplates,
+  autoGenerateCBSEExamTypes,
+} from "@/lib/actions/examTypesActions";
+import { getGrades } from "@/lib/actions/gradesActions";
+import { CBSE_COMPONENTS } from "@/lib/schemaValidation/examTypesSchemaValidation";
+
+interface ExamTypesPanelProps {
+  onExamTypesChange?: (examTypes: any[]) => void;
+}
+
+export function ExamTypesPanel({ onExamTypesChange }: ExamTypesPanelProps) {
+  const [examTypes, setExamTypes] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingExamType, setEditingExamType] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [examTypeToDelete, setExamTypeToDelete] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [gradesLoading, setGradesLoading] = useState(true);
+
+  const [autoGenDialogOpen, setAutoGenDialogOpen] = useState(false);
+  const [autoGenTemplates, setAutoGenTemplates] = useState<any[]>([]);
+  const [selectedAutoGen, setSelectedAutoGen] = useState<string[]>([]);
+  const [autoGenerating, setAutoGenerating] = useState(false);
+
+  const form = useForm<ExamTypeFormValues>({
+    resolver: zodResolver(examTypeSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      weight: 0,
+      isActive: true,
+      canRetest: false,
+      includeInGradeCard: true,
+      cbseComponent: null,
+    },
+  });
+
+  useEffect(() => {
+    fetchExamTypes();
+    fetchGrades();
+  }, []);
+
+  async function fetchExamTypes() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getExamTypes();
+      if (result.success) {
+        setExamTypes(result.data || []);
+        onExamTypesChange?.(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchGrades() {
+    setGradesLoading(true);
+    try {
+      const result = await getGrades();
+      if (result.success) {
+        const sortedGrades = [...(result.data || [])].sort((a, b) => b.minMarks - a.minMarks);
+        setGrades(sortedGrades);
+      }
+    } catch {
+      // grades are non-critical
+    } finally {
+      setGradesLoading(false);
+    }
+  }
+
+  async function onSubmit(values: ExamTypeFormValues) {
+    try {
+      let result;
+      if (editingExamType) {
+        result = await updateExamType({ ...values, id: editingExamType.id } as ExamTypeUpdateFormValues);
+      } else {
+        result = await createExamType(values);
+      }
+      if (result.success) {
+        toast.success(`Exam type ${editingExamType ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        setEditingExamType(null);
+        form.reset();
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  function handleCreate() {
+    form.reset({ name: "", description: "", weight: 0, isActive: true, canRetest: false, includeInGradeCard: true, cbseComponent: null });
+    setEditingExamType(null);
+    setDialogOpen(true);
+  }
+
+  function handleEdit(examType: any) {
+    form.reset({
+      name: examType.name,
+      description: examType.description || "",
+      weight: examType.weight,
+      isActive: examType.isActive,
+      canRetest: examType.canRetest,
+      includeInGradeCard: examType.includeInGradeCard,
+      cbseComponent: examType.cbseComponent || null,
+    });
+    setEditingExamType(examType);
+    setDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!examTypeToDelete) return;
+    try {
+      const result = await deleteExamType(examTypeToDelete);
+      if (result.success) {
+        toast.success("Exam type deleted successfully");
+        setDeleteDialogOpen(false);
+        setExamTypeToDelete(null);
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "Failed to delete exam type");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  async function handleAutoGenerate() {
+    const result = await getAvailableCBSEExamTypeTemplates();
+    if (result.success && result.data && result.data.length > 0) {
+      setAutoGenTemplates(result.data as any[]);
+      setSelectedAutoGen((result.data as any[]).map((t: any) => t.name));
+      setAutoGenDialogOpen(true);
+    } else {
+      toast.error(result.error || "All CBSE exam types already exist");
+    }
+  }
+
+  async function confirmAutoGenerate() {
+    if (selectedAutoGen.length === 0) { toast.error("Select at least one exam type"); return; }
+    setAutoGenerating(true);
+    try {
+      const result = await autoGenerateCBSEExamTypes(selectedAutoGen);
+      if (result.success) {
+        toast.success(`Created ${result.count} CBSE exam type${result.count !== 1 ? "s" : ""}`);
+        setAutoGenDialogOpen(false);
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "Failed to auto-generate");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setAutoGenerating(false);
+    }
+  }
+
+  const getGradeColorClass = (grade: string) => {
+    const c = grade.charAt(0).toUpperCase();
+    if (c === 'A') return { bg: 'bg-green-50', text: 'text-green-600' };
+    if (c === 'B') return { bg: 'bg-primary/10', text: 'text-primary' };
+    if (c === 'C') return { bg: 'bg-yellow-50', text: 'text-yellow-600' };
+    if (c === 'D') return { bg: 'bg-orange-50', text: 'text-orange-600' };
+    return { bg: 'bg-red-50', text: 'text-red-600' };
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Exam Types</h2>
+          <p className="text-sm text-muted-foreground">Define the categories and weights for your exams</p>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleAutoGenerate} size="sm" className="w-full sm:w-auto">
+            <Sparkles className="mr-2 h-4 w-4" /> Auto Generate CBSE
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleCreate} size="sm" className="w-full sm:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingExamType ? "Edit Exam Type" : "Create Exam Type"}</DialogTitle>
+                <DialogDescription>
+                  {editingExamType ? "Update the details of an existing exam type" : "Add a new type of examination to the system"}
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl><Input placeholder="e.g. Mid-Term, Final, Quiz" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl><Textarea placeholder="Brief description of this exam type" {...field} value={field.value || ""} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="weight" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight (% of total grade)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" max="100" {...field} value={field.value ?? ""}
+                          onChange={e => { const v = e.target.value === "" ? 0 : parseFloat(e.target.value); field.onChange(isNaN(v) ? 0 : v); }} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="cbseComponent" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CBSE Report Card Column</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(v === "none" ? null : v)} value={field.value || "none"}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Not mapped (optional)" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Not mapped</SelectItem>
+                          {CBSE_COMPONENTS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Maps this exam type to a CBSE report card column</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="isActive" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Active</FormLabel>
+                        <FormDescription>Whether this exam type is currently in use</FormDescription>
+                      </div>
+                      <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="canRetest" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Allow Retests</FormLabel>
+                        <FormDescription>Students can retake this exam type if they fail</FormDescription>
+                      </div>
+                      <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="includeInGradeCard" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Include in Report Card</FormLabel>
+                        <FormDescription>Results will appear on student report cards</FormDescription>
+                      </div>
+                      <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )} />
+
+                  <DialogFooter>
+                    <Button type="submit">{editingExamType ? "Save Changes" : "Create Exam Type"}</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {examTypes.length === 0 ? (
+            <div className="col-span-3 text-center py-12 text-muted-foreground">
+              <ClipboardList className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium mb-1">No exam types found</h3>
+              <p className="text-sm mb-4">Create your first exam type to get started</p>
+              <Button onClick={handleCreate}><PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type</Button>
+            </div>
+          ) : (
+            examTypes.map((examType) => (
+              <Card key={examType.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{examType.name}</CardTitle>
+                        {examType.isActive
+                          ? <Badge variant="outline" className="bg-green-50 text-green-700">Active</Badge>
+                          : <Badge variant="outline" className="bg-accent text-gray-700">Inactive</Badge>
+                        }
+                      </div>
+                      <CardDescription className="mt-1">{examType.description}</CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(examType)}>
+                          <Edit className="h-4 w-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <BarChart className="h-4 w-4 mr-2" /> View Stats
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={() => { setExamTypeToDelete(examType.id); setDeleteDialogOpen(true); }}>
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="border rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Weight</p>
+                        <p className="text-lg font-semibold">{examType.weight}%</p>
+                      </div>
+                      <div className="border rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Exams</p>
+                        <p className="text-lg font-semibold">{examType.examsCount}</p>
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-2">Features</p>
+                      <div className="flex flex-wrap gap-2">
+                        {examType.canRetest && <Badge variant="outline" className="bg-primary/10 text-primary">Retests Allowed</Badge>}
+                        {examType.includeInGradeCard && <Badge variant="outline" className="bg-teal-50 text-teal-700">In Report Card</Badge>}
+                        {examType.cbseComponent && <Badge variant="outline" className="bg-orange-50 text-orange-700">CBSE: {examType.cbseComponent}</Badge>}
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-2">Grade Thresholds</p>
+                      <div className="grid grid-cols-5 gap-1 text-center">
+                        {examType.gradeThresholds?.map((threshold: any) => (
+                          <div key={threshold.grade} className="border rounded p-1 text-xs"
+                            style={{ backgroundColor: threshold.grade === 'A' ? '#ecfdf5' : threshold.grade === 'B' ? '#e0f2fe' : threshold.grade === 'C' ? '#fef9c3' : threshold.grade === 'D' ? '#ffedd5' : '#fee2e2' }}>
+                            <div className="font-medium mb-1">{threshold.grade}</div>
+                            <div className="text-muted-foreground">{threshold.minScore}%+</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Grading System Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Grading System</CardTitle>
+          <CardDescription>Configure grade scales and passing criteria</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center p-4 bg-primary/10 rounded-lg mb-4">
+            <div className="flex items-start gap-3">
+              <ClipboardList className="h-5 w-5 text-primary mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Universal Grading Scale</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Configure the system-wide grading scale that applies to all exam types by default.
+                </p>
+              </div>
+            </div>
+            <Link href="/admin/academic/grades">
+              <Button variant="outline" size="sm">Configure</Button>
+            </Link>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-accent px-4 py-3 border-b">
+              <h3 className="font-medium">Default Grade Thresholds</h3>
+            </div>
+            <div className="p-4">
+              {gradesLoading ? (
+                <div className="flex justify-center items-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+              ) : grades.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">No grade thresholds defined yet.</p>
+                  <Link href="/admin/academic/grades">
+                    <Button variant="outline" size="sm" className="mt-2"><PlusCircle className="mr-2 h-3 w-3" /> Add Grades</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {grades.map((grade) => {
+                    const colors = getGradeColorClass(grade.grade);
+                    return (
+                      <div key={grade.id} className={`border rounded-lg p-3 ${colors.bg}`}>
+                        <p className="text-center font-medium">{grade.grade}</p>
+                        <p className="text-center text-xs text-muted-foreground">{grade.minMarks.toFixed(1)}% - {grade.maxMarks.toFixed(1)}%</p>
+                        <p className={`text-center text-xs font-medium ${colors.text} mt-1`}>
+                          {grade.description || (grade.grade === "F" ? "Fail" : grade.grade === "D" ? "Satisfactory" : grade.grade === "C" ? "Good" : grade.grade === "B" ? "Very Good" : "Excellent")}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex justify-end mt-4">
+                <Link href="/admin/academic/grades">
+                  <Button variant="outline" size="sm">Edit Thresholds</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Exam Type</DialogTitle>
+            <DialogDescription>Are you sure? Exams of this type will not be deleted but will need to be reclassified.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700 mt-2">
+            <AlertCircle className="h-5 w-5" />
+            <p className="text-sm">This may affect existing exams, results, and report cards.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-Generate Dialog */}
+      <Dialog open={autoGenDialogOpen} onOpenChange={setAutoGenDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Auto-Generate CBSE Exam Types</DialogTitle>
+            <DialogDescription>Select which standard CBSE exam types to create. Each maps to a report card column.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">{selectedAutoGen.length} of {autoGenTemplates.length} selected</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedAutoGen(autoGenTemplates.map((t: any) => t.name))}>Select All</Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedAutoGen([])}>Clear</Button>
+              </div>
+            </div>
+            <ScrollArea className="h-[280px] border rounded-md p-3">
+              <div className="space-y-2">
+                {autoGenTemplates.map((t: any) => (
+                  <div key={t.name}
+                    className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                    onClick={() => setSelectedAutoGen((prev) => prev.includes(t.name) ? prev.filter((n) => n !== t.name) : [...prev, t.name])}>
+                    <Checkbox checked={selectedAutoGen.includes(t.name)}
+                      onCheckedChange={() => setSelectedAutoGen((prev) => prev.includes(t.name) ? prev.filter((n) => n !== t.name) : [...prev, t.name])} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm">{t.name}</p>
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">CBSE: {t.cbseComponent}</Badge>
+                        <Badge variant="outline" className="text-xs">{t.weight}%</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAutoGenDialogOpen(false)} disabled={autoGenerating}>Cancel</Button>
+            <Button onClick={confirmAutoGenerate} disabled={autoGenerating || selectedAutoGen.length === 0}>
+              {autoGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate {selectedAutoGen.length} Type{selectedAutoGen.length !== 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

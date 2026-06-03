@@ -875,38 +875,44 @@ async function fetchLogoAsBase64(url: string): Promise<string | null> {
       const accessKeyId    = process.env.R2_ACCESS_KEY_ID;
       const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
       const bucketName     = process.env.R2_BUCKET_NAME;
-      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) return null;
-
-      const s3 = new S3Client({
-        region: 'auto',
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId, secretAccessKey },
-      });
-      const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
-      const buf = Buffer.concat(chunks);
-      const ct  = res.ContentType || 'image/png';
-      return `data:${ct};base64,${buf.toString('base64')}`;
+      
+      if (accountId && accessKeyId && secretAccessKey && bucketName) {
+        const s3 = new S3Client({
+          region: 'auto',
+          endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+          credentials: { accessKeyId, secretAccessKey },
+        });
+        const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
+        const buf = Buffer.concat(chunks);
+        const ct  = res.ContentType || 'image/png';
+        return `data:${ct};base64,${buf.toString('base64')}`;
+      }
     } catch (err) {
-      console.error('Failed to fetch R2 logo for report card:', err);
-      return null;
+      console.error('Failed to fetch R2 logo via S3 SDK, falling back to HTTP:', err);
     }
   }
 
-  // Non-R2 URL — resolve to absolute and fetch via HTTP
+  // Non-R2 URL or S3 fallback — resolve to absolute and fetch via HTTP
   let absUrl = url;
   if (!url.startsWith('http')) {
     const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
     absUrl = `${base}${url.startsWith('/') ? '' : '/'}${url}`;
   }
   try {
-    const res = await fetch(absUrl, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
+    const res = await fetch(absUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) {
+      console.error(`Logo HTTP fetch failed: ${absUrl} → ${res.status} ${res.statusText}`);
+      return null;
+    }
     const buf = await res.arrayBuffer();
     const ct  = res.headers.get('content-type') || 'image/png';
     return `data:${ct};base64,${Buffer.from(buf).toString('base64')}`;
-  } catch { return null; }
+  } catch (err) {
+    console.error(`Logo HTTP fetch exception: ${absUrl}`, err);
+    return null;
+  }
 }
 
 /**

@@ -612,7 +612,7 @@ export default function ClassDetailsPage() {
                                 </Badge>
                               </td>
                               <td className="py-3 px-4 align-middle text-right">
-                                <Link href={`/admin/students/${student.id}`}>
+                                <Link href={`/admin/users/students/${student.id}`}>
                                   <Button variant="ghost" size="sm">
                                     View
                                   </Button>

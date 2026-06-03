@@ -806,8 +806,15 @@ async function fetchExamResults(
   const schoolId = student?.schoolId;
   // When filtering by a single exam type, skip assessment rule aggregation —
   // just sum raw marks directly across subjects
+  // Per-term scoping: prefer rules for this term, fall back to term-agnostic rules.
   const assessmentRules = (classId && schoolId && !examTypeId)
-    ? await db.assessmentRule.findMany({ where: { classId, schoolId } })
+    ? await db.assessmentRule.findMany({
+        where: {
+          classId,
+          schoolId,
+          OR: [{ termId }, { termId: null }],
+        },
+      })
     : [];
 
   // Group results by subject

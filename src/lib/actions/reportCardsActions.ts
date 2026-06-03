@@ -806,22 +806,10 @@ export async function generateCBSEReportCardAction(params: {
       logoUrl = schoolSettings?.schoolLogo ?? undefined;
     }
 
-    if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-      logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
-    }
-
-    if (logoUrl && logoUrl.startsWith("http")) {
-      try {
-        const res = await fetch(logoUrl);
-        if (res.ok) {
-          const buf = await res.arrayBuffer();
-          const contentType = res.headers.get("content-type") || "image/png";
-          logoUrl = `data:${contentType};base64,${Buffer.from(buf).toString("base64")}`;
-        }
-      } catch {
-        logoUrl = undefined;
-      }
+    if (logoUrl) {
+      const { fetchLogoBase64 } = await import("@/lib/utils/fetch-logo-base64");
+      const fetched = await fetchLogoBase64(logoUrl);
+      logoUrl = fetched ?? undefined;
     }
 
     const meta = school?.metadata as Record<string, string> | null;
@@ -925,12 +913,11 @@ export async function generateBatchCBSEReportCardsAction(params: {
         resolvedCode       ??= school?.schoolCode || undefined;
         resolvedAffiliation ??= ss?.affiliationNumber ?? meta?.affiliationNo ?? undefined;
         if (!resolvedLogo) {
-          let logoUrl = school?.logo ?? ss?.schoolLogo ?? undefined;
-          if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-            logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          const logoUrl = school?.logo ?? ss?.schoolLogo ?? undefined;
+          if (logoUrl) {
+            const { fetchLogoBase64 } = await import("@/lib/utils/fetch-logo-base64");
+            resolvedLogo = (await fetchLogoBase64(logoUrl)) ?? undefined;
           }
-          resolvedLogo = logoUrl;
         }
       }
     }

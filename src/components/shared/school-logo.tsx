@@ -31,7 +31,7 @@ export function SchoolLogo({ className = "", showName = true }: SchoolLogoProps)
           alt={`${branding.schoolName} logo`}
           width={40}
           height={40}
-          className="object-contain"
+          className="h-10 w-10 object-contain"
           unoptimized
         />
       ) : (

@@ -7,6 +7,7 @@ import {
   generateCBSEReportCardPDF,
   generateBatchCBSEReportCards,
 } from "@/lib/services/report-card-cbse-renderer";
+import { fetchLogoBase64 } from "@/lib/utils/fetch-logo-base64";
 
 /**
  * GET /api/reports/cbse-report-card?studentId=...&academicYearId=...
@@ -64,8 +65,7 @@ export async function GET(req: NextRequest) {
       let logoUrl: string | undefined = undefined;
       const rawLogo = school?.logo ?? ss?.schoolLogo ?? undefined;
       if (rawLogo) {
-        const { fetchLogoAsBase64ForReport } = await import("@/lib/actions/report-card-generation");
-        logoUrl = (await fetchLogoAsBase64ForReport(rawLogo)) ?? undefined;
+        logoUrl = (await fetchLogoBase64(rawLogo)) ?? undefined;
       }
       return {
         schoolName:    resolvedName,

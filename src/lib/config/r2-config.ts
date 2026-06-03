@@ -228,7 +228,15 @@ export function generateCdnUrl(key: string, customDomain?: string): string {
     baseUrl = `https://pub-${config.accountId}.r2.dev`;
   } else {
     // Fallback to endpoint (requires bucket to have public access enabled)
-    baseUrl = config.endpoint || `https://${config.accountId}.r2.cloudflarestorage.com`;
+    if (config.endpoint) {
+      baseUrl = config.endpoint;
+    } else if (config.accountId) {
+      baseUrl = `https://${config.accountId}.r2.cloudflarestorage.com`;
+    } else {
+      // R2 not configured — return empty string to surface the misconfiguration
+      console.error('R2 storage is not configured: missing accountId, endpoint, and customDomain');
+      return '';
+    }
   }
   
   // Ensure baseUrl starts with https://

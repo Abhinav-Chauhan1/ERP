@@ -37,6 +37,17 @@ interface GroupedNotifications {
   [key: string]: Notification[];
 }
 
+type NotificationsResult = Awaited<ReturnType<typeof getUserNotifications>>;
+
+let notificationsRequest: Promise<NotificationsResult> | null = null;
+
+function loadUserNotificationsOnce() {
+  notificationsRequest ??= getUserNotifications().finally(() => {
+    notificationsRequest = null;
+  });
+  return notificationsRequest;
+}
+
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -58,7 +69,7 @@ export function NotificationCenter() {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const result = await getUserNotifications();
+      const result = await loadUserNotificationsOnce();
       if (result.success && result.data) {
         setNotifications(result.data);
       } else {

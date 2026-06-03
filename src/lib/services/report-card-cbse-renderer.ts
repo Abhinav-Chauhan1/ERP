@@ -87,6 +87,31 @@ function getSikshamitraLogoBase64(): string | null {
 
 /** Fetch a remote image URL and return a base64 data URI, or null on failure */
 async function fetchImageAsBase64(url: string): Promise<string | null> {
+  if (!url || url.startsWith("data:")) return url;
+  // For R2 proxy URLs (/api/r2/image?key=...) or legacy pub URLs, fetch via
+  // S3 SDK directly to bypass HTTP auth and work in server-side PDF generation.
+  const key = extractR2Key(url);
+  if (key) {
+    try {
+      const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
+      const accountId       = process.env.R2_ACCOUNT_ID;
+      const accessKeyId     = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucketName      = process.env.R2_BUCKET_NAME;
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) return null;
+      const s3 = new S3Client({
+        region: "auto",
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId, secretAccessKey },
+      });
+      const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
+      const buf = Buffer.concat(chunks);
+      const ct  = res.ContentType || "image/jpeg";
+      return `data:${ct};base64,${buf.toString("base64")}`;
+    } catch { return null; }
+  }
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
@@ -96,6 +121,21 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** Extract R2 object key from a proxy URL or legacy pub URL */
+function extractR2Key(url: string): string | null {
+  if (url.includes("/api/r2/image")) {
+    try {
+      const u = new URL(url, "http://localhost");
+      return u.searchParams.get("key");
+    } catch { return null; }
+  }
+  try {
+    const u = new URL(url);
+    if (u.hostname.match(/^pub-[^.]+\.r2\.dev$/)) return u.pathname.replace(/^\//, "");
+  } catch { /* ignore */ }
+  return null;
 }
 
 /** Detect jsPDF image format string from a data URI or URL */
@@ -229,13 +269,13 @@ async function renderPage(
 ): Promise<void> {
   // Resolve student avatar to base64 if it's a remote URL
   let studentAvatar = data.student.avatar ?? undefined;
-  if (studentAvatar && studentAvatar.startsWith("http")) {
+  if (studentAvatar && (studentAvatar.startsWith("http") || studentAvatar.includes("/api/r2/image"))) {
     studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
   }
 
   // Resolve school logo to base64 if it's a remote URL
   let schoolLogo = opts.schoolLogo;
-  if (schoolLogo && schoolLogo.startsWith("http")) {
+  if (schoolLogo && (schoolLogo.startsWith("http") || schoolLogo.includes("/api/r2/image"))) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
 
@@ -925,11 +965,11 @@ async function renderSecondaryPage(
   gradeScale: CBSEGradeEntry[],
 ): Promise<void> {
   let studentAvatar = data.student.avatar ?? undefined;
-  if (studentAvatar && studentAvatar.startsWith("http")) {
+  if (studentAvatar && (studentAvatar.startsWith("http") || studentAvatar.includes("/api/r2/image"))) {
     studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
   }
   let schoolLogo = opts.schoolLogo;
-  if (schoolLogo && schoolLogo.startsWith("http")) {
+  if (schoolLogo && (schoolLogo.startsWith("http") || schoolLogo.includes("/api/r2/image"))) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
   const schoolEmblem = opts.schoolEmblem ?? undefined;
@@ -1016,11 +1056,11 @@ async function renderSeniorPage(
   gradeScale: CBSEGradeEntry[],
 ): Promise<void> {
   let studentAvatar = data.student.avatar ?? undefined;
-  if (studentAvatar && studentAvatar.startsWith("http")) {
+  if (studentAvatar && (studentAvatar.startsWith("http") || studentAvatar.includes("/api/r2/image"))) {
     studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
   }
   let schoolLogo = opts.schoolLogo;
-  if (schoolLogo && schoolLogo.startsWith("http")) {
+  if (schoolLogo && (schoolLogo.startsWith("http") || schoolLogo.includes("/api/r2/image"))) {
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
   const schoolEmblem = opts.schoolEmblem ?? undefined;

@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { prisma } from "@/lib/db";
+import { runWithSuperAdminContext } from "@/lib/tenant-context";
 import { generateReport, ReportConfig } from "@/lib/actions/reportBuilderActions";
 import { updateScheduledReportRunTime } from "@/lib/actions/scheduledReportActions";
 import { sendEmail, generateReportEmailTemplate } from "@/lib/utils/email-service";
@@ -216,7 +217,6 @@ async function checkScheduledReports() {
 
     // This runs as a background cron with no HTTP request context.
     // runWithSuperAdminContext bypasses per-tenant RLS so the query can scan all schools.
-    const { runWithSuperAdminContext } = await import('@/lib/tenant-context');
 
     // Find all active reports that are due
     const dueReports = await runWithSuperAdminContext(() => prisma.scheduledReport.findMany({

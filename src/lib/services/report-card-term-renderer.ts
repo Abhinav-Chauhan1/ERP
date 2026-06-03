@@ -159,7 +159,7 @@ export async function generateTermReportCardPDF(
     schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
   }
   let studentAvatar = data.student.avatar ?? undefined;
-  if (studentAvatar?.startsWith("http")) {
+  if (studentAvatar && (studentAvatar.startsWith("http") || studentAvatar.includes("/api/r2/image"))) {
     studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
   }
 
@@ -194,7 +194,7 @@ export async function generateBatchTermReportCardsPDF(
     if (i > 0) doc.addPage();
     const data = dataList[i];
     let studentAvatar = data.student.avatar ?? undefined;
-    if (studentAvatar?.startsWith("http")) {
+    if (studentAvatar && (studentAvatar.startsWith("http") || studentAvatar.includes("/api/r2/image"))) {
       studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
     }
     drawBorder(doc);

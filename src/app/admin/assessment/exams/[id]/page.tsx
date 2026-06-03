@@ -46,8 +46,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import toast from "react-hot-toast";
 
-import { getExamById, saveExamResult, deleteExamResult } from "@/lib/actions/examsActions";
+import { getExamById, saveExamResult, deleteExamResult, getSubjects } from "@/lib/actions/examsActions";
 import { examResultSchema, ExamResultFormValues } from "@/lib/schemaValidation/examsSchemaValidation";
+import { getSubjectMarkConfigs } from "@/lib/actions/subjectMarkConfigActions";
+import { SubjectMarkConfigForm } from "@/components/admin/subject-mark-config-form";
+import { DeleteConfigButton } from "@/components/admin/delete-config-button";
 
 export default function ExamDetailsPage() {
   const params = useParams();
@@ -63,6 +66,12 @@ export default function ExamDetailsPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  // Mark components tab state
+  const [markConfigs, setMarkConfigs] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [markConfigsLoading, setMarkConfigsLoading] = useState(false);
+  const [markConfigsLoaded, setMarkConfigsLoaded] = useState(false);
+
   const resultForm = useForm<ExamResultFormValues>({
     resolver: zodResolver(examResultSchema),
     defaultValues: {
@@ -71,6 +80,23 @@ export default function ExamDetailsPage() {
       isAbsent: false,
     },
   });
+
+  const fetchMarkConfigs = useCallback(async () => {
+    setMarkConfigsLoading(true);
+    try {
+      const [configsResult, subjectsResult] = await Promise.all([
+        getSubjectMarkConfigs(examId),
+        getSubjects(),
+      ]);
+      if (configsResult.success) setMarkConfigs(configsResult.data || []);
+      if (subjectsResult.success) setSubjects(subjectsResult.data || []);
+      setMarkConfigsLoaded(true);
+    } catch {
+      // non-critical
+    } finally {
+      setMarkConfigsLoading(false);
+    }
+  }, [examId]);
 
   const fetchExamDetails = useCallback(async () => {
     setLoading(true);
@@ -339,10 +365,14 @@ export default function ExamDetailsPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={(v) => {
+        setActiveTab(v);
+        if (v === "mark-components" && !markConfigsLoaded) fetchMarkConfigs();
+      }}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="mark-components">Mark Components</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -551,6 +581,89 @@ export default function ExamDetailsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Mark Components Tab */}
+        <TabsContent value="mark-components" className="mt-4 flex flex-col gap-4">
+          {markConfigsLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add Subject Configuration</CardTitle>
+                  <CardDescription>
+                    Configure theory, practical, and internal assessment marks for a subject
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {subjects.length > 0 && exam && (
+                    <SubjectMarkConfigForm
+                      examId={examId}
+                      examTotalMarks={exam.totalMarks}
+                      subjects={subjects.map((s: any) => ({ id: s.id, name: s.name, code: s.code || "" }))}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configured Subjects</CardTitle>
+                  <CardDescription>Existing mark component configurations for this exam</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {markConfigs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                      <p className="text-sm">No configurations yet. Add your first subject mark configuration above.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-accent border-b">
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Theory</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Practical</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Internal</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Total</th>
+                            <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {markConfigs.map((config: any) => (
+                            <tr key={config.id} className="border-b hover:bg-accent/50">
+                              <td className="py-3 px-4 align-middle">
+                                <div className="font-medium">{config.subject?.name ?? config.subjectId}</div>
+                                <div className="text-xs text-muted-foreground">{config.subject?.code}</div>
+                              </td>
+                              <td className="py-3 px-4 align-middle text-center">
+                                {config.theoryMaxMarks ? <Badge variant="outline">{config.theoryMaxMarks}</Badge> : <span className="text-muted-foreground">-</span>}
+                              </td>
+                              <td className="py-3 px-4 align-middle text-center">
+                                {config.practicalMaxMarks ? <Badge variant="outline">{config.practicalMaxMarks}</Badge> : <span className="text-muted-foreground">-</span>}
+                              </td>
+                              <td className="py-3 px-4 align-middle text-center">
+                                {config.internalMaxMarks ? <Badge variant="outline">{config.internalMaxMarks}</Badge> : <span className="text-muted-foreground">-</span>}
+                              </td>
+                              <td className="py-3 px-4 align-middle text-center">
+                                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{config.totalMarks}</Badge>
+                              </td>
+                              <td className="py-3 px-4 align-middle text-right">
+                                <DeleteConfigButton configId={config.id} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

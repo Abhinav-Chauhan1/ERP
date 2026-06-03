@@ -943,7 +943,7 @@ export default function AttendanceReportsPage() {
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/admin/students/${student.studentId}`}>
+                              <Link href={`/admin/users/students/${student.studentId}`}>
                                 View Details
                               </Link>
                             </Button>
@@ -961,4 +961,3 @@ export default function AttendanceReportsPage() {
     </div>
   );
 }
-

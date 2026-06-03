@@ -21,15 +21,24 @@ export function StudentAvatarUpload({
     onSuccess,
 }: StudentAvatarUploadProps) {
     const [loading, setLoading] = useState(false);
-    const [preview, setPreview] = useState<string | null>(currentAvatar);
+    const [preview, setPreview] = useState<string | null>(() => {
+        // Guard against previously-stored invalid URLs (e.g. from a misconfigured R2
+        // or direct CDN URLs stored before the proxy was enforced)
+        if (!currentAvatar) return null;
+        if (currentAvatar.includes('undefined')) return null;
+        return currentAvatar;
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const getInitials = (name: string) => {
-        const parts = name.split(" ");
+        const parts = name.trim().split(/\s+/).filter(Boolean);
         if (parts.length >= 2) {
             return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
         }
-        return name.substring(0, 2).toUpperCase();
+        if (parts.length === 1) {
+            return parts[0].substring(0, 2).toUpperCase();
+        }
+        return "?";
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,13 +1,14 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, ArrowRight, Edit, Trash2, PlusCircle, Plus,
   Search, Calendar, Clock, BookOpen,
   MoreVertical, Download, Printer, FileText,
-  CheckCircle2, School, Loader2, AlertCircle, Sparkles
+  CheckCircle2, School, Loader2, AlertCircle, Sparkles,
+  Settings2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -51,6 +52,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -63,11 +65,7 @@ import { examSchema, ExamFormValues } from "@/lib/schemaValidation/examsSchemaVa
 import {
   getUpcomingExams,
   getPastExams,
-  getExamTypes,
-  getSubjects,
-  getClasses,
-  getTerms,
-  getAllTerms,
+  getExamsPageData,
   createExam,
   updateExam,
   deleteExam,
@@ -75,6 +73,10 @@ import {
   autoGenerateCBSEExams,
 } from "@/lib/actions/examsActions";
 import type { AutoGenerateExamsInput } from "@/lib/constants/cbse-exam-schedules";
+import { ExamTypesPanel } from "@/components/admin/assessment/exam-types-panel";
+import { AssessmentRulesPanel } from "@/components/admin/assessment/assessment-rules-panel";
+import { applyPTPatternForCurrentSchool } from "@/lib/actions/ptPatternActions";
+import type { PTGroupDefinition } from "@/lib/actions/ptPatternActions";
 
 export default function ExamsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,6 +89,12 @@ export default function ExamsPage() {
   const [examDialogOpen, setExamDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [selectedExamForDelete, setSelectedExamForDelete] = useState<{
+    id: string;
+    title: string;
+    resultsCount: number;
+  } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [viewTab, setViewTab] = useState<string>("upcoming");
 
   const [loading, setLoading] = useState(true);
@@ -100,14 +108,230 @@ export default function ExamsPage() {
   const [allTerms, setAllTerms] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const initialLoadStarted = useRef(false);
 
-  // Auto-generate CBSE exams state
+  // Auto-generate CBSE exams (3-step wizard) state
+  //   Step 1: Schedule scope (level, terms, classes, shared marks, pattern name)
+  //   Step 2: PT pattern per term
+  //   Step 3: Review + Apply
   const [autoGenOpen, setAutoGenOpen] = useState(false);
   const [autoGenLoading, setAutoGenLoading] = useState(false);
-  const [autoGenTermId, setAutoGenTermId] = useState("");
-  const [autoGenClassIds, setAutoGenClassIds] = useState<string[]>([]);
+  const [autoGenStep, setAutoGenStep] = useState<1 | 2 | 3>(1);
+
+  // Step 1 — Schedule
   const [autoGenLevel, setAutoGenLevel] = useState<"CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR">("CBSE_PRIMARY");
-  const [autoGenTermNumber, setAutoGenTermNumber] = useState<1 | 2>(1);
+  const [autoGenTermIds, setAutoGenTermIds] = useState<string[]>([]);
+  const [autoGenClassIds, setAutoGenClassIds] = useState<string[]>([]);
+
+  // Shared across all terms in a year
+  const [perMarks, setPerMarks] = useState<number>(10);
+  const [passingMarks, setPassingMarks] = useState<number>(3.3);
+  const [patternName, setPatternName] = useState<string>("Standard PT Pattern");
+
+  // Step 2 — Per-term PT pattern
+  interface TermPatternState {
+    termId: string;
+    ptCount: 1 | 2 | 3 | 4;
+    aggregation: "SUM" | "AVERAGE" | "BEST_OF" | "USE_LAST" | "CUSTOM_GROUPS";
+    bestOfCount: number;
+    groups: PTGroupDefinition[];
+  }
+  const [termPatterns, setTermPatterns] = useState<TermPatternState[]>([]);
+
+  const sortedSelectedTerms = useMemo(() => {
+    const map = new Map(allTerms.map((t: any) => [t.id, t]));
+    return autoGenTermIds
+      .map((id) => map.get(id))
+      .filter((t): t is any => Boolean(t))
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  }, [autoGenTermIds, allTerms]);
+
+  // Keep termPatterns aligned with autoGenTermIds (preserve user edits, drop removed terms)
+  useEffect(() => {
+    setTermPatterns((prev) => {
+      const prevById = new Map(prev.map((p) => [p.termId, p]));
+      return sortedSelectedTerms.map((term, idx) => {
+        const existing = prevById.get(term.id);
+        if (existing) return existing;
+        return makeDefaultTermPattern(term.id, idx);
+      });
+    });
+  }, [sortedSelectedTerms]);
+
+  function startNumberFor(termId: string): number {
+    let acc = 1;
+    for (const tp of termPatterns) {
+      if (tp.termId === termId) return acc;
+      acc += tp.ptCount;
+    }
+    return acc;
+  }
+
+  function ptNumbersFor(termId: string): number[] {
+    const start = startNumberFor(termId);
+    const tp = termPatterns.find((p) => p.termId === termId);
+    if (!tp) return [];
+    return Array.from({ length: tp.ptCount }, (_, i) => start + i);
+  }
+
+  function patchTermPattern(termId: string, patch: Partial<TermPatternState>) {
+    setTermPatterns((prev) =>
+      prev.map((tp) => (tp.termId === termId ? { ...tp, ...patch } : tp)),
+    );
+  }
+
+  function setPtCountFor(termId: string, n: 1 | 2 | 3 | 4) {
+    const current = termPatterns.find((p) => p.termId === termId);
+    patchTermPattern(termId, {
+      ptCount: n,
+      aggregation: n === 1 ? "SUM" : current?.aggregation ?? "BEST_OF",
+      bestOfCount: Math.min(current?.bestOfCount ?? 1, Math.max(1, n - 1)),
+    });
+  }
+
+  function toggleTerm(termId: string) {
+    setAutoGenTermIds((prev) =>
+      prev.includes(termId) ? prev.filter((id) => id !== termId) : [...prev, termId],
+    );
+  }
+
+  function selectAllTermsInYear(yearName: string) {
+    const ids = allTerms
+      .filter((t: any) => t.academicYear?.name === yearName)
+      .map((t: any) => t.id);
+    const allSelected = ids.every((id: string) => autoGenTermIds.includes(id));
+    if (allSelected) {
+      setAutoGenTermIds((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      const merged = Array.from(new Set([...autoGenTermIds, ...ids]));
+      setAutoGenTermIds(merged);
+    }
+  }
+
+  function togglePTInGroup(termId: string, groupIdx: number, pt: number) {
+    setTermPatterns((prev) =>
+      prev.map((tp) => {
+        if (tp.termId !== termId) return tp;
+        return {
+          ...tp,
+          groups: tp.groups.map((g, i) => {
+            if (i !== groupIdx) return g;
+            const has = g.ptNumbers.includes(pt);
+            return {
+              ...g,
+              ptNumbers: has
+                ? g.ptNumbers.filter((n) => n !== pt)
+                : [...g.ptNumbers, pt].sort((a, b) => a - b),
+            };
+          }),
+        };
+      }),
+    );
+  }
+  function addGroupFor(termId: string) {
+    setTermPatterns((prev) =>
+      prev.map((tp) =>
+        tp.termId !== termId || tp.groups.length >= 4
+          ? tp
+          : { ...tp, groups: [...tp.groups, { ptNumbers: [], op: "AVERAGE", weight: 0.25 }] },
+      ),
+    );
+  }
+  function removeGroupFor(termId: string, idx: number) {
+    setTermPatterns((prev) =>
+      prev.map((tp) =>
+        tp.termId !== termId ? tp : { ...tp, groups: tp.groups.filter((_, i) => i !== idx) },
+      ),
+    );
+  }
+  function patchGroupFor(termId: string, groupIdx: number, patch: Partial<PTGroupDefinition>) {
+    setTermPatterns((prev) =>
+      prev.map((tp) =>
+        tp.termId !== termId
+          ? tp
+          : { ...tp, groups: tp.groups.map((g, i) => (i === groupIdx ? { ...g, ...patch } : g)) },
+      ),
+    );
+  }
+
+  function makeDefaultTermPattern(termId: string, index: number): TermPatternState {
+    // Common-defaults heuristic:
+    //   first selected term  → ptCount=2, BEST_OF 1   (Half-Yearly: best of PT1+PT2)
+    //   any subsequent term  → ptCount=1, SUM         (Annual: only PT3)
+    if (index === 0) {
+      return {
+        termId,
+        ptCount: 2,
+        aggregation: "BEST_OF",
+        bestOfCount: 1,
+        groups: [
+          { ptNumbers: [1, 2], op: "AVERAGE", weight: 0.5 },
+          { ptNumbers: [3, 4], op: "AVERAGE", weight: 0.5 },
+        ],
+      };
+    }
+    return {
+      termId,
+      ptCount: 1,
+      aggregation: "SUM",
+      bestOfCount: 1,
+      groups: [
+        { ptNumbers: [1, 2], op: "AVERAGE", weight: 0.5 },
+        { ptNumbers: [3, 4], op: "AVERAGE", weight: 0.5 },
+      ],
+    };
+  }
+
+  function availableAggregationsFor(ptCount: number): TermPatternState["aggregation"][] {
+    if (ptCount === 1) return ["SUM"];
+    return ["AVERAGE", "BEST_OF", "USE_LAST", "CUSTOM_GROUPS"];
+  }
+
+  function aggregationLabel(a: TermPatternState["aggregation"], ptCount: number, bestOfCount: number): string {
+    switch (a) {
+      case "SUM": return `Sum (PT1${ptCount > 1 ? `…PT${ptCount}` : ""})`;
+      case "AVERAGE": return `Average of all ${ptCount} PTs`;
+      case "BEST_OF": return `Best ${bestOfCount} of ${ptCount}`;
+      case "USE_LAST": return `Only the last PT`;
+      case "CUSTOM_GROUPS": return `Custom groups`;
+    }
+  }
+
+  function groupsValidFor(g: PTGroupDefinition[], ptCount: number): boolean {
+    const sum = g.reduce((s, x) => s + (Number.isFinite(x.weight) ? x.weight : 0), 0);
+    if (Math.abs(sum - 1) >= 0.001) return false;
+    if (g.length === 0) return false;
+    const seen = new Set<number>();
+    for (const grp of g) {
+      if (grp.ptNumbers.length === 0) return false;
+      if (grp.weight <= 0 || grp.weight > 1) return false;
+      for (const n of grp.ptNumbers) {
+        if (n < 1 || n > ptCount) return false;
+        if (seen.has(n)) return false;
+        seen.add(n);
+      }
+    }
+    for (let n = 1; n <= ptCount; n++) if (!seen.has(n)) return false;
+    return true;
+  }
+
+  function canProceedFromStep1() {
+    return (
+      autoGenTermIds.length > 0 &&
+      autoGenClassIds.length > 0 &&
+      perMarks > 0 &&
+      passingMarks >= 0 &&
+      passingMarks <= perMarks
+    );
+  }
+  function canProceedFromStep2() {
+    if (termPatterns.length === 0) return false;
+    for (const tp of termPatterns) {
+      if (tp.aggregation === "BEST_OF" && (tp.bestOfCount < 1 || tp.bestOfCount > tp.ptCount)) return false;
+      if (tp.aggregation === "CUSTOM_GROUPS" && !groupsValidFor(tp.groups, tp.ptCount)) return false;
+    }
+    return patternName.trim().length > 0;
+  }
 
   // Initialize exam form
   const form = useForm<ExamFormValues>({
@@ -121,6 +345,8 @@ export default function ExamsPage() {
   });
 
   useEffect(() => {
+    if (initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
     loadAll();
   }, []);
 
@@ -129,38 +355,19 @@ export default function ExamsPage() {
     setStatsLoading(true);
     setError(null);
     try {
-      // Fire all requests in parallel — single round-trip
-      const [
-        upcomingResult,
-        pastResult,
-        typesResult,
-        subjectsResult,
-        classesResult,
-        termsResult,
-        allTermsResult,
-        statsResult,
-      ] = await Promise.all([
-        getUpcomingExams(),
-        getPastExams(),
-        getExamTypes(),
-        getSubjects(),
-        getClasses(),
-        getTerms(),
-        getAllTerms(),
-        getExamStatistics(),
-      ]);
+      const result = await getExamsPageData();
 
-      if (upcomingResult.success) setUpcomingExams(upcomingResult.data || []);
-      if (pastResult.success) setPastExams(pastResult.data || []);
-      if (typesResult.success) setExamTypes(typesResult.data || []);
-      if (subjectsResult.success) setSubjects(subjectsResult.data || []);
-      if (classesResult.success) setClasses(classesResult.data || []);
-      if (termsResult.success) setTerms(termsResult.data || []);
-      if (allTermsResult.success) setAllTerms(allTermsResult.data || []);
-      if (statsResult.success) setStatistics(statsResult.data);
-
-      if (!upcomingResult.success || !pastResult.success) {
-        setError("Failed to load exams");
+      if (result.success) {
+        setUpcomingExams(result.data.upcomingExams || []);
+        setPastExams(result.data.pastExams || []);
+        setExamTypes(result.data.examTypes || []);
+        setSubjects(result.data.subjects || []);
+        setClasses(result.data.classes || []);
+        setTerms(result.data.terms || []);
+        setAllTerms(result.data.allTerms || []);
+        setStatistics(result.data.statistics);
+      } else {
+        setError(result.error || "Failed to load exams");
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -238,7 +445,14 @@ export default function ExamsPage() {
   }
 
   function handleDeleteExam(examId: string) {
-    setSelectedExamId(examId);
+    const all = [...upcomingExams, ...pastExams];
+    const exam = all.find((e) => e.id === examId);
+    setSelectedExamForDelete({
+      id: examId,
+      title: exam?.title ?? "",
+      resultsCount: exam?._count?.results ?? 0,
+    });
+    setDeleteConfirmText("");
     setDeleteDialogOpen(true);
   }
 
@@ -279,23 +493,93 @@ export default function ExamsPage() {
   }
 
   async function handleAutoGenerateExams() {
-    if (!autoGenTermId) { toast.error("Select a term"); return; }
+    if (autoGenTermIds.length === 0) { toast.error("Select at least one term"); return; }
     if (autoGenClassIds.length === 0) { toast.error("Select at least one class"); return; }
+    if (termPatterns.length !== autoGenTermIds.length) { toast.error("PT pattern not configured for all terms"); return; }
     setAutoGenLoading(true);
     try {
-      const result = await autoGenerateCBSEExams({
-        termId: autoGenTermId,
-        classIds: autoGenClassIds,
-        cbseLevel: autoGenLevel,
-        termNumber: autoGenTermNumber,
-      });
-      if (result.success) {
-        toast.success(result.message ?? "Exams generated");
+      // Derive termNumber from term name: Term 2 / Annual / Final -> 2, else 1.
+      // "Half Yearly" is explicitly Term 1 despite containing "yearly".
+      const getTermNumber = (termId: string): 1 | 2 => {
+        const t = allTerms.find((x: any) => x.id === termId);
+        if (!t) return 1;
+        const n = (t.name || "").toLowerCase();
+        if (n.includes("half yearly") || n.includes("half-yearly") || /\bterm\s*1\b/.test(n) || /\bt1\b/.test(n)) return 1;
+        if (n.includes("annual") || n.includes("final") || /\byearly\b/.test(n) || /\bterm\s*2\b/.test(n) || /\bt2\b/.test(n)) return 2;
+        return 1;
+      };
+
+      // Step 1: Save the PT pattern PER selected term.
+      // Per-term ptStartNumber is computed from the running total of ptCounts in chronological order.
+      const patternFailures: string[] = [];
+      for (const tp of termPatterns) {
+        const startNumber = startNumberFor(tp.termId);
+        const patternRes = await applyPTPatternForCurrentSchool({
+          name: patternName.trim() || "Standard PT Pattern",
+          classId: null,
+          termId: tp.termId,
+          cbseLevel: autoGenLevel,
+          config: {
+            ptCount: tp.ptCount,
+            ptStartNumber: startNumber,
+            perMarks,
+            passingMarks,
+            aggregation: tp.aggregation,
+            bestOfCount: tp.aggregation === "BEST_OF" ? tp.bestOfCount : undefined,
+            groups: tp.aggregation === "CUSTOM_GROUPS" ? tp.groups : undefined,
+          },
+          scopeClassIds: autoGenClassIds,
+        });
+        if (!patternRes.success) {
+          const t = allTerms.find((x: any) => x.id === tp.termId);
+          patternFailures.push(`${t?.name ?? tp.termId}: ${patternRes.error || "failed"}`);
+        }
+      }
+
+      if (patternFailures.length === termPatterns.length && patternFailures.length > 0) {
+        // Every term failed — bail out before generating exams
+        toast.error(`All PT patterns failed: ${patternFailures.join("; ")}`);
+        setAutoGenLoading(false);
+        return;
+      }
+      if (patternFailures.length > 0) {
+        toast.error(`Some PT patterns failed: ${patternFailures.join("; ")}`);
+      }
+
+      // Step 2: Run auto-generate for EACH selected term sequentially
+      const failures: string[] = [];
+      let totalCreated = 0;
+      for (const termId of autoGenTermIds) {
+        const result = await autoGenerateCBSEExams({
+          termId,
+          classIds: autoGenClassIds,
+          cbseLevel: autoGenLevel,
+          termNumber: getTermNumber(termId),
+        });
+        if (!result.success) {
+          const t = allTerms.find((x: any) => x.id === termId);
+          failures.push(`${t?.name ?? termId}: ${result.error || "failed"}`);
+        } else if (typeof result.created === "number") {
+          totalCreated += result.created;
+        }
+      }
+
+      if (failures.length === 0) {
+        toast.success(
+          autoGenTermIds.length === 1
+            ? "Exams generated"
+            : `Exams generated for ${autoGenTermIds.length} terms (${totalCreated} new)`,
+        );
         setAutoGenOpen(false);
+        setAutoGenStep(1);
+        fetchExams();
+        fetchStatistics();
+      } else if (failures.length < autoGenTermIds.length) {
+        toast.error(`Partial success. Failed: ${failures.join("; ")}`);
         fetchExams();
         fetchStatistics();
       } else {
-        toast.error(result.error || "Failed to generate exams");
+        toast.error(`All terms failed: ${failures.join("; ")}`);
       }
     } catch {
       toast.error("An unexpected error occurred");
@@ -304,22 +588,45 @@ export default function ExamsPage() {
     }
   }
 
-  async function confirmDelete() {
-    if (selectedExamId) {
-      try {
-        const result = await deleteExam(selectedExamId);
+  function closeAutoGen() {
+    setAutoGenOpen(false);
+    setAutoGenStep(1);
+  }
 
-        if (result.success) {
-          toast.success("Exam deleted successfully");
-          fetchExams();
-          fetchStatistics();
-          setDeleteDialogOpen(false);
-        } else {
-          toast.error(result.error || "Failed to delete exam");
-        }
-      } catch (err) {
-        toast.error("An unexpected error occurred");
+  async function confirmDelete() {
+    if (!selectedExamForDelete) return;
+    const { id, resultsCount } = selectedExamForDelete;
+    try {
+      const result = await deleteExam(id, { force: resultsCount > 0 });
+
+      if (result.success) {
+        const deletedResults =
+          "deletedResults" in result && typeof result.deletedResults === "number"
+            ? result.deletedResults
+            : 0;
+        const msg =
+          deletedResults > 0
+            ? `Exam and ${deletedResults} result${deletedResults !== 1 ? "s" : ""} deleted`
+            : "Exam deleted successfully";
+        toast.success(msg);
+        fetchExams();
+        fetchStatistics();
+        setDeleteDialogOpen(false);
+        setSelectedExamForDelete(null);
+        setDeleteConfirmText("");
+      } else {
+        toast.error(result.error || "Failed to delete exam");
       }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  function closeDeleteDialog(open: boolean) {
+    setDeleteDialogOpen(open);
+    if (!open) {
+      setSelectedExamForDelete(null);
+      setDeleteConfirmText("");
     }
   }
 
@@ -388,6 +695,7 @@ export default function ExamsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Page header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
@@ -396,18 +704,39 @@ export default function ExamsPage() {
               Back
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Exam Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Exam Setup</h1>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => setAutoGenOpen(true)} className="w-full sm:w-auto">
-            <Sparkles className="mr-2 h-4 w-4" /> Auto Generate CBSE
-          </Button>
-          <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreateExam} className="w-full sm:w-auto">
-                <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
+      </div>
+
+      {/* Top-level tabs: Exams | Exam Types & Rules */}
+      <Tabs defaultValue="exams" className="w-full">
+        <TabsList className="mb-2">
+          <TabsTrigger value="exams">Exams</TabsTrigger>
+          <TabsTrigger value="types-rules">Exam Types &amp; Rules</TabsTrigger>
+        </TabsList>
+
+        {/* ── EXAM TYPES & RULES TAB ── */}
+        <TabsContent value="types-rules" className="flex flex-col gap-8 mt-0">
+          <ExamTypesPanel />
+          <div className="border-t pt-6">
+            <AssessmentRulesPanel />
+          </div>
+        </TabsContent>
+
+        {/* ── EXAMS TAB ── */}
+        <TabsContent value="exams" className="flex flex-col gap-4 mt-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setAutoGenOpen(true)} className="w-full sm:w-auto">
+                <Sparkles className="mr-2 h-4 w-4" /> Auto Generate CBSE
               </Button>
-            </DialogTrigger>
+              <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleCreateExam} className="w-full sm:w-auto">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
+                  </Button>
+                </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>{selectedExamId ? "Edit Exam" : "Create New Exam"}</DialogTitle>
@@ -857,134 +1186,512 @@ export default function ExamsPage() {
         </CardContent>
       </Card>
 
-      {/* Auto-Generate CBSE Exams Dialog */}
-      <Dialog open={autoGenOpen} onOpenChange={setAutoGenOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Auto-Generate CBSE Exams</DialogTitle>
-            <DialogDescription>
-              Creates one exam per subject per class for each CBSE exam type in the selected term.
-              Existing exams are skipped automatically.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Auto-Generate CBSE Exams Dialog (3-step unified wizard) */}
+      <Dialog open={autoGenOpen} onOpenChange={(v) => (v ? setAutoGenOpen(true) : closeAutoGen())}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <div className="p-6 pb-3 border-b">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" /> Auto-Generate CBSE Exams
+              </DialogTitle>
+              <DialogDescription>
+                Configure your CBSE exam schedule and PT pattern per term. Step {autoGenStep} of 3.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>CBSE Level</Label>
-                <Select value={autoGenLevel} onValueChange={(v) => setAutoGenLevel(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CBSE_PRIMARY">Primary (Class 1–8)</SelectItem>
-                    <SelectItem value="CBSE_SECONDARY">Secondary (Class 9–10)</SelectItem>
-                    <SelectItem value="CBSE_SENIOR">Senior Secondary (Class 11–12)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Exam Schedule</Label>
-                <Select value={String(autoGenTermNumber)} onValueChange={(v) => setAutoGenTermNumber(Number(v) as 1 | 2)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Half Yearly Pattern</SelectItem>
-                    <SelectItem value="2">Annual Pattern</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Academic Term</Label>
-              <Select value={autoGenTermId} onValueChange={setAutoGenTermId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select academic term..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allTerms.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.name} ({term.academicYear.name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label>Classes ({autoGenClassIds.length} selected)</Label>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds(classes.map((c: any) => c.id))}>
-                    All
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds([])}>
-                    Clear
-                  </Button>
+            {/* Stepper indicator */}
+            <div className="flex items-center gap-2 text-xs mt-3">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="flex-1 flex items-center gap-1">
+                  <div
+                    className={`h-6 w-6 rounded-full flex items-center justify-center font-medium ${
+                      autoGenStep >= n ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {autoGenStep > n ? <CheckCircle2 className="h-3.5 w-3.5" /> : n}
+                  </div>
+                  {n < 3 && (
+                    <div className={`flex-1 h-0.5 ${autoGenStep > n ? "bg-primary" : "bg-muted"}`} />
+                  )}
                 </div>
-              </div>
-              <ScrollArea className="h-[180px] border rounded-md p-2">
-                <div className="space-y-1">
-                  {classes.map((cls: any) => (
-                    <div
-                      key={cls.id}
-                      className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                      onClick={() => setAutoGenClassIds((prev) =>
-                        prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
-                      )}
-                    >
-                      <Checkbox
-                        checked={autoGenClassIds.includes(cls.id)}
-                        onCheckedChange={() => setAutoGenClassIds((prev) =>
-                          prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
-                        )}
-                      />
-                      <span className="text-sm">{cls.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-1">
+              <span>Schedule</span>
+              <span>PT Pattern</span>
+              <span>Review</span>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAutoGenOpen(false)} disabled={autoGenLoading}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAutoGenerateExams}
-              disabled={autoGenLoading || !autoGenTermId || autoGenClassIds.length === 0}
-            >
-              {autoGenLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              Generate Exams
-            </Button>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* STEP 1 — Schedule (terms + classes + CBSE level + shared marks) */}
+            {autoGenStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>CBSE Level</Label>
+                  <Select value={autoGenLevel} onValueChange={(v) => setAutoGenLevel(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CBSE_PRIMARY">Primary (Class 1–8)</SelectItem>
+                      <SelectItem value="CBSE_SECONDARY">Secondary (Class 9–10)</SelectItem>
+                      <SelectItem value="CBSE_SENIOR">Senior Secondary (Class 11–12)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label>Terms ({autoGenTermIds.length} selected)</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Select all terms across the most recent academic year only
+                          const years = Array.from(new Set(allTerms.map((t: any) => t.academicYear?.name).filter(Boolean)));
+                          if (years.length === 0) return;
+                          // pick the first year as "most recent" (same as dialog order)
+                          selectAllTermsInYear(years[0] as string);
+                        }}
+                      >
+                        Half + Annual
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setAutoGenTermIds([])}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[140px] border rounded-md p-2">
+                    <div className="space-y-1">
+                      {allTerms.map((term: any) => (
+                        <div
+                          key={term.id}
+                          className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                          onClick={() => toggleTerm(term.id)}
+                        >
+                          <Checkbox
+                            checked={autoGenTermIds.includes(term.id)}
+                            onCheckedChange={() => toggleTerm(term.id)}
+                          />
+                          <span className="text-sm">
+                            {term.name}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({term.academicYear?.name})
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label>Classes ({autoGenClassIds.length} selected)</Label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds(classes.map((c: any) => c.id))}>All</Button>
+                      <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds([])}>Clear</Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[180px] border rounded-md p-2">
+                    <div className="space-y-1">
+                      {classes.map((cls: any) => (
+                        <div
+                          key={cls.id}
+                          className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                          onClick={() => setAutoGenClassIds((prev) =>
+                            prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
+                          )}
+                        >
+                          <Checkbox
+                            checked={autoGenClassIds.includes(cls.id)}
+                            onCheckedChange={() => setAutoGenClassIds((prev) =>
+                              prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
+                            )}
+                          />
+                          <span className="text-sm">{cls.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Marks per PT (shared)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={perMarks}
+                      onChange={(e) => setPerMarks(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Passing marks (shared)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={perMarks}
+                      step={0.1}
+                      value={passingMarks}
+                      onChange={(e) => setPassingMarks(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Pattern name (for your reference)</Label>
+                  <Input value={patternName} onChange={(e) => setPatternName(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2 — PT pattern per selected term */}
+            {autoGenStep === 2 && (
+              <div className="space-y-4">
+                {sortedSelectedTerms.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No terms selected</AlertTitle>
+                    <AlertDescription>Go back and select at least one term.</AlertDescription>
+                  </Alert>
+                ) : (
+                  sortedSelectedTerms.map((term, idx) => {
+                    const tp = termPatterns.find((p) => p.termId === term.id);
+                    if (!tp) return null;
+                    const ptNumbers = ptNumbersFor(term.id);
+                    const availAgg = availableAggregationsFor(tp.ptCount);
+                    return (
+                      <Card key={term.id} className="border-primary/30">
+                        <CardHeader className="py-3 px-4">
+                          <CardTitle className="text-sm flex items-center justify-between">
+                            <span>
+                              {idx === 0 ? "Term 1 — " : `Term ${idx + 1} — `}
+                              {term.name}
+                              <span className="text-xs text-muted-foreground ml-1">({term.academicYear?.name})</span>
+                            </span>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {ptNumbers.map((n) => `PT${n}`).join(", ") || "—"}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-2 px-4 space-y-3">
+                          <div>
+                            <Label className="text-xs font-medium">How many PTs in this term?</Label>
+                            <div className="mt-1.5 grid grid-cols-4 gap-2">
+                              {([1, 2, 3, 4] as const).map((n) => (
+                                <Button
+                                  key={n}
+                                  type="button"
+                                  size="sm"
+                                  variant={tp.ptCount === n ? "default" : "outline"}
+                                  onClick={() => setPtCountFor(term.id, n)}
+                                >
+                                  {n}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {tp.ptCount >= 2 && (
+                            <div>
+                              <Label className="text-xs font-medium">How to combine?</Label>
+                              <div className="mt-1.5 space-y-1.5">
+                                {availAgg.map((a) => (
+                                  <label
+                                    key={a}
+                                    className={`flex items-start gap-2 p-2 border rounded-md cursor-pointer hover:bg-muted/40 ${
+                                      tp.aggregation === a ? "border-primary bg-primary/5" : ""
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`agg-${term.id}`}
+                                      value={a}
+                                      checked={tp.aggregation === a}
+                                      onChange={() => patchTermPattern(term.id, { aggregation: a })}
+                                      className="mt-1"
+                                    />
+                                    <span className="text-xs">{aggregationLabel(a, tp.ptCount, tp.bestOfCount)}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {tp.aggregation === "BEST_OF" && tp.ptCount >= 2 && (
+                            <div className="space-y-1.5 border rounded-md p-2 bg-muted/30">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Best how many?</Label>
+                                <span className="text-xs font-semibold">{tp.bestOfCount} of {tp.ptCount}</span>
+                              </div>
+                              <Slider
+                                min={1}
+                                max={Math.max(1, tp.ptCount - 1)}
+                                step={1}
+                                value={[tp.bestOfCount]}
+                                onValueChange={(v) => patchTermPattern(term.id, { bestOfCount: v[0] ?? 1 })}
+                              />
+                            </div>
+                          )}
+
+                          {tp.aggregation === "CUSTOM_GROUPS" && tp.ptCount >= 2 && (
+                            <div className="space-y-2 border rounded-md p-2 bg-muted/30">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs">Groups</Label>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => addGroupFor(term.id)}
+                                  disabled={tp.groups.length >= 4}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" /> Add group
+                                </Button>
+                              </div>
+                              {tp.groups.map((g, idx) => {
+                                const weightSum = tp.groups.reduce((s, x) => s + (Number.isFinite(x.weight) ? x.weight : 0), 0);
+                                const valid = groupsValidFor(tp.groups, tp.ptCount);
+                                return (
+                                  <Card key={idx} className="border-dashed">
+                                    <CardHeader className="py-1.5 px-2">
+                                      <div className="flex items-center justify-between">
+                                        <CardTitle className="text-xs">Group {idx + 1}</CardTitle>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => removeGroupFor(term.id, idx)}
+                                          disabled={tp.groups.length <= 1}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </CardHeader>
+                                    <CardContent className="py-1.5 px-2 space-y-1.5">
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {Array.from({ length: tp.ptCount }, (_, i) => i + 1).map((pt) => (
+                                          <label key={pt} className="flex items-center gap-1 text-xs">
+                                            <Checkbox
+                                              checked={g.ptNumbers.includes(pt)}
+                                              onCheckedChange={() => togglePTInGroup(term.id, idx, pt)}
+                                            />
+                                            PT{pt}
+                                          </label>
+                                        ))}
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Operation</Label>
+                                          <Select
+                                            value={g.op}
+                                            onValueChange={(v) => patchGroupFor(term.id, idx, { op: v as PTGroupDefinition["op"] })}
+                                          >
+                                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="AVERAGE">Average</SelectItem>
+                                              <SelectItem value="SUM">Sum</SelectItem>
+                                              <SelectItem value="BEST_OF">Best of N</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Weight (0–1)</Label>
+                                          <Input
+                                            type="number"
+                                            step={0.05}
+                                            min={0}
+                                            max={1}
+                                            value={g.weight}
+                                            onChange={(e) => {
+                                              const v = Number(e.target.value);
+                                              patchGroupFor(term.id, idx, { weight: Number.isFinite(v) ? v : 0 });
+                                            }}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                      </div>
+                                      {g.op === "BEST_OF" && (
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Count (K of N)</Label>
+                                          <Input
+                                            type="number"
+                                            min={1}
+                                            max={g.ptNumbers.length}
+                                            value={g.count ?? 1}
+                                            onChange={(e) => {
+                                              const v = Number(e.target.value);
+                                              patchGroupFor(term.id, idx, { count: Number.isFinite(v) ? v : 1 });
+                                            }}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                    <div className="px-2 pb-2 text-[10px] text-muted-foreground">
+                                      total weight in term: {weightSum.toFixed(2)} {valid ? "✓" : "✗"}
+                                    </div>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {tp.ptCount === 1 && tp.aggregation === "SUM" && (
+                            <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                              Single PT — will be saved as-is (default CBSE behavior).
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* STEP 3 — Review (per-term) */}
+            {autoGenStep === 3 && (
+              <div className="space-y-4">
+                <div className="rounded-md border bg-muted/30 p-3 space-y-1.5">
+                  <div className="text-xs text-muted-foreground">Shared</div>
+                  <div className="text-sm font-medium">{patternName}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {autoGenLevel.replace("CBSE_", "").toLowerCase().replace(/^./, c => c.toUpperCase())} · {perMarks} marks per PT · pass at {passingMarks} · {autoGenClassIds.length} class{autoGenClassIds.length !== 1 ? "es" : ""}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {sortedSelectedTerms.map((term, idx) => {
+                    const tp = termPatterns.find((p) => p.termId === term.id);
+                    if (!tp) return null;
+                    const ptNumbers = ptNumbersFor(term.id);
+                    const isDefault = tp.ptCount === 1 && tp.aggregation === "SUM";
+                    return (
+                      <div key={term.id} className="rounded-md border bg-muted/20 p-3 text-sm space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{`Term ${idx + 1}: ${term.name}`}</span>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {ptNumbers.map((n) => `PT${n}`).join("+") || "—"}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {isDefault
+                            ? "Default — 1 PT, saved as-is"
+                            : `${aggregationLabel(tp.aggregation, tp.ptCount, tp.bestOfCount)} → PT(${perMarks}) column`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Alert>
+                  <Settings2 className="h-4 w-4" />
+                  <AlertTitle>What happens on Apply</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    One PT pattern is saved per term. PT ExamTypes are created/reused sequentially across the year, exam rows are generated per class per subject, and per-term AssessmentRules are upserted. MA, Portfolio, Half Yearly/Annual exams are also created.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex justify-between gap-2 border-t px-6 py-3 sm:justify-between">
+            {autoGenStep > 1 ? (
+              <Button variant="outline" onClick={() => setAutoGenStep((s) => (s - 1) as 1 | 2)} disabled={autoGenLoading}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={closeAutoGen} disabled={autoGenLoading}>
+                Cancel
+              </Button>
+            )}
+
+            {autoGenStep < 3 ? (
+              <Button
+                onClick={() => setAutoGenStep((s) => (s + 1) as 2 | 3)}
+                disabled={autoGenStep === 1 ? !canProceedFromStep1() : !canProceedFromStep2()}
+              >
+                Next <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleAutoGenerateExams}
+                disabled={autoGenLoading || !canProceedFromStep2()}
+              >
+                {autoGenLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Generate Exams
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={closeDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Exam</DialogTitle>
+            <DialogTitle>
+              {selectedExamForDelete?.resultsCount
+                ? "Delete exam and its results"
+                : "Delete exam"}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this exam? This action cannot be undone and will remove all associated questions and results.
+              {selectedExamForDelete?.resultsCount ? (
+                <span className="space-y-2 block">
+                  <span className="block">
+                    <strong className="text-foreground">{selectedExamForDelete.title}</strong> has{" "}
+                    <strong className="text-foreground">
+                      {selectedExamForDelete.resultsCount} student result
+                      {selectedExamForDelete.resultsCount !== 1 ? "s" : ""}
+                    </strong>
+                    . Deleting this exam will permanently remove all of them.
+                  </span>
+                  <span className="block text-amber-600 dark:text-amber-500 font-medium">
+                    This cannot be undone. Consider using re-marking instead.
+                  </span>
+                </span>
+              ) : (
+                "Are you sure you want to delete this exam? This action cannot be undone."
+              )}
             </DialogDescription>
           </DialogHeader>
+          {selectedExamForDelete?.resultsCount ? (
+            <div className="space-y-2 py-2">
+              <Label htmlFor="delete-confirm">
+                Type <span className="font-mono font-semibold">{selectedExamForDelete.title}</span> to confirm
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={selectedExamForDelete.title}
+                autoComplete="off"
+                autoFocus
+              />
+            </div>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => closeDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={
+                !!selectedExamForDelete?.resultsCount &&
+                deleteConfirmText.trim() !== selectedExamForDelete.title
+              }
+            >
+              {selectedExamForDelete?.resultsCount
+                ? `Delete exam + ${selectedExamForDelete.resultsCount} result${selectedExamForDelete.resultsCount !== 1 ? "s" : ""}`
+                : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-

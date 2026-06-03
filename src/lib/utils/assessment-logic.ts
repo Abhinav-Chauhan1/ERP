@@ -2,12 +2,31 @@
  * Utility functions for complex assessment rules
  */
 
-export type AssessmentRuleType = "BEST_OF" | "AVERAGE" | "WEIGHTED_AVERAGE" | "SUM";
+export type AssessmentRuleType =
+  | "BEST_OF"
+  | "AVERAGE"
+  | "WEIGHTED_AVERAGE"
+  | "SUM"
+  | "CUSTOM_GROUPS";
+
+export interface PTGroupSpec {
+  ptNumbers: number[];
+  op: "BEST_OF" | "AVERAGE" | "SUM";
+  count?: number;
+  weight: number;
+}
 
 export interface AssessmentRule {
     ruleType: AssessmentRuleType;
     count?: number | null; // For BEST_OF
     weight: number; // For WEIGHTED_AVERAGE (0-1.0)
+    groups?: PTGroupSpec[] | null; // For CUSTOM_GROUPS
+}
+
+export interface ExamMarkWithPTNumber {
+  obtained: number;
+  total: number;
+  ptNumber?: number | null;
 }
 
 /**
@@ -16,6 +35,17 @@ export interface AssessmentRule {
 export function aggregateMarksByRule(
     marks: Array<{ obtained: number; total: number }>,
     rule: AssessmentRule
+): { obtained: number; total: number } {
+    return aggregateMarksByRuleDetailed(marks as ExamMarkWithPTNumber[], rule);
+}
+
+/**
+ * Variant that lets callers attach a `ptNumber` to each mark so that
+ * CUSTOM_GROUPS rules can route specific PT instances into buckets.
+ */
+export function aggregateMarksByRuleDetailed(
+    marks: ExamMarkWithPTNumber[],
+    rule: AssessmentRule,
 ): { obtained: number; total: number } {
     if (marks.length === 0) return { obtained: 0, total: 0 };
 
@@ -65,6 +95,30 @@ export function aggregateMarksByRule(
                 obtained: sumObtained * rule.weight,
                 total: sumTotal * rule.weight,
             };
+        }
+
+        case "CUSTOM_GROUPS": {
+            const groups = rule.groups ?? [];
+            if (groups.length === 0) {
+                return { obtained: 0, total: 0 };
+            }
+            let totalObtained = 0;
+            let totalMax = 0;
+            for (const g of groups) {
+                const groupMarks = marks.filter(
+                    (m) => m.ptNumber != null && g.ptNumbers.includes(m.ptNumber),
+                );
+                if (groupMarks.length === 0) continue;
+                const sub: AssessmentRule = {
+                    ruleType: g.op,
+                    count: g.count ?? null,
+                    weight: 1,
+                };
+                const agg = aggregateMarksByRuleDetailed(groupMarks, sub);
+                totalObtained += agg.obtained * g.weight;
+                totalMax += agg.total * g.weight;
+            }
+            return { obtained: totalObtained, total: totalMax };
         }
 
         case "SUM":

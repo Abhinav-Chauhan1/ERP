@@ -40,6 +40,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import { RankCalculationDialog } from "@/components/admin/rank-calculation-dialog";
+import { ConsolidatedMarkSheetPanel } from "@/components/admin/assessment/consolidated-mark-sheet-panel";
+import { SubjectPerformancePanel } from "@/components/admin/assessment/subject-performance-panel";
 
 // Import schema validation and server actions
 import {
@@ -65,6 +67,7 @@ export default function ResultsPage() {
   const [sortColumn, setSortColumn] = useState<string>("examDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [viewTab, setViewTab] = useState<string>("exams");
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(["exams"]));
 
   const [loading, setLoading] = useState(true);
   const [examResultsLoading, setExamResultsLoading] = useState(false);
@@ -275,7 +278,7 @@ export default function ResultsPage() {
               Back
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Examination Results</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Results &amp; Reports</h1>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <div className="w-full sm:w-auto">
@@ -300,11 +303,13 @@ export default function ResultsPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="exams" onValueChange={setViewTab}>
+      <Tabs defaultValue="exams" onValueChange={(v) => { setViewTab(v); setLoadedTabs(prev => new Set([...prev, v])); }}>
         <TabsList>
           <TabsTrigger value="exams">Exam Results</TabsTrigger>
           <TabsTrigger value="students">Student Results</TabsTrigger>
-          <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="mark-sheet">Mark Sheet</TabsTrigger>
+          <TabsTrigger value="subject-performance">Subject Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="exams">
@@ -594,6 +599,14 @@ export default function ResultsPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="mark-sheet" className="mt-4">
+          {loadedTabs.has("mark-sheet") && <ConsolidatedMarkSheetPanel />}
+        </TabsContent>
+
+        <TabsContent value="subject-performance" className="mt-4">
+          {loadedTabs.has("subject-performance") && <SubjectPerformancePanel />}
         </TabsContent>
       </Tabs>
 

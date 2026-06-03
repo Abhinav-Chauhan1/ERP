@@ -8,6 +8,15 @@ const nextConfig = {
   },
 
   images: {
+    localPatterns: [
+      {
+        pathname: '/**',
+        search: '',
+      },
+      {
+        pathname: '/api/r2/image',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -44,7 +53,7 @@ const nextConfig = {
   // Server actions configuration
   experimental: {
     serverActions: {
-      bodySizeLimit: '2mb',
+      bodySizeLimit: '5mb',
     },
   },
 

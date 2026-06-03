@@ -92,6 +92,7 @@ model School {
   Announcement            Announcement[]
   ApplicationDocument     ApplicationDocument[]
   AssessmentRule          AssessmentRule[]
+  PTPattern               PTPattern[]
   Assignment              Assignment[]
   AssignmentClass         AssignmentClass[]
   AssignmentSubmission    AssignmentSubmission[]
@@ -256,23 +257,23 @@ model SubscriptionPlan {
 }
 
 model EnhancedSubscription {
-  id                     String             @id @default(cuid())
-  schoolId               String
-  planId                 String
-  status                 SubscriptionStatus
-  currentPeriodStart     DateTime
-  currentPeriodEnd       DateTime
-  cancelAtPeriodEnd      Boolean            @default(false)
-  trialEnd               DateTime?
-  studentCount           Int                @default(0)
-  metadata               Json               @default("{}")
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  cfOrderRef             String?
-  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
-  school                 School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  invoices               Invoice[]
-  payments               Payment[]
+  id                 String             @id @default(cuid())
+  schoolId           String
+  planId             String
+  status             SubscriptionStatus
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean            @default(false)
+  trialEnd           DateTime?
+  studentCount       Int                @default(0)
+  metadata           Json               @default("{}")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  cfOrderRef         String?
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id])
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invoices           Invoice[]
+  payments           Payment[]
 
   @@index([schoolId])
   @@index([status])
@@ -280,40 +281,40 @@ model EnhancedSubscription {
 }
 
 model Invoice {
-  id                String               @id @default(cuid())
-  subscriptionId    String
-  invoiceNumber     String?              @unique
-  amount            Int
-  currency          String               @default("inr")
-  status            InvoiceStatus
-  dueDate           DateTime
-  paidAt            DateTime?
-  metadata          Json                 @default("{}")
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  payments          Payment[]
+  id             String               @id @default(cuid())
+  subscriptionId String
+  invoiceNumber  String?              @unique
+  amount         Int
+  currency       String               @default("inr")
+  status         InvoiceStatus
+  dueDate        DateTime
+  paidAt         DateTime?
+  metadata       Json                 @default("{}")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  subscription   EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payments       Payment[]
 
   @@index([subscriptionId])
   @@map("invoices")
 }
 
 model Payment {
-  id                String               @id @default(cuid())
-  subscriptionId    String
-  invoiceId         String?
-  amount            Int
-  currency          String               @default("inr")
-  status            PaymentStatus
-  paymentMethod     String?
-  failureReason     String?
-  processedAt       DateTime?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  cfPaymentId       String?              @unique
-  paymentSessionId  String?
-  invoice           Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  subscription      EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  id               String               @id @default(cuid())
+  subscriptionId   String
+  invoiceId        String?
+  amount           Int
+  currency         String               @default("inr")
+  status           PaymentStatus
+  paymentMethod    String?
+  failureReason    String?
+  processedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  cfPaymentId      String?              @unique
+  paymentSessionId String?
+  invoice          Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  subscription     EnhancedSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@index([subscriptionId])
   @@index([invoiceId])
@@ -325,18 +326,18 @@ model PaymentMethodRecord {
   schoolId         String
   cfCustomerId     String?
   type             String
-  encryptedDetails   String
-  last4              String?
-  brand              String?
-  expiryMonth        String?
-  expiryYear         String?
-  holderName         String?
-  isDefault          Boolean  @default(false)
-  isActive           Boolean  @default(true)
-  metadata           Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  school             School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  encryptedDetails String
+  last4            String?
+  brand            String?
+  expiryMonth      String?
+  expiryYear       String?
+  holderName       String?
+  isDefault        Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@map("payment_method_records")
@@ -735,6 +736,7 @@ model Term {
   exams              Exam[]
   reportCards        ReportCard[]
   assessmentRules    AssessmentRule[]
+  pTPatterns         PTPattern[]
   academicYear       AcademicYear        @relation(fields: [academicYearId], references: [id])
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   coScholasticGrades CoScholasticGrade[]
@@ -768,6 +770,7 @@ model Class {
   schoolId              String
   admissionApplications AdmissionApplication[]
   assessmentRules       AssessmentRule[]
+  pTPatterns            PTPattern[]
   assignments           AssignmentClass[]
   academicYear          AcademicYear           @relation(fields: [academicYearId], references: [id])
   reportCardTemplate    ReportCardTemplate?    @relation(fields: [reportCardTemplateId], references: [id])
@@ -1370,6 +1373,31 @@ model AssessmentRule {
   school    School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+}
+
+model PTPattern {
+  id            String               @id @default(cuid())
+  schoolId      String
+  classId       String?
+  termId        String
+  cbseLevel     String?
+  name          String
+  ptCount       Int
+  ptStartNumber Int                  @default(1)
+  perMarks      Float
+  passingMarks  Float
+  aggregation   PTPatternAggregation
+  bestOfCount   Int?
+  groups        Json?
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class         Class?               @relation(fields: [classId], references: [id])
+  term          Term                 @relation(fields: [termId], references: [id])
+
+  @@index([schoolId])
+  @@index([schoolId, termId, classId])
 }
 
 model Assignment {
@@ -4300,6 +4328,15 @@ enum AssessmentRuleType {
   AVERAGE
   WEIGHTED_AVERAGE
   SUM
+  CUSTOM_GROUPS
+}
+
+enum PTPatternAggregation {
+  SUM
+  AVERAGE
+  BEST_OF
+  USE_LAST
+  CUSTOM_GROUPS
 }
 
 enum DifficultyLevel {
@@ -4732,22 +4769,22 @@ model SystemConfiguration {
 
 // SYSTEM-WIDE: intentionally not tenant-scoped
 model FeatureFlag {
-  id                 String   @id @default(cuid())
-  name               String
-  description        String?
-  isEnabled          Boolean  @default(false)
-  rolloutPercentage  Int      @default(0)
-  rolloutStrategy    String   @default("PERCENTAGE")
-  targetSchools      Json?
-  targetUsers        Json?
-  conditions         Json?
-  environment        String   @default("production")
-  startDate          DateTime?
-  endDate            DateTime?
-  createdBy          String?
-  updatedBy          String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String    @id @default(cuid())
+  name              String
+  description       String?
+  isEnabled         Boolean   @default(false)
+  rolloutPercentage Int       @default(0)
+  rolloutStrategy   String    @default("PERCENTAGE")
+  targetSchools     Json?
+  targetUsers       Json?
+  conditions        Json?
+  environment       String    @default("production")
+  startDate         DateTime?
+  endDate           DateTime?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([name, environment])
   @@index([environment, isEnabled])

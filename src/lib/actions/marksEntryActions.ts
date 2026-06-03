@@ -567,6 +567,76 @@ export const getExamTypesForMarksEntry = withSchoolAuthAction(
 );
 
 /**
+ * Initial data for marks entry filters — one server action, one auth/context check.
+ */
+export const getMarksEntryPageData = withSchoolAuthAction(
+  async (schoolId: string): Promise<ActionResult> => {
+    try {
+      const [exams, classes, terms, examTypes] = await Promise.all([
+        db.exam.findMany({
+          where: { schoolId },
+          select: {
+            id: true,
+            title: true,
+            totalMarks: true,
+            examDate: true,
+            classId: true,
+            subject: { select: { id: true, name: true } },
+            examType: { select: { id: true, name: true, cbseComponent: true } },
+            term: {
+              select: {
+                id: true,
+                name: true,
+                academicYear: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: { examDate: "desc" },
+        }),
+        db.class.findMany({
+          where: { schoolId },
+          select: {
+            id: true,
+            name: true,
+            sections: {
+              select: { id: true, name: true },
+              orderBy: { name: "asc" },
+            },
+            academicYear: { select: { name: true, isCurrent: true } },
+          },
+          orderBy: { name: "asc" },
+        }),
+        db.term.findMany({
+          where: { schoolId },
+          select: {
+            id: true,
+            name: true,
+            academicYear: { select: { name: true, isCurrent: true } },
+          },
+          orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "asc" }],
+        }),
+        db.examType.findMany({
+          where: { schoolId },
+          select: { id: true, name: true, cbseComponent: true },
+          orderBy: { name: "asc" },
+        }),
+      ]);
+
+      return {
+        success: true,
+        data: { exams, classes, terms, examTypes },
+      };
+    } catch (error) {
+      console.error("Error fetching marks entry page data:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch marks entry data",
+      };
+    }
+  }
+);
+
+/**
  * Get subjects for marks entry filters — scoped to school
  */
 export const getSubjectsForMarksEntry = withSchoolAuthAction(

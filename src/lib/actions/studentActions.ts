@@ -189,13 +189,24 @@ export async function uploadStudentAvatar(formData: FormData) {
       throw new Error(uploadResult.error || 'Failed to upload avatar');
     }
 
+    // Guard against a misconfigured R2 producing an empty or invalid URL
+    if (!uploadResult.key && (!uploadResult.url || uploadResult.url === '' || uploadResult.url.includes('undefined'))) {
+      throw new Error('R2 storage returned an invalid URL. Check your R2 environment variables.');
+    }
+
+    // The R2 bucket is private — serve through the authenticated image proxy
+    // so the URL remains accessible regardless of bucket visibility settings.
+    const avatarUrl = uploadResult.key
+      ? `/api/r2/image?key=${encodeURIComponent(uploadResult.key)}`
+      : uploadResult.url!;
+
     // Update student avatar URL in database
     const updatedStudent = await db.student.update({
       where: { id: studentId },
       data: {
         user: {
           update: {
-            avatar: uploadResult.url,
+            avatar: avatarUrl,
           },
         },
       },
@@ -222,7 +233,7 @@ export async function uploadStudentAvatar(formData: FormData) {
       success: true,
       message: "Student photo updated successfully",
       data: { 
-        avatar: uploadResult.url,
+        avatar: avatarUrl,
         metadata: uploadResult.metadata 
       },
     };

@@ -3,7 +3,7 @@
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { PermissionAction } from "@prisma/client";
+import { PermissionAction, Prisma } from "@prisma/client";
 import {
   ExamFormValues,
   ExamUpdateFormValues,
@@ -15,6 +15,7 @@ import {
   deleteCalendarEventFromExam
 } from "../services/exam-calendar-integration";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { getActivePTPattern, generatePTExamsAndRule } from "./ptPatternActions";
 
 // ---------------------------------------------------------------------------
 // Lightweight permission check — no audit log on reads, no extra auth() call
@@ -48,33 +49,158 @@ async function checkPermission(
   }
 }
 
+const examListSelect = {
+  id: true,
+  title: true,
+  examDate: true,
+  startTime: true,
+  endTime: true,
+  totalMarks: true,
+  passingMarks: true,
+  subjectId: true,
+  classId: true,
+  termId: true,
+  examTypeId: true,
+  subject: { select: { name: true } },
+  examType: { select: { id: true, name: true } },
+  class: { select: { id: true, name: true } },
+  term: { select: { id: true, name: true, academicYear: { select: { name: true } } } },
+  _count: { select: { results: true } },
+} satisfies Prisma.ExamSelect;
+
+async function fetchUpcomingExams(schoolId: string, now = new Date()) {
+  return db.exam.findMany({
+    where: { schoolId, examDate: { gte: now } },
+    select: examListSelect,
+    orderBy: { examDate: "asc" },
+  });
+}
+
+async function fetchPastExams(schoolId: string, now = new Date()) {
+  return db.exam.findMany({
+    where: { schoolId, examDate: { lt: now } },
+    select: examListSelect,
+    orderBy: { examDate: "desc" },
+  });
+}
+
+async function fetchExamTypes(schoolId: string) {
+  return db.examType.findMany({
+    where: { schoolId },
+    select: { id: true, name: true, cbseComponent: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+async function fetchSubjects(schoolId: string) {
+  return db.subject.findMany({
+    where: { schoolId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+async function fetchTerms(schoolId: string, now = new Date()) {
+  return db.term.findMany({
+    where: { schoolId, endDate: { gte: now } },
+    select: {
+      id: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      academicYear: { select: { name: true } },
+    },
+    orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "asc" }],
+  });
+}
+
+async function fetchAllTerms(schoolId: string) {
+  return db.term.findMany({
+    where: { schoolId },
+    select: {
+      id: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      academicYear: { select: { name: true } },
+    },
+    orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "desc" }],
+  });
+}
+
+async function fetchClasses(schoolId: string) {
+  return db.class.findMany({
+    where: { schoolId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+async function fetchExamStatistics(schoolId: string, now = new Date()) {
+  const [upcomingExamsCount, completedExamsCount, nextExam, classPerf] = await Promise.all([
+    db.exam.count({ where: { schoolId, examDate: { gte: now } } }),
+    db.exam.count({ where: { schoolId, examDate: { lt: now } } }),
+    db.exam.findFirst({
+      where: { schoolId, examDate: { gte: now } },
+      select: { subject: { select: { name: true } } },
+      orderBy: { examDate: "asc" },
+    }),
+    db.examResult.groupBy({
+      by: ["studentId"],
+      where: { schoolId, isAbsent: false, exam: { examDate: { lt: now } } },
+      _avg: { marks: true },
+      _count: { marks: true },
+    }),
+  ]);
+
+  let highestPerformingClass: string | null = null;
+  let highestPerformingAverage = 0;
+
+  if (classPerf.length > 0) {
+    const studentIds = classPerf.map((r) => r.studentId);
+    const enrollments = await db.classEnrollment.findMany({
+      where: { studentId: { in: studentIds }, schoolId },
+      select: { studentId: true, class: { select: { name: true } } },
+      distinct: ["studentId"],
+      orderBy: { enrollDate: "desc" },
+    });
+
+    const studentClassMap = new Map(enrollments.map((e) => [e.studentId, e.class.name]));
+    const classTotals = new Map<string, { total: number; count: number }>();
+
+    for (const r of classPerf) {
+      const className = studentClassMap.get(r.studentId);
+      if (!className || r._avg.marks === null) continue;
+      const entry = classTotals.get(className) ?? { total: 0, count: 0 };
+      entry.total += r._avg.marks * r._count.marks;
+      entry.count += r._count.marks;
+      classTotals.set(className, entry);
+    }
+
+    classTotals.forEach((stats, className) => {
+      const avg = stats.count > 0 ? stats.total / stats.count : 0;
+      if (avg > highestPerformingAverage) {
+        highestPerformingClass = className;
+        highestPerformingAverage = avg;
+      }
+    });
+  }
+
+  return {
+    upcomingExamsCount,
+    completedExamsCount,
+    nextExam: nextExam?.subject.name ?? null,
+    highestPerformingClass,
+    highestPerformingAverage: highestPerformingAverage.toFixed(1),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Get upcoming exams — lean select, no redundant auth() call
 // ---------------------------------------------------------------------------
 export const getUpcomingExams = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const exams = await db.exam.findMany({
-      where: { schoolId, examDate: { gte: new Date() } },
-      select: {
-        id: true,
-        title: true,
-        examDate: true,
-        startTime: true,
-        endTime: true,
-        totalMarks: true,
-        passingMarks: true,
-        subjectId: true,
-        classId: true,
-        termId: true,
-        examTypeId: true,
-        subject: { select: { name: true } },
-        examType: { select: { id: true, name: true } },
-        class: { select: { id: true, name: true } },
-        term: { select: { id: true, name: true, academicYear: { select: { name: true } } } },
-        _count: { select: { results: true } },
-      },
-      orderBy: { examDate: "asc" },
-    });
+    const exams = await fetchUpcomingExams(schoolId);
     return { success: true as const, data: exams };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch upcoming exams" };
@@ -86,28 +212,7 @@ export const getUpcomingExams = withSchoolAuthAction(async (schoolId: string) =>
 // ---------------------------------------------------------------------------
 export const getPastExams = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const exams = await db.exam.findMany({
-      where: { schoolId, examDate: { lt: new Date() } },
-      select: {
-        id: true,
-        title: true,
-        examDate: true,
-        startTime: true,
-        endTime: true,
-        totalMarks: true,
-        passingMarks: true,
-        subjectId: true,
-        classId: true,
-        termId: true,
-        examTypeId: true,
-        subject: { select: { name: true } },
-        examType: { select: { id: true, name: true } },
-        class: { select: { id: true, name: true } },
-        term: { select: { id: true, name: true, academicYear: { select: { name: true } } } },
-        _count: { select: { results: true } },
-      },
-      orderBy: { examDate: "desc" },
-    });
+    const exams = await fetchPastExams(schoolId);
     return { success: true as const, data: exams };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch past exams" };
@@ -148,11 +253,7 @@ export const getExamById = withSchoolAuthAction(async (schoolId: string, _userId
 // ---------------------------------------------------------------------------
 export const getExamTypes = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const examTypes = await db.examType.findMany({
-      where: { schoolId },
-      select: { id: true, name: true, cbseComponent: true },
-      orderBy: { name: "asc" },
-    });
+    const examTypes = await fetchExamTypes(schoolId);
     return { success: true as const, data: examTypes };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch exam types" };
@@ -164,11 +265,7 @@ export const getExamTypes = withSchoolAuthAction(async (schoolId: string) => {
 // ---------------------------------------------------------------------------
 export const getSubjects = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const subjects = await db.subject.findMany({
-      where: { schoolId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+    const subjects = await fetchSubjects(schoolId);
     return { success: true as const, data: subjects };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch subjects" };
@@ -180,17 +277,7 @@ export const getSubjects = withSchoolAuthAction(async (schoolId: string) => {
 // ---------------------------------------------------------------------------
 export const getTerms = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const terms = await db.term.findMany({
-      where: { schoolId, endDate: { gte: new Date() } },
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        endDate: true,
-        academicYear: { select: { name: true } },
-      },
-      orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "asc" }],
-    });
+    const terms = await fetchTerms(schoolId);
     return { success: true as const, data: terms };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch terms" };
@@ -202,17 +289,7 @@ export const getTerms = withSchoolAuthAction(async (schoolId: string) => {
 // ---------------------------------------------------------------------------
 export const getAllTerms = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const terms = await db.term.findMany({
-      where: { schoolId },
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        endDate: true,
-        academicYear: { select: { name: true } },
-      },
-      orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "desc" }],
-    });
+    const terms = await fetchAllTerms(schoolId);
     return { success: true as const, data: terms };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch terms" };
@@ -224,11 +301,7 @@ export const getAllTerms = withSchoolAuthAction(async (schoolId: string) => {
 // ---------------------------------------------------------------------------
 export const getClasses = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const classes = await db.class.findMany({
-      where: { schoolId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+    const classes = await fetchClasses(schoolId);
     return { success: true as const, data: classes };
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch classes" };
@@ -240,69 +313,54 @@ export const getClasses = withSchoolAuthAction(async (schoolId: string) => {
 // ---------------------------------------------------------------------------
 export const getExamStatistics = withSchoolAuthAction(async (schoolId: string) => {
   try {
+    const statistics = await fetchExamStatistics(schoolId);
+    return { success: true as const, data: statistics };
+  } catch (error) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch exam statistics" };
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Initial data for the exam setup page — one server action, one auth/context check
+// ---------------------------------------------------------------------------
+export const getExamsPageData = withSchoolAuthAction(async (schoolId: string) => {
+  try {
     const now = new Date();
-
-    const [upcomingExamsCount, completedExamsCount, nextExam, classPerf] = await Promise.all([
-      db.exam.count({ where: { schoolId, examDate: { gte: now } } }),
-      db.exam.count({ where: { schoolId, examDate: { lt: now } } }),
-      db.exam.findFirst({
-        where: { schoolId, examDate: { gte: now } },
-        select: { subject: { select: { name: true } } },
-        orderBy: { examDate: "asc" },
-      }),
-      db.examResult.groupBy({
-        by: ["studentId"],
-        where: { schoolId, isAbsent: false, exam: { examDate: { lt: now } } },
-        _avg: { marks: true },
-        _count: { marks: true },
-      }),
+    const [
+      upcomingExams,
+      pastExams,
+      examTypes,
+      subjects,
+      classes,
+      terms,
+      allTerms,
+      statistics,
+    ] = await Promise.all([
+      fetchUpcomingExams(schoolId, now),
+      fetchPastExams(schoolId, now),
+      fetchExamTypes(schoolId),
+      fetchSubjects(schoolId),
+      fetchClasses(schoolId),
+      fetchTerms(schoolId, now),
+      fetchAllTerms(schoolId),
+      fetchExamStatistics(schoolId, now),
     ]);
-
-    let highestPerformingClass: string | null = null;
-    let highestPerformingAverage = 0;
-
-    if (classPerf.length > 0) {
-      const studentIds = classPerf.map((r) => r.studentId);
-      const enrollments = await db.classEnrollment.findMany({
-        where: { studentId: { in: studentIds }, schoolId },
-        select: { studentId: true, class: { select: { name: true } } },
-        distinct: ["studentId"],
-        orderBy: { enrollDate: "desc" },
-      });
-
-      const studentClassMap = new Map(enrollments.map((e) => [e.studentId, e.class.name]));
-      const classTotals = new Map<string, { total: number; count: number }>();
-
-      for (const r of classPerf) {
-        const className = studentClassMap.get(r.studentId);
-        if (!className || r._avg.marks === null) continue;
-        const entry = classTotals.get(className) ?? { total: 0, count: 0 };
-        entry.total += r._avg.marks * r._count.marks;
-        entry.count += r._count.marks;
-        classTotals.set(className, entry);
-      }
-
-      classTotals.forEach((stats, className) => {
-        const avg = stats.count > 0 ? stats.total / stats.count : 0;
-        if (avg > highestPerformingAverage) {
-          highestPerformingClass = className;
-          highestPerformingAverage = avg;
-        }
-      });
-    }
 
     return {
       success: true as const,
       data: {
-        upcomingExamsCount,
-        completedExamsCount,
-        nextExam: nextExam?.subject.name ?? null,
-        highestPerformingClass,
-        highestPerformingAverage: highestPerformingAverage.toFixed(1),
+        upcomingExams,
+        pastExams,
+        examTypes,
+        subjects,
+        classes,
+        terms,
+        allTerms,
+        statistics,
       },
     };
   } catch (error) {
-    return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch exam statistics" };
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed to fetch exam page data" };
   }
 });
 
@@ -399,7 +457,7 @@ export const updateExam = withSchoolAuthAction(async (schoolId: string, userId: 
 // ---------------------------------------------------------------------------
 // Delete exam
 // ---------------------------------------------------------------------------
-export const deleteExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
+export const deleteExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, options?: { force?: boolean }) => {
   await checkPermission(userId, userRole, "EXAM", "DELETE", "You do not have permission to delete exams");
 
   const hasResults = await db.examResult.findFirst({
@@ -407,15 +465,21 @@ export const deleteExam = withSchoolAuthAction(async (schoolId: string, userId: 
     select: { id: true },
   });
 
-  if (hasResults) {
-    return { success: false, error: "Cannot delete this exam because it has associated results. Remove the results first." };
+  if (hasResults && !options?.force) {
+    return { success: false, error: "Cannot delete this exam because it has associated results. Remove the results first.", hasResults: true as const };
+  }
+
+  let deletedResults = 0;
+  if (hasResults && options?.force) {
+    const del = await db.examResult.deleteMany({ where: { schoolId, examId: id } });
+    deletedResults = del.count;
   }
 
   await deleteCalendarEventFromExam(id);
   await db.exam.delete({ where: { schoolId, id } });
 
   revalidatePath("/admin/assessment/exams");
-  return { success: true };
+  return { success: true as const, deletedResults };
 });
 
 // ---------------------------------------------------------------------------
@@ -480,6 +544,30 @@ import {
   CBSE_SENIOR_SCHEDULE,
 } from "@/lib/constants/cbse-exam-schedules";
 
+function resolveCBSETermNumber(termName: string | null | undefined, inputTermNumber?: 1 | 2): 1 | 2 {
+  const normalized = (termName || "").toLowerCase();
+  if (
+    normalized.includes("half yearly") ||
+    normalized.includes("half-yearly") ||
+    /\bterm\s*1\b/.test(normalized) ||
+    /\bt1\b/.test(normalized)
+  ) {
+    return 1;
+  }
+
+  if (
+    normalized.includes("annual") ||
+    normalized.includes("final") ||
+    /\byearly\b/.test(normalized) ||
+    /\bterm\s*2\b/.test(normalized) ||
+    /\bt2\b/.test(normalized)
+  ) {
+    return 2;
+  }
+
+  return inputTermNumber ?? 1;
+}
+
 export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
   try {
     const { schoolId } = await requireSchoolAccess();
@@ -487,38 +575,30 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
 
     const term = await db.term.findFirst({
       where: { id: input.termId, schoolId },
-      select: { startDate: true, endDate: true },
+      select: { name: true, startDate: true, endDate: true },
     });
     if (!term) return { success: false, error: `Term not found (id: ${input.termId})` };
+    const termNumber = resolveCBSETermNumber(term.name, input.termNumber);
 
-    let schedule =
-      input.cbseLevel === "CBSE_SENIOR"
-        ? CBSE_SENIOR_SCHEDULE
-        : input.cbseLevel === "CBSE_SECONDARY"
-        ? CBSE_SECONDARY_SCHEDULE
-        : CBSE_PRIMARY_SCHEDULE;
+    if (input.cbseLevel !== "CBSE_SENIOR") {
+      const invalidTermEndComponent = termNumber === 1 ? "ANNUAL" : "HALF_YEARLY";
+      const invalidTermEndTypes = await db.examType.findMany({
+        where: { schoolId, cbseComponent: invalidTermEndComponent },
+        select: { id: true },
+      });
+      const invalidTermEndTypeIds = invalidTermEndTypes.map((type) => type.id);
 
-    if (input.termNumber === 2 && input.cbseLevel !== "CBSE_SENIOR") {
-      schedule = schedule.map((s) =>
-        s.cbseComponent === "HALF_YEARLY"
-          ? { ...s, examTypeName: "Annual Exam", cbseComponent: "ANNUAL" }
-          : s
-      );
-    }
-
-    const examTypeNames = [...new Set(schedule.map((s) => s.examTypeName))];
-    const examTypes = await db.examType.findMany({
-      where: { schoolId, name: { in: examTypeNames } },
-      select: { id: true, name: true },
-    });
-    const examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
-
-    const missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
-    if (missingTypes.length > 0) {
-      return {
-        success: false,
-        error: `Missing exam types: ${missingTypes.join(", ")}. Run "Auto Generate Exam Types" first.`,
-      };
+      if (invalidTermEndTypeIds.length > 0) {
+        await db.exam.deleteMany({
+          where: {
+            schoolId,
+            termId: input.termId,
+            classId: { in: input.classIds },
+            examTypeId: { in: invalidTermEndTypeIds },
+            results: { none: {} },
+          },
+        });
+      }
     }
 
     // Pre-fetch all subject-class mappings for selected classes in one query
@@ -533,24 +613,108 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
       classSubjectMap.set(sc.classId, arr);
     }
 
+    // --- PT pattern: lookup is now strictly per-term ----------------------
+    let activePTPattern: Awaited<ReturnType<typeof getActivePTPattern>> = null;
+    let ptCreated = 0;
+    if (input.cbseLevel !== "CBSE_SENIOR") {
+      activePTPattern = await getActivePTPattern(
+        schoolId,
+        input.termId,
+        input.cbseLevel,
+      );
+
+      if (activePTPattern) {
+        const ptRes = await db.$transaction(
+          async (tx) =>
+            generatePTExamsAndRule(
+              tx,
+              {
+                id: activePTPattern!.id,
+                schoolId,
+                termId: activePTPattern!.termId,
+                classId: activePTPattern!.classId,
+                name: activePTPattern!.name,
+                ptCount: activePTPattern!.ptCount,
+                ptStartNumber: activePTPattern!.ptStartNumber,
+                perMarks: activePTPattern!.perMarks,
+                passingMarks: activePTPattern!.passingMarks,
+                aggregation: activePTPattern!.aggregation,
+                bestOfCount: activePTPattern!.bestOfCount,
+                groups: activePTPattern!.groups,
+              },
+              input.classIds,
+              classSubjectMap,
+              term.startDate,
+              term.endDate,
+            ),
+          { timeout: 30000, maxWait: 10000 },
+        );
+        ptCreated = ptRes.created;
+      }
+    }
+
+    // --- Non-PT schedule (MA, Portfolio, term-end exam) -------------------
+    let schedule =
+      input.cbseLevel === "CBSE_SENIOR"
+        ? CBSE_SENIOR_SCHEDULE
+        : input.cbseLevel === "CBSE_SECONDARY"
+        ? CBSE_SECONDARY_SCHEDULE
+        : CBSE_PRIMARY_SCHEDULE;
+
+    // PT rows are produced by the pattern (when present) OR by the default
+    // schedule (when absent). Strip them from the schedule when a pattern
+    // already handled them.
+    if (activePTPattern) {
+      schedule = schedule.filter((s) => s.cbseComponent !== "PT");
+    }
+
+    if (termNumber === 2 && input.cbseLevel !== "CBSE_SENIOR") {
+      schedule = schedule.map((s) =>
+        s.cbseComponent === "HALF_YEARLY"
+          ? { ...s, examTypeName: "Annual Exam", cbseComponent: "ANNUAL" }
+          : s
+      );
+    }
+
+    const examTypeNames = [...new Set(schedule.map((s) => s.examTypeName))];
+    const examTypes =
+      examTypeNames.length === 0
+        ? []
+        : await db.examType.findMany({
+            where: { schoolId, name: { in: examTypeNames } },
+            select: { id: true, name: true },
+          });
+    const examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
+
+    const missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
+    if (missingTypes.length > 0) {
+      return {
+        success: false,
+        error: `Missing exam types: ${missingTypes.join(", ")}. Run "Auto Generate Exam Types" first.`,
+      };
+    }
+
     // Pre-fetch existing exams to avoid per-combination queries
     const examTypeIds = examTypes.map((et) => et.id);
-    const existingExams = await db.exam.findMany({
-      where: {
-        schoolId,
-        classId: { in: input.classIds },
-        termId: input.termId,
-        examTypeId: { in: examTypeIds },
-      },
-      select: { classId: true, subjectId: true, examTypeId: true },
-    });
+    const existingExams =
+      examTypeIds.length === 0
+        ? []
+        : await db.exam.findMany({
+            where: {
+              schoolId,
+              classId: { in: input.classIds },
+              termId: input.termId,
+              examTypeId: { in: examTypeIds },
+            },
+            select: { classId: true, subjectId: true, examTypeId: true },
+          });
     const existingSet = new Set(
       existingExams.map((e) => `${e.classId}|${e.subjectId}|${e.examTypeId}`)
     );
 
     let created = 0;
     let skipped = 0;
-    const toCreate: any[] = [];
+    const toCreate: Prisma.ExamCreateManyInput[] = [];
 
     for (const classId of input.classIds) {
       const classSubjectIds = input.subjectIds?.length
@@ -603,12 +767,13 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
       await db.exam.createMany({ data: toCreate });
     }
 
+    const total = created + ptCreated;
     revalidatePath("/admin/assessment/exams");
     return {
       success: true,
-      created,
+      created: total,
       skipped,
-      message: `Created ${created} exam${created !== 1 ? "s" : ""}${skipped > 0 ? `, skipped ${skipped} existing` : ""}`,
+      message: `Created ${total} exam${total !== 1 ? "s" : ""}${skipped > 0 ? `, skipped ${skipped} existing` : ""}`,
     };
   } catch (error) {
     console.error("Error auto-generating CBSE exams:", error);
