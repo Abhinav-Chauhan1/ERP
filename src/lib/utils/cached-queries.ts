@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import { cachedQuery, CACHE_CONFIG, CACHE_DURATION, CACHE_TAGS } from "./cache";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { USER_SELECT_MINIMAL, CLASS_SELECT_MINIMAL, SUBJECT_SELECT_MINIMAL } from "./query-optimization";
 
 /**
@@ -142,9 +143,11 @@ export const getActiveAnnouncements = cachedQuery(
  */
 export const getSchoolSettings = cachedQuery(
   async (schoolId: string) => {
-    return await db.schoolSettings.findUnique({
-      where: { schoolId },
-    });
+    // unstable_cache breaks AsyncLocalStorage, so we must re-establish
+    // the tenant context using the schoolId argument that is already known.
+    return runWithTenantContext({ schoolId, isSuperAdmin: false }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
   },
   {
     name: "school-settings",

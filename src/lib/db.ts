@@ -76,6 +76,22 @@ const createPrismaClient = () => {
             } catch (error: any) { }
           }
 
+          // Last-resort fallback: unstable_cache and similar async boundaries sever
+          // AsyncLocalStorage AND make auth() unavailable (no request headers).
+          // If the call site already baked a schoolId into the WHERE/data args
+          // (e.g. cachedQuery passes schoolId as a typed argument), extract and
+          // trust it — the value came from application code, not user input.
+          if (!context) {
+            const argsSchoolId =
+              args?.where?.schoolId ||
+              args?.data?.schoolId ||
+              (Array.isArray(args?.data) ? args.data[0]?.schoolId : undefined);
+
+            if (argsSchoolId && typeof argsSchoolId === 'string') {
+              context = { schoolId: argsSchoolId, isSuperAdmin: false };
+            }
+          }
+
           if (!context) {
             throw new Error(
               `[RLS] No tenant context for model "${model}". ` +

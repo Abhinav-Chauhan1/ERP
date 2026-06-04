@@ -2,9 +2,9 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber, sanitizeUrl } from "@/lib/utils/input-sanitization";
-import { getSystemSettings as getCachedSystemSettings } from "@/lib/utils/cached-queries";
 import { invalidateCache, CACHE_TAGS } from "@/lib/utils/cache";
 
 // Get system settings (creates default if doesn't exist)
@@ -31,30 +31,38 @@ export async function getSystemSettings() {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Use cached query with schoolId
-    let settings = await getCachedSystemSettings(schoolId);
+    // Run all tenant-scoped DB calls inside runWithTenantContext.
+    // unstable_cache (used by cachedQuery) severs AsyncLocalStorage, so we cannot
+    // rely on the cached query path here. Calling the DB directly with an explicit
+    // tenant context is the safe, proven pattern (same as request-memoization.ts).
+    let settings = await runWithTenantContext(
+      { schoolId, isSuperAdmin: user.role === "SUPER_ADMIN" },
+      () => db.schoolSettings.findUnique({ where: { schoolId } })
+    );
 
     // Create default settings if none exist for this school
     if (!settings) {
       const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
-      settings = await db.schoolSettings.create({
-        data: {
-          schoolId, // CRITICAL: Associate with school
-          schoolName: school?.name || "School Name",
-          timezone: "UTC",
-          defaultGradingScale: "PERCENTAGE",
-          passingGrade: 50,
-          emailEnabled: true,
-          defaultTheme: "LIGHT",
-          language: "en",
-          // Payment Configuration defaults
-          enableOfflineVerification: true,
-          enableOnlinePayment: false,
-          maxReceiptSizeMB: 5,
-          allowedReceiptFormats: "jpg,jpeg,png,pdf",
-          autoNotifyOnVerification: true,
-        },
-      });
+      settings = await runWithTenantContext(
+        { schoolId, isSuperAdmin: user.role === "SUPER_ADMIN" },
+        () => db.schoolSettings.create({
+          data: {
+            schoolId,
+            schoolName: school?.name || "School Name",
+            timezone: "UTC",
+            defaultGradingScale: "PERCENTAGE",
+            passingGrade: 50,
+            emailEnabled: true,
+            defaultTheme: "LIGHT",
+            language: "en",
+            enableOfflineVerification: true,
+            enableOnlinePayment: false,
+            maxReceiptSizeMB: 5,
+            allowedReceiptFormats: "jpg,jpeg,png,pdf",
+            autoNotifyOnVerification: true,
+          },
+        })
+      );
 
       // Invalidate cache after creating new settings
       await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
@@ -62,10 +70,13 @@ export async function getSystemSettings() {
       // Auto-fix stale default: sync real name from School table
       const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
       if (school?.name && school.name !== "School Name") {
-        settings = await db.schoolSettings.update({
-          where: { schoolId },
-          data: { schoolName: school.name },
-        });
+        settings = await runWithTenantContext(
+          { schoolId, isSuperAdmin: user.role === "SUPER_ADMIN" },
+          () => db.schoolSettings.update({
+            where: { schoolId },
+            data: { schoolName: school.name },
+          })
+        );
         await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
       }
     }
@@ -78,56 +89,53 @@ export async function getSystemSettings() {
 }
 
 // Get system settings without authentication (for public use in layouts)
-// This now uses the cached version directly
 export async function getPublicSystemSettings() {
   try {
-    // Try to get school from subdomain for public access
     const { getSchoolFromSubdomain } = await import('@/lib/utils/subdomain-helper');
 
     let school;
     try {
       school = await getSchoolFromSubdomain();
     } catch (error) {
-      // Subdomain not found or error, fall back to first school
       console.warn("Could not get school from subdomain, using fallback");
     }
 
     let settings;
 
     if (school) {
-      // Get settings for subdomain school
-      settings = await getCachedSystemSettings(school.id);
+      // Get settings for subdomain school with explicit tenant context
+      settings = await runWithTenantContext({ schoolId: school.id, isSuperAdmin: false }, () =>
+        db.schoolSettings.findUnique({ where: { schoolId: school!.id } })
+      );
     } else {
-      // Fallback: get first school's settings
+      // Fallback: get first school's settings (cross-tenant read — no schoolId filter)
       settings = await db.schoolSettings.findFirst({
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       });
     }
 
     // Create default settings if none exist
     if (!settings && school) {
-      settings = await db.schoolSettings.create({
-        data: {
-          schoolId: school.id, // CRITICAL: Associate with school
-          schoolName: school.name,
-          timezone: "UTC",
-          defaultGradingScale: "PERCENTAGE",
-          passingGrade: 50,
-          emailEnabled: true,
-          defaultTheme: "LIGHT",
-          language: "en",
-          // Payment Configuration defaults
-          enableOfflineVerification: true,
-          enableOnlinePayment: false,
-          maxReceiptSizeMB: 5,
-          allowedReceiptFormats: "jpg,jpeg,png,pdf",
-          autoNotifyOnVerification: true,
-        },
-      });
+      settings = await runWithTenantContext({ schoolId: school.id, isSuperAdmin: false }, () =>
+        db.schoolSettings.create({
+          data: {
+            schoolId: school!.id,
+            schoolName: school!.name,
+            timezone: "UTC",
+            defaultGradingScale: "PERCENTAGE",
+            passingGrade: 50,
+            emailEnabled: true,
+            defaultTheme: "LIGHT",
+            language: "en",
+            enableOfflineVerification: true,
+            enableOnlinePayment: false,
+            maxReceiptSizeMB: 5,
+            allowedReceiptFormats: "jpg,jpeg,png,pdf",
+            autoNotifyOnVerification: true,
+          },
+        })
+      );
 
-      // Invalidate cache after creating new settings
       await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${school.id}`]);
     }
 
@@ -157,36 +165,24 @@ export async function updateSchoolInfo(data: {
   board?: string;
 }) {
   try {
-    // Authentication check
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // Get user and verify admin role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { administrator: true },
-    });
-
+    const user = await db.user.findUnique({ where: { id: userId }, include: { administrator: true } });
     if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Get required school context - CRITICAL for multi-tenancy
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-    const settings = await db.schoolSettings.findUnique({
-      where: { schoolId }, // CRITICAL: Filter by school
-    });
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
+    if (!settings) return { success: false, error: "Settings not found for this school" };
 
-    if (!settings) {
-      return { success: false, error: "Settings not found for this school" };
-    }
-
-    // Sanitize inputs
     const sanitizedData = {
       schoolName: sanitizeText(data.schoolName),
       schoolEmail: data.schoolEmail ? sanitizeEmail(data.schoolEmail) : undefined,
@@ -205,12 +201,11 @@ export async function updateSchoolInfo(data: {
       board: data.board ? sanitizeText(data.board) : undefined,
     };
 
-    const updated = await db.schoolSettings.update({
-      where: { schoolId }, // CRITICAL: Update only current school
-      data: sanitizedData,
-    });
+    const updated = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.update({ where: { schoolId }, data: sanitizedData })
+    );
 
-    // Sync key identity fields back to School model so both stay in sync
+    // Sync key identity fields back to School model
     await db.school.update({
       where: { id: schoolId },
       data: {
@@ -223,9 +218,7 @@ export async function updateSchoolInfo(data: {
       },
     });
 
-    // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
-
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };
@@ -259,51 +252,40 @@ export async function updateAcademicSettings(data: {
   attendanceThreshold: number;
 }) {
   try {
-    // Authentication check
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // Get user and verify admin role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { administrator: true },
-    });
-
+    const user = await db.user.findUnique({ where: { id: userId }, include: { administrator: true } });
     if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Get required school context - CRITICAL for multi-tenancy
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-    const settings = await db.schoolSettings.findUnique({
-      where: { schoolId }, // CRITICAL: Filter by school
-    });
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
+    if (!settings) return { success: false, error: "Settings not found for this school" };
 
-    if (!settings) {
-      return { success: false, error: "Settings not found for this school" };
-    }
+    const updated = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.update({
+        where: { schoolId },
+        data: {
+          currentAcademicYear: data.currentAcademicYear,
+          currentTerm: data.currentTerm,
+          defaultGradingScale: data.defaultGradingScale,
+          passingGrade: data.passingGrade,
+          autoAttendance: data.autoAttendance,
+          lateArrivalMinutes: data.lateArrivalMinutes,
+          attendanceThreshold: data.attendanceThreshold,
+        },
+      })
+    );
 
-    const updated = await db.schoolSettings.update({
-      where: { schoolId }, // CRITICAL: Update only current school
-      data: {
-        currentAcademicYear: data.currentAcademicYear,
-        currentTerm: data.currentTerm,
-        defaultGradingScale: data.defaultGradingScale,
-        passingGrade: data.passingGrade,
-        autoAttendance: data.autoAttendance,
-        lateArrivalMinutes: data.lateArrivalMinutes,
-        attendanceThreshold: data.attendanceThreshold,
-      },
-    });
-
-    // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
-
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -322,7 +304,6 @@ export async function updateNotificationSettings(data: {
   notifyAttendance: boolean;
   notifyExamResults: boolean;
   notifyLeaveApps: boolean;
-  // New granular settings
   enrollmentNotificationChannels?: string[];
   paymentNotificationChannels?: string[];
   attendanceNotificationChannels?: string[];
@@ -330,58 +311,46 @@ export async function updateNotificationSettings(data: {
   leaveAppNotificationChannels?: string[];
 }) {
   try {
-    // Authentication check
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // Get user and verify admin role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { administrator: true },
-    });
-
+    const user = await db.user.findUnique({ where: { id: userId }, include: { administrator: true } });
     if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Get required school context - CRITICAL for multi-tenancy
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-    const settings = await db.schoolSettings.findUnique({
-      where: { schoolId }, // CRITICAL: Filter by school
-    });
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
+    if (!settings) return { success: false, error: "Settings not found for this school" };
 
-    if (!settings) {
-      return { success: false, error: "Settings not found for this school" };
-    }
+    const updated = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.update({
+        where: { schoolId },
+        data: {
+          emailEnabled: data.emailEnabled,
+          smsEnabled: data.smsEnabled,
+          pushEnabled: data.pushEnabled,
+          notifyEnrollment: data.notifyEnrollment,
+          notifyPayment: data.notifyPayment,
+          notifyAttendance: data.notifyAttendance,
+          notifyExamResults: data.notifyExamResults,
+          notifyLeaveApps: data.notifyLeaveApps,
+          enrollmentNotificationChannels: data.enrollmentNotificationChannels,
+          paymentNotificationChannels: data.paymentNotificationChannels,
+          attendanceNotificationChannels: data.attendanceNotificationChannels,
+          examResultNotificationChannels: data.examResultNotificationChannels,
+          leaveAppNotificationChannels: data.leaveAppNotificationChannels,
+        },
+      })
+    );
 
-    const updated = await db.schoolSettings.update({
-      where: { schoolId }, // CRITICAL: Update only current school
-      data: {
-        emailEnabled: data.emailEnabled,
-        smsEnabled: data.smsEnabled,
-        pushEnabled: data.pushEnabled, // Kept for backward compatibility
-        notifyEnrollment: data.notifyEnrollment,
-        notifyPayment: data.notifyPayment,
-        notifyAttendance: data.notifyAttendance,
-        notifyExamResults: data.notifyExamResults,
-        notifyLeaveApps: data.notifyLeaveApps,
-        // Update new granular fields if provided
-        enrollmentNotificationChannels: data.enrollmentNotificationChannels,
-        paymentNotificationChannels: data.paymentNotificationChannels,
-        attendanceNotificationChannels: data.attendanceNotificationChannels,
-        examResultNotificationChannels: data.examResultNotificationChannels,
-        leaveAppNotificationChannels: data.leaveAppNotificationChannels,
-      },
-    });
-
-    // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
-
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -403,41 +372,29 @@ export async function updateSecuritySettings(data: {
   backupFrequency: string;
 }) {
   try {
-    // Authentication check
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // Get user and verify admin role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { administrator: true },
-    });
-
+    const user = await db.user.findUnique({ where: { id: userId }, include: { administrator: true } });
     if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Get required school context - CRITICAL for multi-tenancy
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-    const settings = await getCachedSystemSettings(schoolId);
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
+    if (!settings) return { success: false, error: "Settings not found" };
 
-    if (!settings) {
-      return { success: false, error: "Settings not found" };
-    }
+    const updated = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.update({ where: { schoolId }, data })
+    );
 
-    const updated = await db.schoolSettings.update({
-      where: { id: settings.id },
-      data,
-    });
-
-    // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS]);
-
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -465,39 +422,27 @@ export async function updateAppearanceSettings(data: {
   documentFooter?: string;
 }) {
   try {
-    // Authentication check
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // Get user and verify admin role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { administrator: true },
-    });
-
+    const user = await db.user.findUnique({ where: { id: userId }, include: { administrator: true } });
     if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Get required school context - CRITICAL for multi-tenancy
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
+    const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-    const settings = await db.schoolSettings.findUnique({
-      where: { schoolId }, // CRITICAL: Filter by school
-    });
+    const settings = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.findUnique({ where: { schoolId } })
+    );
+    if (!settings) return { success: false, error: "Settings not found for this school" };
 
-    if (!settings) {
-      return { success: false, error: "Settings not found for this school" };
-    }
-
-    const updated = await db.schoolSettings.update({
-      where: { schoolId }, // CRITICAL: Update only current school
-      data,
-    });
+    const updated = await runWithTenantContext({ schoolId, isSuperAdmin }, () =>
+      db.schoolSettings.update({ where: { schoolId }, data })
+    );
 
     // Sync branding fields back to School model
     await db.school.update({
@@ -510,9 +455,7 @@ export async function updateAppearanceSettings(data: {
       },
     });
 
-    // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
-
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };

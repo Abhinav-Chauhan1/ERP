@@ -160,9 +160,9 @@ export async function assignTeacherToSubject(subjectId: string, teacherId: strin
     // Create the new assignment
     const assignment = await db.subjectTeacher.create({
       data: {
-        subject: { connect: { id: subjectId } },
-        teacher: { connect: { id: teacherId } },
-        school: { connect: { id: schoolId } }, // Add required school connection
+        subjectId,
+        teacherId,
+        schoolId,
       },
       include: {
         teacher: {

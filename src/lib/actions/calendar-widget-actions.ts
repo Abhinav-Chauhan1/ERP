@@ -261,38 +261,45 @@ export async function getParentCalendarEvents(limit: number = 5) {
       }
     });
 
+    return await getParentCalendarEventsWithContext(schoolId, classIds, sectionIds, limit);
+  } catch (error) {
+    console.error("Error fetching parent calendar events:", error);
+    return { success: false, error: "Failed to fetch calendar events", data: [] };
+  }
+}
+
+/**
+ * Fetch parent calendar events using pre-resolved context.
+ * Use this from the dashboard to avoid re-fetching parent/children data.
+ */
+export async function getParentCalendarEventsWithContext(
+  schoolId: string,
+  classIds: string[],
+  sectionIds: string[],
+  limit: number = 5
+) {
+  try {
     const now = new Date();
+
+    const orClauses: any[] = [
+      { visibleToRoles: { has: UserRole.PARENT } },
+    ];
+    if (classIds.length > 0) {
+      orClauses.push({ visibleToClasses: { hasSome: classIds } });
+    }
+    if (sectionIds.length > 0) {
+      orClauses.push({ visibleToSections: { hasSome: sectionIds } });
+    }
+
     const events = await prisma.calendarEvent.findMany({
       where: {
-        schoolId, // CRITICAL: Filter by current school
-        startDate: {
-          gte: now
-        },
-        OR: [
-          {
-            visibleToRoles: {
-              has: UserRole.PARENT
-            }
-          },
-          {
-            visibleToClasses: {
-              hasSome: classIds
-            }
-          },
-          {
-            visibleToSections: {
-              hasSome: sectionIds
-            }
-          }
-        ]
+        schoolId,
+        startDate: { gte: now },
+        OR: orClauses,
       },
-      include: {
-        category: true
-      },
-      orderBy: {
-        startDate: 'asc'
-      },
-      take: limit
+      include: { category: true },
+      orderBy: { startDate: 'asc' },
+      take: limit,
     });
 
     return { success: true, data: events };

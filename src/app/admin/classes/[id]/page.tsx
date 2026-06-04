@@ -469,7 +469,9 @@ export default function ClassDetailsPage() {
               </div>
               <div className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg">
                 <GraduationCap className="h-8 w-8 text-green-500 mb-2" />
-                <span className="text-sm font-medium text-gray-500">Class Teacher</span>
+                <span className="text-sm font-medium text-gray-500">
+                  {classDetails.classTeacher?.includes('Per Section') ? 'Class Teachers' : 'Class Teacher'}
+                </span>
                 <span className="text-xl font-bold">{classDetails.classTeacher || 'Not Assigned'}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 bg-teal-50 rounded-lg">

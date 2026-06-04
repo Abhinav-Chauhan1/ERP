@@ -223,7 +223,6 @@ export const adminRoutes: RouteItem[] = [
             { label: "Choose / Upgrade Plan", href: "/admin/settings/plan" },
             { label: "General", href: "/admin/settings" },
             { label: "Branding", href: "/admin/settings/branding" },
-            { label: "Permissions", href: "/admin/settings/permissions" },
             { label: "Notifications", href: "/admin/settings/notifications" },
             { label: "Two-Factor Auth", href: "/admin/settings/two-factor" },
             { label: "Payment Config", href: "/admin/settings/payment-configuration" },

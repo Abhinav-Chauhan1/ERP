@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cache } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +16,22 @@ import { getTeacherCalendarEvents } from "@/lib/actions/calendar-widget-actions"
 import { format } from "date-fns";
 
 /**
+ * Request-level cache: all sections share one invocation of getTeacherDashboardData
+ * and getTeacherCalendarEvents per render pass.
+ */
+const getTeacherData = cache(async () => {
+  const [dashboardResult, calendarResult] = await Promise.all([
+    getTeacherDashboardData(),
+    getTeacherCalendarEvents(5),
+  ]);
+  return { dashboardResult, calendarResult };
+});
+
+/**
  * Stats section - displays key metrics for the teacher
  */
 export async function StatsSection() {
-  const result = await getTeacherDashboardData();
+  const { dashboardResult: result } = await getTeacherData();
 
   if (!result.success || !result.data) {
     return null;
@@ -64,7 +77,7 @@ export async function StatsSection() {
  * Upcoming classes section - displays today's schedule
  */
 export async function UpcomingClassesSection() {
-  const result = await getTeacherDashboardData();
+  const { dashboardResult: result } = await getTeacherData();
 
   if (!result.success || !result.data) {
     return null;
@@ -173,8 +186,7 @@ export async function UpcomingClassesSection() {
  * Recent activity section - displays announcements, messages, lessons, and charts
  */
 export async function RecentActivitySection() {
-  const result = await getTeacherDashboardData();
-  const calendarEventsResult = await getTeacherCalendarEvents(5);
+  const { dashboardResult: result, calendarResult: calendarEventsResult } = await getTeacherData();
 
   if (!result.success || !result.data) {
     return null;
