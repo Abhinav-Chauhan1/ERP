@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
@@ -32,10 +32,26 @@ type FormData = z.infer<typeof schema>;
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { update, data: session } = useSession();
+  const { update, data: session, status } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      if (!session.user.mustChangePassword) {
+        const role = session.user.role;
+        const redirectPaths: Record<string, string> = {
+          SUPER_ADMIN: "/super-admin",
+          ADMIN: "/admin",
+          TEACHER: "/teacher",
+          PARENT: "/parent",
+          STUDENT: "/student",
+        };
+        window.location.href = redirectPaths[role] || "/dashboard";
+      }
+    }
+  }, [session, status]);
 
   const {
     register,

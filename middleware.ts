@@ -203,6 +203,25 @@ export default auth(async (req) => {
     return NextResponse.redirect(loginUrl);
   }
 
+  // If already changed password but visiting change-password page, redirect to dashboard
+  const isChangePasswordPath = pathname.startsWith("/auth/change-password");
+  if (isChangePasswordPath && !session.user.mustChangePassword) {
+    switch (session.user.role) {
+      case UserRole.SUPER_ADMIN:
+        return NextResponse.redirect(new URL("/super-admin", req.url));
+      case UserRole.ADMIN:
+        return NextResponse.redirect(new URL("/admin", req.url));
+      case UserRole.TEACHER:
+        return NextResponse.redirect(new URL("/teacher", req.url));
+      case UserRole.STUDENT:
+        return NextResponse.redirect(new URL("/student", req.url));
+      case UserRole.PARENT:
+        return NextResponse.redirect(new URL("/parent", req.url));
+      default:
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+  }
+
   // Enforce school INACTIVE status mid-session:
   // The jwt callback re-validates school status on each token refresh (every 5 min).
   // If the school was suspended, authorizedSchools will be empty and schoolId null.

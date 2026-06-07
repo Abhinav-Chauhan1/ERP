@@ -261,6 +261,23 @@ export default function StudentAttendancePage() {
     }
   }
 
+  const handleMarkAllPresent = () => {
+    const records = bulkAttendanceForm.getValues("attendanceRecords");
+    if (!records || records.length === 0) return;
+
+    records.forEach((record, index) => {
+      bulkAttendanceForm.setValue(`attendanceRecords.${index}.status`, "PRESENT", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      bulkAttendanceForm.setValue(`attendanceRecords.${index}.reason`, "", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+    toast.success("All students marked as Present");
+  };
+
   async function onReportSubmit(values: AttendanceReportFormValues) {
     setReportLoading(true);
     try {
@@ -382,7 +399,20 @@ export default function StudentAttendancePage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {attendanceRecords.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleMarkAllPresent}
+                          className="h-9 whitespace-nowrap hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800 transition-colors"
+                        >
+                          <Check className="h-4 w-4 mr-2 text-green-600 animate-pulse" />
+                          Mark All Present
+                        </Button>
+                      )}
+
                       <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input

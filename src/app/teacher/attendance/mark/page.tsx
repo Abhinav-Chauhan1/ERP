@@ -167,6 +167,22 @@ function MarkAttendanceContent() {
     );
   };
 
+  // Handle marking all students present
+  const handleMarkAllPresent = () => {
+    if (students.length === 0) return;
+    setStudents(prev =>
+      prev.map(student => ({
+        ...student,
+        attendance: {
+          ...student.attendance,
+          status: "PRESENT",
+          reason: "",
+        }
+      }))
+    );
+    toast.success("All students marked as Present");
+  };
+
   // Handle reason change for absence
   const handleReasonChange = (studentId: string, reason: string) => {
     setStudents(prev =>
@@ -264,6 +280,19 @@ function MarkAttendanceContent() {
               <CardDescription>Mark student attendance for today</CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
+              {students.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMarkAllPresent}
+                  className="h-9 whitespace-nowrap hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800 transition-colors"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-600 animate-pulse" />
+                  Mark All Present
+                </Button>
+              )}
+
               <SelectClass
                 classes={classes}
                 selected={selectedClass}
