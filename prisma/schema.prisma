@@ -480,6 +480,7 @@ model Teacher {
   payrolls          Payroll[]
   salaryStructure   SalaryStructure?
   subjects          SubjectTeacher[]
+  subjectClasses    SubjectClass[]
   school            School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendance        TeacherAttendance[]
@@ -980,14 +981,18 @@ model SubjectClass {
   updatedAt DateTime      @updatedAt
   schoolId  String
   sectionId String?
+  teacherId String?
+  order     Int           @default(0)
   class     Class         @relation(fields: [classId], references: [id])
   school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   section   ClassSection? @relation(fields: [sectionId], references: [id])
   subject   Subject       @relation(fields: [subjectId], references: [id])
+  teacher   Teacher?      @relation(fields: [teacherId], references: [id])
 
   @@unique([subjectId, classId, sectionId])
   @@index([sectionId])
   @@index([schoolId])
+  @@index([teacherId])
 }
 
 model Syllabus {

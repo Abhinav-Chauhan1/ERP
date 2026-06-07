@@ -107,6 +107,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Terms", href: "/admin/academic/terms" },
             { label: "Grades", href: "/admin/academic/grades" },
             { label: "Subjects", href: "/admin/teaching/subjects" },
+            { label: "Curriculum", href: "/admin/academic/curriculum" },
             { label: "Syllabus", href: "/admin/academic/syllabus" },
             { label: "Timetable", href: "/admin/teaching/timetable" },
             { label: "Promotion", href: "/admin/academic/promotion" },

@@ -80,11 +80,28 @@ export async function getTeacherDashboardData() {
         orderBy: { startTime: "asc" },
       }),
 
-      // Total active students across teacher's classes
+      // Total active students across teacher's classes/sections
+      // Use SubjectClass.teacherId (precise) + ClassTeacher as fallback
       db.classEnrollment.count({
         where: {
           schoolId,
-          class: { schoolId, teachers: { some: { teacherId } } },
+          OR: [
+            // Students in sections/classes where teacher is assigned via SubjectClass
+            {
+              sectionId: {
+                in: await db.subjectClass
+                  .findMany({
+                    where: { teacherId, schoolId, sectionId: { not: null } },
+                    select: { sectionId: true },
+                  })
+                  .then((rows) => rows.map((r) => r.sectionId as string)),
+              },
+            },
+            // Students in classes via ClassTeacher (class head etc.)
+            {
+              class: { teachers: { some: { teacherId } } },
+            },
+          ],
           status: "ACTIVE",
         },
       }),

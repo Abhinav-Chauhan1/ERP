@@ -49,55 +49,70 @@ interface SubjectWithRelations {
 export const getTeacherSubjects = withSchoolAuthAction(async (schoolId, userId) => {
   try {
     const teacher = await db.teacher.findFirst({
-      where: {
-        user: { id: userId },
-        schoolId
-      },
+      where: { user: { id: userId }, schoolId },
       select: { id: true },
     });
+    if (!teacher) throw new Error("Teacher not found");
+    const teacherId = teacher.id;
 
-    if (!teacher) {
-      throw new Error("Teacher not found");
-    }
-
-    const subjectTeachers = await db.subjectTeacher.findMany({
-      where: {
-        teacherId: teacher.id,
-        schoolId
-      },
+    // -----------------------------------------------------------------
+    // 1. SubjectClass rows where teacherId = this teacher
+    //    (these are the precise "subject in class/section" assignments)
+    // -----------------------------------------------------------------
+    const subjectClassRows = await db.subjectClass.findMany({
+      where: { teacherId, schoolId },
       include: {
         subject: {
           include: {
             syllabus: {
-              where: {
-                status: "PUBLISHED",
-                isActive: true,
-                schoolId
-              },
+              where: { status: "PUBLISHED", isActive: true, schoolId },
               include: {
                 modules: {
                   where: { schoolId },
-                  orderBy: { order: 'asc' },
+                  orderBy: { order: "asc" },
                   include: {
                     subModules: {
                       where: { schoolId },
                       include: {
-                        progress: {
-                          where: {
-                            teacherId: teacher.id,
-                            schoolId
-                          }
-                        }
-                      }
-                    }
-                  }
+                        progress: { where: { teacherId, schoolId } },
+                      },
+                    },
+                  },
                 },
               },
             },
-            classes: {
-              where: { schoolId },
+          },
+        },
+        class: { select: { id: true, name: true } },
+        section: { select: { id: true, name: true } },
+      },
+      orderBy: [{ subject: { name: "asc" } }, { class: { name: "asc" } }],
+    });
+
+    // -----------------------------------------------------------------
+    // 2. Also include subjects from SubjectTeacher (global assignment)
+    //    that may not have SubjectClass rows yet
+    // -----------------------------------------------------------------
+    const subjectTeacherRows = await db.subjectTeacher.findMany({
+      where: { teacherId, schoolId },
+      include: {
+        subject: {
+          include: {
+            syllabus: {
+              where: { status: "PUBLISHED", isActive: true, schoolId },
               include: {
-                class: true
+                modules: {
+                  where: { schoolId },
+                  orderBy: { order: "asc" },
+                  include: {
+                    subModules: {
+                      where: { schoolId },
+                      include: {
+                        progress: { where: { teacherId, schoolId } },
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -105,66 +120,150 @@ export const getTeacherSubjects = withSchoolAuthAction(async (schoolId, userId) 
       },
     });
 
-    const subjects = subjectTeachers.map((st) => {
-      // Use the most recent published syllabus or the first one
-      const activeSyllabus = st.subject.syllabus[0];
+    // -----------------------------------------------------------------
+    // 3. Get real student enrollment counts for all relevant sections
+    // -----------------------------------------------------------------
+    const sectionIds = subjectClassRows
+      .map((r) => r.sectionId)
+      .filter(Boolean) as string[];
+    const classIds = subjectClassRows.map((r) => r.classId);
 
-      const allModules = activeSyllabus?.modules || [];
+    const [sectionCounts, classCounts] = await Promise.all([
+      sectionIds.length > 0
+        ? db.classEnrollment.groupBy({
+            by: ["sectionId"],
+            where: { sectionId: { in: sectionIds }, status: "ACTIVE", schoolId },
+            _count: { studentId: true },
+          }).then((rows) => new Map(rows.map((r) => [r.sectionId, r._count.studentId])))
+        : Promise.resolve(new Map<string, number>()),
+      classIds.length > 0
+        ? db.classEnrollment.groupBy({
+            by: ["classId"],
+            where: { classId: { in: classIds }, status: "ACTIVE", schoolId },
+            _count: { studentId: true },
+          }).then((rows) => new Map(rows.map((r) => [r.classId, r._count.studentId])))
+        : Promise.resolve(new Map<string, number>()),
+    ]);
+
+    // -----------------------------------------------------------------
+    // 4. Merge: build one entry per unique subjectId
+    // -----------------------------------------------------------------
+    // Subjects known from SubjectClass (precise assignments)
+    const subjectIdSet = new Set(subjectClassRows.map((r) => r.subject.id));
+    // Add subjects from SubjectTeacher that aren't already covered
+    const extraSubjectTeachers = subjectTeacherRows.filter(
+      (st) => !subjectIdSet.has(st.subject.id)
+    );
+
+    // Group subjectClassRows by subjectId
+    const bySubject = new Map<string, typeof subjectClassRows>();
+    for (const row of subjectClassRows) {
+      const list = bySubject.get(row.subject.id) ?? [];
+      list.push(row);
+      bySubject.set(row.subject.id, list);
+    }
+
+    function buildSubjectEntry(
+      subjectId: string,
+      subjectData: (typeof subjectClassRows)[0]["subject"],
+      rows: typeof subjectClassRows
+    ) {
+      const activeSyllabus = subjectData.syllabus[0];
+      const allModules = activeSyllabus?.modules ?? [];
       const allSubModules = allModules.flatMap((m: ModuleWithProgress) => m.subModules);
-
       const totalTopics = allSubModules.length;
-      const completedTopics = allSubModules.filter((sm: SubModuleWithProgress) => sm.progress.some((p: { completed: boolean }) => p.completed)).length;
+      const completedTopics = allSubModules.filter(
+        (sm: SubModuleWithProgress) => sm.progress.some((p: { completed: boolean }) => p.completed)
+      ).length;
       const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
-      const classes = st.subject.classes.map((sc: SubjectClassWithClass) => ({
-        id: sc.class.id,
-        name: sc.class.name,
-        section: "",
+      // Class+section assignments for this subject
+      const classAssignments = rows.map((r) => ({
+        id: r.class.id,
+        name: r.class.name,
+        sectionId: r.sectionId ?? null,
+        sectionName: r.section?.name ?? null,
+        displayName: r.section
+          ? `${r.class.name} — Section ${r.section.name}`
+          : r.class.name,
+        studentCount: r.sectionId
+          ? (sectionCounts.get(r.sectionId) ?? 0)
+          : (classCounts.get(r.classId) ?? 0),
       }));
 
-      const totalStudents = classes.length * 20;
+      // Legacy fields for existing UI components
+      const uniqueClassNames = [...new Set(classAssignments.map((c) => c.name))];
+      const sections = [
+        ...new Set(
+          classAssignments.map((c) => c.sectionName).filter(Boolean) as string[]
+        ),
+      ];
+      const totalStudents = classAssignments.reduce((s, c) => s + c.studentCount, 0);
 
       return {
-        id: st.subject.id,
-        name: st.subject.name,
-        code: st.subject.code,
-        grade: classes.map((c: { name: string }) => c.name).join(", "),
-        sections: ["A", "B"],
+        id: subjectId,
+        name: subjectData.name,
+        code: subjectData.code,
+        // Legacy single-string grade/sections
+        grade: uniqueClassNames.join(", "),
+        sections: sections.length > 0 ? sections : [],
+        // New structured data
+        classAssignments,
         totalStudents,
-        totalClasses: classes.length,
+        totalClasses: classAssignments.length,
         completedClasses: 0,
         totalTopics,
         completedTopics,
         progress,
-        syllabus: activeSyllabus ? [{
-          id: activeSyllabus.id,
-          title: activeSyllabus.title,
-          modules: activeSyllabus.modules.map((m: ModuleWithProgress) => {
-            const moduleSubModules = m.subModules;
-            const moduleTotal = moduleSubModules.length;
-            const moduleCompleted = moduleSubModules.filter((sm: SubModuleWithProgress) => sm.progress.some((p: { completed: boolean }) => p.completed)).length;
-
-            return {
-              id: m.id,
-              title: m.title,
-              order: m.order,
-              chapterNumber: m.chapterNumber,
-              term: m.term,
-              totalTopics: moduleTotal,
-              completedTopics: moduleCompleted,
-              subModules: m.subModules.map((sm: SubModuleWithProgress) => ({
-                id: sm.id,
-                title: sm.title,
-                isCompleted: sm.progress.some((p: { completed: boolean }) => p.completed)
-              })),
-              status: moduleCompleted === moduleTotal && moduleTotal > 0 ? "completed" : moduleCompleted > 0 ? "in-progress" : "not-started",
-              lastUpdated: new Date().toISOString(), // In real app, check progress updatedAt
-            };
-          }),
-        }] : [],
-        classes: classes,
+        syllabus: activeSyllabus
+          ? [
+              {
+                id: activeSyllabus.id,
+                title: activeSyllabus.title,
+                modules: activeSyllabus.modules.map((m: ModuleWithProgress) => {
+                  const modTotal = m.subModules.length;
+                  const modDone = m.subModules.filter((sm: SubModuleWithProgress) =>
+                    sm.progress.some((p: { completed: boolean }) => p.completed)
+                  ).length;
+                  return {
+                    id: m.id,
+                    title: m.title,
+                    order: m.order,
+                    chapterNumber: m.chapterNumber,
+                    term: m.term,
+                    totalTopics: modTotal,
+                    completedTopics: modDone,
+                    subModules: m.subModules.map((sm: SubModuleWithProgress) => ({
+                      id: sm.id,
+                      title: sm.title,
+                      isCompleted: sm.progress.some((p: { completed: boolean }) => p.completed),
+                    })),
+                    status:
+                      modDone === modTotal && modTotal > 0
+                        ? "completed"
+                        : modDone > 0
+                        ? "in-progress"
+                        : "not-started",
+                    lastUpdated: new Date().toISOString(),
+                  };
+                }),
+              },
+            ]
+          : [],
+        classes: classAssignments,
       };
-    });
+    }
+
+    const subjects = [
+      // Subjects with explicit SubjectClass assignments
+      ...Array.from(bySubject.entries()).map(([subjectId, rows]) =>
+        buildSubjectEntry(subjectId, rows[0].subject, rows)
+      ),
+      // Subjects from SubjectTeacher with no SubjectClass rows
+      ...extraSubjectTeachers.map((st) =>
+        buildSubjectEntry(st.subject.id, st.subject, [])
+      ),
+    ].sort((a, b) => a.name.localeCompare(b.name));
 
     return { subjects };
   } catch (error) {
