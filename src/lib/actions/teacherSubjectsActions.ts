@@ -293,103 +293,114 @@ export const getTeacherSubjectDetails = withSchoolAuthAction(async (schoolId, us
     }
 
     // Verify that this teacher teaches this subject
-    const subjectTeacher = await db.subjectTeacher.findFirst({
-      where: {
-        teacherId: teacher.id,
-        subjectId,
-        schoolId
-      },
-    });
+    // Accept either: SubjectTeacher (global) OR SubjectClass.teacherId (curriculum assignment)
+    const [subjectTeacher, subjectClassAssignment] = await Promise.all([
+      db.subjectTeacher.findFirst({
+        where: { teacherId: teacher.id, subjectId, schoolId },
+        select: { id: true },
+      }),
+      db.subjectClass.findFirst({
+        where: { teacherId: teacher.id, subjectId, schoolId },
+        select: { id: true },
+      }),
+    ]);
 
-    if (!subjectTeacher) {
+    if (!subjectTeacher && !subjectClassAssignment) {
       throw new Error("Subject not found or not assigned to this teacher");
     }
 
-    // Get subject details
+    // Get subject details — only show classes where THIS teacher is assigned
     const subject = await db.subject.findFirst({
-      where: {
-        id: subjectId,
-        schoolId
-      },
+      where: { id: subjectId, schoolId },
       include: {
         department: true,
         syllabus: {
           where: { schoolId },
           include: {
-            units: {
-              where: { schoolId },
-              orderBy: {
-                order: 'asc',
-              },
-            },
+            units: { where: { schoolId }, orderBy: { order: "asc" } },
           },
         },
         classes: {
-          where: { schoolId },
+          where: {
+            schoolId,
+            // Only rows where this teacher is the assigned teacher
+            // (fall back to all if SubjectClass has no teacherId set)
+            OR: [
+              { teacherId: teacher.id },
+              // If the teacher has a SubjectTeacher record, show all classes
+              ...(subjectTeacher ? [{}] : []),
+            ],
+          },
           include: {
             class: true,
+            section: true,
           },
         },
-
       },
     });
 
-    if (!subject) {
-      throw new Error("Subject not found");
+    if (!subject) throw new Error("Subject not found");
+
+    // Build classes list from SubjectClass rows (already scoped to this teacher above)
+    // Group by class, aggregate sections
+    const classSectionMap = new Map<string, { className: string; sections: { id: string; name: string; studentCount: number }[] }>();
+
+    for (const sc of subject.classes) {
+      const entry = classSectionMap.get(sc.classId) ?? { className: sc.class.name, sections: [] };
+      if (sc.section) {
+        entry.sections.push({ id: sc.section.id, name: sc.section.name, studentCount: 0 });
+      }
+      classSectionMap.set(sc.classId, entry);
     }
 
-    // Get classes where this subject is taught (optimized to prevent N+1 query)
-    const classIds = subject.classes.map((sc: { class: { id: string } }) => sc.class.id);
-    const allSections = await db.classSection.findMany({
-      where: {
-        classId: {
-          in: classIds,
-        },
-        schoolId
-      },
-      select: {
-        id: true,
-        name: true,
-        classId: true,
-        enrollments: {
-          where: { schoolId },
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    // Get real enrollment counts per section
+    const allSectionIds = [...classSectionMap.values()]
+      .flatMap((e) => e.sections.map((s) => s.id));
 
-    const classes = subject.classes.map((sc: { class: { id: string; name: string } }) => {
-      const sections = allSections.filter((section: { classId: string }) => section.classId === sc.class.id);
+    const sectionEnrollments = allSectionIds.length > 0
+      ? await db.classEnrollment.groupBy({
+          by: ["classId", "sectionId"],
+          where: { sectionId: { in: allSectionIds }, status: "ACTIVE", schoolId },
+          _count: { studentId: true },
+        })
+      : [];
 
+    const enrollMap = new Map(sectionEnrollments.map((r) => [`${r.classId}|${r.sectionId}`, r._count.studentId]));
+
+    const classes = [...classSectionMap.entries()].map(([classId, entry]) => {
+      const sections = entry.sections.map((s) => ({
+        id: s.id,
+        name: s.name,
+        studentCount: enrollMap.get(`${classId}|${s.id}`) ?? 0,
+      }));
       return {
-        id: sc.class.id,
-        name: sc.class.name,
-        sections: sections.map((section: { id: string; name: string; enrollments: { id: string }[] }) => ({
-          id: section.id,
-          name: section.name,
-          studentCount: section.enrollments.length,
-        })),
-        totalStudents: sections.reduce((sum: number, section: { enrollments: { id: string }[] }) => sum + section.enrollments.length, 0),
+        id: classId,
+        name: entry.className,
+        sections,
+        totalStudents: sections.reduce((sum, s) => sum + s.studentCount, 0),
       };
     });
 
-    // Transform the syllabus data
-    const syllabusData = subject.syllabus.map((s: { id: string; title: string; description: string | null; units: { id: string; title: string; description: string | null; order: number }[] }) => ({
+    // Transform the syllabus data — real unit data, no random values
+    const syllabusData = subject.syllabus.map((s: {
+      id: string;
+      title: string;
+      description: string | null;
+      units: { id: string; title: string; description: string | null; order: number }[]
+    }) => ({
       id: s.id,
       title: s.title,
       description: s.description || "",
-      document: "", // Not available in current schema
-      units: s.units.map((u: { id: string; title: string; description: string | null; order: number }) => ({
+      document: "",
+      units: s.units.map((u) => ({
         id: u.id,
         title: u.title,
         description: u.description || "",
         order: u.order,
-        totalTopics: 8, // Simplified - would be tracked in the database
-        completedTopics: Math.floor(Math.random() * 8), // Simplified - would be tracked in the database
-        status: Math.random() > 0.7 ? "completed" : Math.random() > 0.3 ? "in-progress" : "not-started",
-        lastUpdated: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+        totalTopics: 0,
+        completedTopics: 0,
+        status: "not-started" as const,
+        lastUpdated: new Date().toISOString(),
       })),
     }));
 
@@ -494,16 +505,19 @@ export const getSubjectSyllabusUnits = withSchoolAuthAction(async (schoolId, use
       throw new Error("Teacher not found");
     }
 
-    // Verify teacher has access to this subject
-    const subjectTeacher = await db.subjectTeacher.findFirst({
-      where: {
-        teacherId: teacher.id,
-        subjectId,
-        schoolId
-      },
-    });
+    // Verify teacher has access to this subject (SubjectTeacher OR SubjectClass.teacherId)
+    const [subjectTeacher, subjectClassAssignment] = await Promise.all([
+      db.subjectTeacher.findFirst({
+        where: { teacherId: teacher.id, subjectId, schoolId },
+        select: { id: true },
+      }),
+      db.subjectClass.findFirst({
+        where: { teacherId: teacher.id, subjectId, schoolId },
+        select: { id: true },
+      }),
+    ]);
 
-    if (!subjectTeacher) {
+    if (!subjectTeacher && !subjectClassAssignment) {
       throw new Error("Unauthorized access to this subject");
     }
 

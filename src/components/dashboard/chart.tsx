@@ -181,6 +181,23 @@ export function Chart({
     }
 
     if (type === "area") {
+      // Need at least 2 points for a meaningful area chart
+      if (data.length < 2) {
+        return (
+          <svg width={dimensions.width} height={dimensions.height}>
+            <text
+              x={dimensions.width / 2}
+              y={dimensions.height / 2}
+              textAnchor="middle"
+              fontSize="13"
+              fill="hsl(var(--muted-foreground))"
+            >
+              {data.length === 0 ? "No data" : "Need more data points"}
+            </text>
+          </svg>
+        );
+      }
+
       const stepX = chartWidth / (data.length - 1);
 
       const points = data.map((item, index) => {
@@ -221,6 +238,7 @@ export function Chart({
             const x = padding + (index * stepX);
             const y = dimensions.height - padding - ((val / maxValue) * chartHeight);
 
+            if (!isFinite(x) || !isFinite(y)) return null;
             if (index % 2 !== 0 && data.length > 10) return null;
 
             // X Axis Labels

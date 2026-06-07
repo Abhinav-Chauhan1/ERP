@@ -170,11 +170,6 @@ export default function ExamDetailPage(props: { params: Promise<{ id: string }> 
           <Button variant="outline">
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
-          <Link href={`/teacher/assessments/exams/${examId}/edit`}>
-            <Button>
-              <Edit className="mr-2 h-4 w-4" /> Edit Exam
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -353,6 +348,7 @@ export default function ExamDetailPage(props: { params: Promise<{ id: string }> 
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
                   {isGrading && (
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
                   )}
@@ -372,6 +368,9 @@ export default function ExamDetailPage(props: { params: Promise<{ id: string }> 
                     <tr key={result.studentId}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium">{result.studentName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">{result.sectionName || "-"}</div>
                       </td>
                       
                       {isGrading && (
@@ -440,7 +439,7 @@ export default function ExamDetailPage(props: { params: Promise<{ id: string }> 
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
                       No students found.
                     </td>
                   </tr>

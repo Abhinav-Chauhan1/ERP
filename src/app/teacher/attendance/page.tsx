@@ -9,16 +9,14 @@ import {
   UserX, 
   Users, 
   Clock, 
-  ArrowRight, 
   CheckCircle, 
   XCircle, 
-  FileBarChart,
-  Download,
+  PlusCircle, 
+  ArrowUpRight,
   AlertCircle
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Chart } from "@/components/dashboard/chart";
-import { AttendanceCalendarWidget } from "@/components/attendance/attendance-calendar-widget";
 import { getTeacherAttendanceOverview } from "@/lib/actions/teacherAttendanceOverviewActions";
 import { format } from "date-fns";
 
@@ -38,22 +36,41 @@ export default async function TeacherAttendancePage() {
   }
 
   const { data } = result;
-  const { stats, todayClasses, attendanceByDay, classAttendanceSummary, studentsWithLowAttendance } = data;
+  const { stats, todayClasses, attendanceByDay, classAttendanceSummary, recentAbsences } = data;
 
-  // Mock attendance events for calendar (can be enhanced with real data later)
-  const attendanceEvents = [
+  const categories = [
     {
-      id: '1',
-      title: 'Attendance Review',
-      date: new Date(),
-      type: 'event' as const
+      title: "Student Attendance",
+      icon: <Users className="h-5 w-5" />,
+      description: "Weekly attendance average",
+      href: "/teacher/attendance/reports",
+      count: `${stats.weeklyAverage}%`,
+    },
+    {
+      title: "Weekly Absences",
+      icon: <UserX className="h-5 w-5 text-destructive" />,
+      description: "This week's absences count",
+      href: "/teacher/attendance/reports",
+      count: stats.absentThisWeek.toString(),
+    },
+    {
+      title: "Pending Attendance",
+      icon: <Clock className="h-5 w-5 text-amber-500" />,
+      description: "Classes to mark today",
+      href: "/teacher/attendance/mark",
+      count: stats.pendingCount.toString(),
     },
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Attendance Management</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Attendance Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Track and manage student attendance in your assigned classes
+          </p>
+        </div>
         <Link href="/teacher/attendance/mark">
           <Button>
             <ClipboardCheck className="mr-2 h-4 w-4" /> Mark Attendance
@@ -61,101 +78,182 @@ export default async function TeacherAttendancePage() {
         </Link>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Today's Classes</CardTitle>
-            <CardDescription>Classes requiring attendance</CardDescription>
+      {/* Overview stats cards matching admin layout */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {categories.map((category) => (
+          <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-accent rounded-md">{category.icon}</div>
+                <CardTitle className="text-lg">{category.title}</CardTitle>
+              </div>
+              <CardDescription>{category.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <div className="text-3xl font-bold">{category.count}</div>
+                <Link href={category.href}>
+                  <Button variant="outline" size="sm">
+                    View
+                    <ArrowUpRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Trend chart + Class Breakdown matching admin layout */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">Weekly Attendance Trend</CardTitle>
+                <CardDescription>Student attendance for your classes</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span>Present</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span>Absent</span>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.todayClassesCount}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span>Next: {todayClasses.length > 0 ? todayClasses[0].time : "No classes today"}</span>
-            </div>
+            {attendanceByDay.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <BarChart2 className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No attendance data</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm">
+                  Mark attendance to see trends here.
+                </p>
+              </div>
+            ) : (
+              <Chart
+                title=""
+                data={attendanceByDay}
+                type="bar"
+                xKey="date"
+                yKey="present"
+                categories={["present", "absent"]}
+                colors={["#10b981", "#ef4444"]}
+              />
+            )}
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Weekly Average</CardTitle>
-            <CardDescription>Overall attendance rate</CardDescription>
+          <CardHeader>
+            <CardTitle className="text-xl">Attendance by Class</CardTitle>
+            <CardDescription>Present percentage by class</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.weeklyAverage}%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: `${stats.weeklyAverage}%` }}></div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Absent Students</CardTitle>
-            <CardDescription>This week's absences</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.absentThisWeek}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              <UserX className="h-4 w-4 text-red-500" />
-              <span>{stats.absentWithReasons} with valid reasons</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Pending</CardTitle>
-            <CardDescription>Attendance records to mark</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.pendingCount}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span>{format(new Date(), "MMM d, yyyy")}</span>
-            </div>
+            {classAttendanceSummary.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">No class data available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {classAttendanceSummary.map((item) => (
+                  <div key={item.id}>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-sm font-medium">{item.averageAttendance}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          item.averageAttendance >= 90
+                            ? "bg-green-500"
+                            : item.averageAttendance >= 75
+                            ? "bg-primary"
+                            : "bg-red-500"
+                        }`}
+                        style={{ width: `${item.averageAttendance}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Scoped Recent Absences matching admin layout */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-xl">Recent Absences</CardTitle>
+            <CardDescription>Students marked absent in the last 2 days</CardDescription>
+          </div>
+          <Link href="/teacher/attendance/reports">
+            <Button variant="outline" size="sm">View Reports</Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {recentAbsences.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No recent absences</h3>
+              <p className="text-muted-foreground">All students are present!</p>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Informed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentAbsences.map((absence) => (
+                      <tr key={absence.id} className="border-b hover:bg-accent/50">
+                        <td className="py-3 px-4 align-middle font-medium">{absence.name}</td>
+                        <td className="py-3 px-4 align-middle">{absence.grade}</td>
+                        <td className="py-3 px-4 align-middle">{absence.date}</td>
+                        <td className="py-3 px-4 align-middle">
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+                            <XCircle className="h-3 w-3 mr-1" />
+                            {absence.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 align-middle">{absence.reason}</td>
+                        <td className="py-3 px-4 align-middle">
+                          <Badge
+                            className={`${
+                              absence.informed === "Yes"
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                            }`}
+                          >
+                            {absence.informed}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
-      <div className="grid gap-6 md:grid-cols-8">
-        <Card className="md:col-span-5">
-          <CardHeader>
-            <CardTitle>Attendance Overview</CardTitle>
-            <CardDescription>Weekly attendance statistics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Chart 
-              title="Weekly Attendance"
-              data={attendanceByDay}
-              type="bar"
-              xKey="date"
-              yKey="present"
-              categories={["present", "absent"]}
-              colors={["#10b981", "#ef4444"]}
-            />
-          </CardContent>
-          <CardFooter className="flex justify-between border-t pt-4">
-            <Button variant="outline">
-              <FileBarChart className="mr-2 h-4 w-4" /> View Detailed Stats
-            </Button>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" /> Export Report
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>Attendance Calendar</CardTitle>
-            <CardDescription>Important dates and events</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AttendanceCalendarWidget events={attendanceEvents} />
-          </CardContent>
-        </Card>
-      </div>
-      
+      {/* Today's Classes List */}
       <Card>
         <CardHeader>
           <CardTitle>Today's Classes</CardTitle>
@@ -218,183 +316,12 @@ export default async function TeacherAttendancePage() {
         </CardContent>
       </Card>
       
-      <Card>
-        <Tabs defaultValue="classes">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Attendance Summary</CardTitle>
-              <TabsList>
-                <TabsTrigger value="classes">By Class</TabsTrigger>
-                <TabsTrigger value="students">By Student</TabsTrigger>
-              </TabsList>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <TabsContent value="classes" className="mt-0 space-y-6">
-              <div className="rounded-md border overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Attendance</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">This Week</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {classAttendanceSummary.map(classInfo => (
-                      <tr key={classInfo.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium">{classInfo.name}</div>
-                          <div className="text-sm text-gray-500">{classInfo.subject}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 text-gray-400 mr-1" />
-                            <span>{classInfo.studentCount}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-green-500 h-2 rounded-full" 
-                                style={{ width: `${classInfo.averageAttendance}%` }}
-                              ></div>
-                            </div>
-                            <span>{classInfo.averageAttendance}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span>{classInfo.thisWeekPresent}</span>
-                            <XCircle className="h-4 w-4 text-red-500 ml-2" />
-                            <span>{classInfo.thisWeekAbsent}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            classInfo.status === 'Good' ? 'bg-green-100 text-green-800' :
-                            classInfo.status === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {classInfo.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <Link href={`/teacher/attendance/reports?classId=${classInfo.id}`}>
-                            <Button variant="link" className="h-auto p-0">View Report</Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex justify-center">
-                <Link href="/teacher/attendance/reports">
-                  <Button variant="outline">
-                    <FileText className="mr-2 h-4 w-4" /> View All Reports <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="students" className="mt-0">
-              <div className="rounded-md border overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Rate</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absences</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {studentsWithLowAttendance.length > 0 ? (
-                      studentsWithLowAttendance.map((student) => (
-                        <tr key={student.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700">
-                                {student.name.charAt(0)}
-                              </div>
-                              <div className="ml-3">
-                                <div className="font-medium">{student.name}</div>
-                                <div className="text-sm text-gray-500">ID: {student.admissionId}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm">{student.className}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                                <div 
-                                  className="bg-green-500 h-2 rounded-full" 
-                                  style={{ width: `${student.attendanceRate}%` }}
-                                ></div>
-                              </div>
-                              <span>{student.attendanceRate}%</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                              {student.absences} days
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              student.status === 'Good' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {student.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <Link href={`/teacher/students/${student.id}/attendance`}>
-                              <Button variant="link" className="h-auto p-0">View Details</Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                          <div className="flex flex-col items-center gap-2">
-                            <CheckCircle className="h-8 w-8 text-green-500" />
-                            <p>All students have good attendance!</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex justify-center mt-6">
-                <Link href="/teacher/attendance/reports">
-                  <Button variant="outline">
-                    <FileText className="mr-2 h-4 w-4" /> Detailed Student Reports
-                  </Button>
-                </Link>
-              </div>
-            </TabsContent>
-          </CardContent>
-        </Tabs>
-      </Card>
-      
       {/* Quick Actions */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link href="/teacher/attendance/mark">
-            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center">
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center cursor-pointer">
               <div className="p-2 rounded-full bg-primary/10 text-primary">
                 <ClipboardCheck className="h-5 w-5" />
               </div>
@@ -402,7 +329,7 @@ export default async function TeacherAttendancePage() {
             </div>
           </Link>
           <Link href="/teacher/attendance/reports">
-            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center">
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center cursor-pointer">
               <div className="p-2 rounded-full bg-primary/10 text-primary">
                 <FileText className="h-5 w-5" />
               </div>
@@ -410,7 +337,7 @@ export default async function TeacherAttendancePage() {
             </div>
           </Link>
           <Link href="/teacher/attendance/reports">
-            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center">
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center cursor-pointer">
               <div className="p-2 rounded-full bg-primary/10 text-primary">
                 <BarChart2 className="h-5 w-5" />
               </div>
@@ -418,7 +345,7 @@ export default async function TeacherAttendancePage() {
             </div>
           </Link>
           <Link href="/teacher/communication/messages/compose?template=attendance">
-            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center">
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-primary/20 hover:bg-primary/5 transition-colors text-center cursor-pointer">
               <div className="p-2 rounded-full bg-primary/10 text-primary">
                 <UserX className="h-5 w-5" />
               </div>

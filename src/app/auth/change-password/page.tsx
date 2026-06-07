@@ -51,14 +51,20 @@ export default function ChangePasswordPage() {
       return;
     }
     // Refresh the session so mustChangePassword is cleared in the token
-    await update();
-    const role = session?.user?.role;
-    switch (role) {
-      case "SUPER_ADMIN": router.replace("/super-admin"); break;
-      case "ADMIN":       router.replace("/admin");       break;
-      case "TEACHER":     router.replace("/teacher");     break;
-      case "PARENT":      router.replace("/parent");      break;
-      default:            router.replace("/student");
+    const updatedSession = await update();
+    const role = updatedSession?.user?.role || session?.user?.role;
+    
+    if (role) {
+      const redirectPaths: Record<string, string> = {
+        SUPER_ADMIN: "/super-admin",
+        ADMIN: "/admin",
+        TEACHER: "/teacher",
+        PARENT: "/parent",
+        STUDENT: "/student",
+      };
+      window.location.href = redirectPaths[role] || "/dashboard";
+    } else {
+      window.location.href = "/dashboard";
     }
   };
 

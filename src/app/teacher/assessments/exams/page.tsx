@@ -114,11 +114,6 @@ export default function TeacherExamsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Exams Management</h1>
-        <Link href="/teacher/assessments/exams/create">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Create New Exam
-          </Button>
-        </Link>
       </div>
       
       <div className="grid gap-6 md:grid-cols-3">
@@ -255,11 +250,6 @@ export default function TeacherExamsPage() {
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 </Link>
-                                <Link href={`/teacher/assessments/exams/${exam.id}/edit`}>
-                                  <Button size="sm" variant="ghost">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                </Link>
                                 {exam.status === "upcoming" && (
                                   <Button size="sm" variant="ghost">
                                     <Copy className="h-4 w-4" />
@@ -344,11 +334,6 @@ export default function TeacherExamsPage() {
                         <FileText className="mr-1 h-4 w-4" /> Question Paper
                       </Button>
                       <div className="space-x-2">
-                        <Link href={`/teacher/assessments/exams/${exam.id}/edit`}>
-                          <Button size="sm" variant="outline">
-                            <Edit className="mr-1 h-4 w-4" /> Edit
-                          </Button>
-                        </Link>
                         <Link href={`/teacher/assessments/exams/${exam.id}`}>
                           <Button size="sm">
                             <Eye className="mr-1 h-4 w-4" /> View Details
@@ -365,15 +350,8 @@ export default function TeacherExamsPage() {
                       <AlertCircle className="h-10 w-10 text-gray-400 mb-2" />
                       <h3 className="font-medium text-lg">No Upcoming Exams</h3>
                       <p className="text-gray-500 max-w-md mt-1">
-                        There are no upcoming exams scheduled. Create a new exam to get started.
+                        There are no upcoming exams scheduled. Contact your administrator to schedule an exam.
                       </p>
-                      <div className="mt-4">
-                        <Link href="/teacher/assessments/exams/create">
-                          <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
-                          </Button>
-                        </Link>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

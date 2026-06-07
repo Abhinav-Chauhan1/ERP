@@ -82,10 +82,11 @@ const createPrismaClient = () => {
           // (e.g. cachedQuery passes schoolId as a typed argument), extract and
           // trust it — the value came from application code, not user input.
           if (!context) {
+            const safeArgs = args as any;
             const argsSchoolId =
-              args?.where?.schoolId ||
-              args?.data?.schoolId ||
-              (Array.isArray(args?.data) ? args.data[0]?.schoolId : undefined);
+              safeArgs?.where?.schoolId ||
+              safeArgs?.data?.schoolId ||
+              (Array.isArray(safeArgs?.data) ? safeArgs.data[0]?.schoolId : undefined);
 
             if (argsSchoolId && typeof argsSchoolId === 'string') {
               context = { schoolId: argsSchoolId, isSuperAdmin: false };

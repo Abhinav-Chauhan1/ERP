@@ -24,7 +24,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { getTeacherSubjectDetails } from "@/lib/actions/teacherSubjectsActions";
-import { ResourceUploadDialog } from "@/components/academic/resource-upload-dialog";
+import { SubjectResourcesTab } from "@/components/teacher/subject-resources-tab";
 
 export default async function SubjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const param = await params;
@@ -267,83 +267,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
         </TabsContent>
         
         <TabsContent value="resources" className="mt-6">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Teaching Resources</CardTitle>
-                  <CardDescription>Materials to help with teaching</CardDescription>
-                </div>
-                <ResourceUploadDialog subjectId={subject.id} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-3">
-                      <div className="p-2 bg-primary/10 border border-primary/20 rounded">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Linear Equations Worksheet</h3>
-                        <p className="text-sm text-gray-500 mt-1">Practice problems for linear equations with solutions</p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant="outline">Worksheet</Badge>
-                          <span className="text-xs text-gray-500">Uploaded on Dec 1, 2023</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Download</Button>
-                  </div>
-                </div>
-                
-                <div className="p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-3">
-                      <div className="p-2 bg-secondary border border-secondary/20 rounded">
-                        <FileText className="h-5 w-5 text-secondary-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Quadratic Equations Presentation</h3>
-                        <p className="text-sm text-gray-500 mt-1">Slides for teaching quadratic equations</p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant="outline">Presentation</Badge>
-                          <span className="text-xs text-gray-500">Uploaded on Nov 20, 2023</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Download</Button>
-                  </div>
-                </div>
-                
-                <div className="p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-3">
-                      <div className="p-2 bg-green-50 border border-green-100 rounded">
-                        <FileText className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Calculus Test Paper</h3>
-                        <p className="text-sm text-gray-500 mt-1">Sample test paper with marking scheme</p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant="outline">Quiz/Test</Badge>
-                          <span className="text-xs text-gray-500">Uploaded on Nov 15, 2023</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Download</Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 text-center">
-                <Button variant="outline">
-                  View All Resources
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <SubjectResourcesTab subjectId={subject.id} />
         </TabsContent>
       </Tabs>
     </div>

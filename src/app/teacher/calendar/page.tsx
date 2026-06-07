@@ -75,11 +75,15 @@ export default function TeacherCalendarPage() {
     }
   }, []);
 
-  // Fetch categories on mount
+  // Fetch categories on mount, then always fetch events regardless of category count
   useEffect(() => {
-    fetchCategories();
+    const init = async () => {
+      await fetchCategories();
+      fetchEvents();
+    };
+    init();
     loadViewPreference();
-  }, [fetchCategories]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Load saved view preference from localStorage
@@ -163,12 +167,15 @@ export default function TeacherCalendarPage() {
     }
   }, [selectedCategories]);
 
-  // Fetch events when categories change
+  // Re-fetch events when filter selection changes
+  const [initialized, setInitialized] = useState(false);
   useEffect(() => {
-    if (categories.length > 0) {
-      fetchEvents();
+    if (!initialized) {
+      setInitialized(true);
+      return;
     }
-  }, [categories, fetchEvents]);
+    fetchEvents();
+  }, [selectedCategories]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Handle event click - show detail modal

@@ -32,17 +32,11 @@ export const teacherRoutes: RouteItem[] = [
         permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],
     },
     {
-        label: "Courses",
-        icon: Video,
-        href: "/teacher/courses",
-        // Optional: PERMISSIONS.READ_SUBJECT
-    },
-    {
         label: "Assessments",
         icon: FileText,
         submenu: [
             { label: "Assignments", href: "/teacher/assessments/assignments" },
-            { label: "Exams", href: "/teacher/assessments/exams" },
+            { label: "Marks Entry", href: "/teacher/assessments/marks-entry" },
             { label: "Online Exams", href: "/teacher/assessments/online-exams" },
             { label: "Question Bank", href: "/teacher/assessments/question-bank" },
             { label: "Results", href: "/teacher/assessments/results" },
@@ -69,30 +63,16 @@ export const teacherRoutes: RouteItem[] = [
         permissions: [PERMISSIONS.READ_STUDENT],
     },
     {
-        label: "Documents",
+        label: "Resources",
         icon: FolderOpen,
-        href: "/teacher/documents",
-        permissions: [PERMISSIONS.READ_DOCUMENT],
-    },
-    {
-        label: "Calendar",
-        icon: CalendarDays,
-        href: "/teacher/calendar",
-        permissions: [PERMISSIONS.READ_CALENDAR],
-    },
-    {
-        label: "Achievements",
-        icon: Award,
-        href: "/teacher/achievements",
-    },
-    {
-        label: "Communication",
-        icon: MessageSquare,
         submenu: [
-            { label: "Messages", href: "/teacher/communication/messages" },
-            { label: "Announcements", href: "/teacher/communication/announcements" },
+            { label: "Courses", href: "/teacher/courses" },
+            { label: "Documents", href: "/teacher/documents", permissions: [PERMISSIONS.READ_DOCUMENT] },
+            { label: "Calendar", href: "/teacher/calendar", permissions: [PERMISSIONS.READ_CALENDAR] },
+            { label: "Achievements", href: "/teacher/achievements" },
+            { label: "Messages", href: "/teacher/communication/messages", permissions: [PERMISSIONS.READ_MESSAGE] },
+            { label: "Announcements", href: "/teacher/communication/announcements", permissions: [PERMISSIONS.READ_ANNOUNCEMENT] },
         ],
-        permissions: [PERMISSIONS.READ_MESSAGE, PERMISSIONS.READ_ANNOUNCEMENT],
     },
     {
         label: "Settings",
@@ -113,6 +93,7 @@ export const teacherHeaderConfig: HeaderConfig = {
     pageTitleMappings: {
         "/teacher/teaching": "Teaching",
         "/teacher/courses": "Courses",
+        "/teacher/assessments/marks-entry": "Marks Entry",
         "/teacher/assessments": "Assessments",
         "/teacher/attendance": "Attendance",
         "/teacher/students": "Students",

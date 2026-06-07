@@ -341,6 +341,64 @@ export async function getTeacherAttendanceOverview() {
       (cls) => new Date(cls.startTime) > new Date()
     );
 
+    // Get recent absences for teacher's students
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    twoDaysAgo.setHours(0, 0, 0, 0);
+
+    const recentAbsencesRecords = await db.studentAttendance.findMany({
+      where: {
+        date: { gte: twoDaysAgo },
+        status: "ABSENT",
+        schoolId,
+        section: {
+          class: {
+            teachers: {
+              some: {
+                teacherId: teacher.id,
+                schoolId,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { date: "desc" },
+      take: 10,
+    });
+
+    const recentAbsences = recentAbsencesRecords.map((absence) => ({
+      id: absence.id,
+      name: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+      grade:
+        absence.student.enrollments.length > 0
+          ? `${absence.student.enrollments[0].class.name}-${absence.student.enrollments[0].section.name}`
+          : "N/A",
+      date: absence.date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      status: "Absent",
+      reason: absence.reason || "No Reason",
+      informed: absence.reason ? "Yes" : "No",
+      studentId: absence.studentId,
+    }));
+
     return {
       success: true,
       data: {
@@ -357,6 +415,7 @@ export async function getTeacherAttendanceOverview() {
         studentsWithLowAttendance: studentsWithLowAttendance.filter(
           (s) => s.attendanceRate < 75
         ),
+        recentAbsences,
       },
     };
   } catch (error) {

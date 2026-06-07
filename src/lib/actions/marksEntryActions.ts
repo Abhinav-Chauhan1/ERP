@@ -61,6 +61,36 @@ export const getEnrolledStudentsForMarks = withSchoolAuthAction(
 
       if (!exam) return { success: false, error: "Exam not found" };
 
+      if (_role === 'TEACHER') {
+        const teacher = await db.teacher.findFirst({
+          where: { userId: _userId },
+        });
+
+        if (!teacher) {
+          return { success: false, error: "Teacher record not found" };
+        }
+
+        const globalAssignment = await db.subjectTeacher.findFirst({
+          where: {
+            teacherId: teacher.id,
+            subjectId: exam.subjectId,
+          },
+        });
+
+        const classAssignment = await db.subjectClass.findFirst({
+          where: {
+            teacherId: teacher.id,
+            subjectId: exam.subjectId,
+            classId,
+            sectionId,
+          },
+        });
+
+        if (!globalAssignment && !classAssignment) {
+          return { success: false, error: "You are not assigned to enter marks for this subject, class, and section." };
+        }
+      }
+
       const students = await db.student.findMany({
         where: {
           schoolId,
@@ -160,7 +190,7 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
 
     // Fetch user, exam, and grade scale in parallel
     const [user, exam, gradeScaleResult] = await Promise.all([
-      db.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      db.user.findUnique({ where: { id: userId }, select: { id: true, role: true } }),
       db.exam.findUnique({ where: { id: input.examId, schoolId }, include: { subject: true } }),
       getGradeScale(),
     ]);
@@ -171,6 +201,71 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
 
     if (!exam) {
       return createErrorResponse("Exam not found", "EXAM_NOT_FOUND");
+    }
+
+    if (user.role === 'TEACHER') {
+      const teacher = await db.teacher.findFirst({
+        where: { userId: user.id },
+      });
+
+      if (!teacher) {
+        return createErrorResponse("Teacher record not found", "TEACHER_NOT_FOUND");
+      }
+
+      // Verify that this teacher has access to this exam's subject and class
+      const globalAssignment = await db.subjectTeacher.findFirst({
+        where: {
+          teacherId: teacher.id,
+          subjectId: exam.subjectId,
+        },
+      });
+
+      const classAssignment = await db.subjectClass.findFirst({
+        where: {
+          teacherId: teacher.id,
+          subjectId: exam.subjectId,
+          classId: exam.classId,
+        },
+      });
+
+      if (!globalAssignment && !classAssignment) {
+        return createErrorResponse("Unauthorized: You do not have permission to enter marks for this exam", "PERMISSION_DENIED");
+      }
+
+      // Restrict student IDs by assigned sections
+      let assignedSectionIds: string[] = [];
+      if (globalAssignment) {
+        const classSections = await db.classSection.findMany({
+          where: { classId: exam.classId },
+        });
+        assignedSectionIds = classSections.map(cs => cs.id);
+      } else {
+        const teacherAssignments = await db.subjectClass.findMany({
+          where: {
+            teacherId: teacher.id,
+            subjectId: exam.subjectId,
+            classId: exam.classId,
+          },
+        });
+        assignedSectionIds = teacherAssignments
+          .map(ta => ta.sectionId)
+          .filter((id): id is string => id !== null);
+      }
+
+      const enrollments = await db.classEnrollment.findMany({
+        where: {
+          classId: exam.classId,
+          sectionId: { in: assignedSectionIds },
+          status: 'ACTIVE',
+        },
+        select: { studentId: true },
+      });
+      const allowedStudentIds = new Set(enrollments.map(e => e.studentId));
+
+      const unauthorizedStudents = input.marks.filter(m => !allowedStudentIds.has(m.studentId));
+      if (unauthorizedStudents.length > 0) {
+        return createErrorResponse("You do not have permission to enter marks for students outside your assigned section(s)", "PERMISSION_DENIED");
+      }
     }
 
     const markConfig = await db.subjectMarkConfig.findUnique({

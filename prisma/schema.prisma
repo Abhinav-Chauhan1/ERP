@@ -905,6 +905,7 @@ model Subject {
   onlineExams       OnlineExam[]
   questionBanks     QuestionBank[]
   subjectMarkConfig SubjectMarkConfig[]
+  documents         SyllabusDocument[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -1112,6 +1113,7 @@ model SyllabusDocument {
   order       Int
   moduleId    String?
   subModuleId String?
+  subjectId   String?
   uploadedBy  String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -1119,9 +1121,11 @@ model SyllabusDocument {
   module      Module?    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   school      School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subModule   SubModule? @relation(fields: [subModuleId], references: [id], onDelete: Cascade)
+  subject     Subject?   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
   @@index([subModuleId])
+  @@index([subjectId])
   @@index([moduleId, order])
   @@index([subModuleId, order])
   @@index([schoolId])
