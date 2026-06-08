@@ -91,7 +91,7 @@ export function OptimizedImage({
   aboveFold = false,
   qualityPreset = 'medium',
   showBlurPlaceholder = true,
-  fallbackSrc = '/images/placeholder.png',
+  fallbackSrc,
   className,
   onError,
   alt,
@@ -121,6 +121,12 @@ export function OptimizedImage({
     ? generateBlurDataUrl()
     : undefined;
 
+  // Detect local API routes (e.g. /api/r2/image?key=...)
+  // next/image optimizes them via a server-side proxy that doesn't
+  // forward auth cookies, causing 401/403 on auth-protected routes.
+  // Use unoptimized so the browser loads them directly with cookies.
+  const isLocalApiRoute = typeof props.src === 'string' && props.src.startsWith('/api/');
+
   // Handle image load errors
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
@@ -139,6 +145,7 @@ export function OptimizedImage({
       quality={quality}
       placeholder={blurDataURL ? 'blur' : 'empty'}
       blurDataURL={blurDataURL}
+      unoptimized={isLocalApiRoute || undefined}
       onError={handleError}
     />
   );
