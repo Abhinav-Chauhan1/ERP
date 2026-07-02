@@ -15,6 +15,8 @@ import { PermissionsProvider } from "@/context/permissions-context";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MobileBottomNavigation, MobileBottomNavigationSpacer } from "@/components/navigation/mobile-bottom-navigation";
 import { ResponsiveSidebarNavigation, SidebarContentWrapper } from "@/components/navigation/responsive-sidebar-navigation";
 import { prisma } from "@/lib/db";
@@ -80,17 +82,31 @@ export default async function StudentLayout({
         <SidebarContentWrapper className={studentClass}>
           {/* Mobile-optimized header - simplified for mobile */}
           <header className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 md:hidden">
-            <div className="flex items-center gap-3 p-4">
-              {school?.logo && (
-                <img
-                  src={resolveR2Url(school.logo) ?? school.logo}
-                  alt={`${school.name || 'School'} logo`}
-                  className="h-10 w-10 object-contain flex-shrink-0"
-                />
-              )}
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {school?.name || "Student Portal"}
-              </h1>
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {school?.logo && (
+                  <img
+                    src={resolveR2Url(school.logo) ?? school.logo}
+                    alt={`${school.name || 'School'} logo`}
+                    className="h-10 w-10 object-contain flex-shrink-0"
+                  />
+                )}
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {school?.name || "Student Portal"}
+                </h1>
+              </div>
+
+              <form action="/api/auth/signout" method="POST" className="flex-shrink-0">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                  aria-label="Sign Out"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </form>
             </div>
           </header>
 

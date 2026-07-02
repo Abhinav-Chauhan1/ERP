@@ -32,7 +32,7 @@ import type {
   TermSlice,
   CBSEGradeEntry,
 } from "./report-card-data-aggregation";
-import { getCBSEGradeScale } from "./report-card-data-aggregation";
+import { getCBSEGradeScale, getCBSEGrade } from "./report-card-data-aggregation";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -284,11 +284,12 @@ async function renderPage(
   renderDecorativeBorder(doc);
 
   const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
+  const { obtained: dispObtained, max: dispMax } = computeDisplayedTotals(data);
   let y = MARGIN.top + 2;
   y = renderHeader(doc, data, resolvedOpts, y);
   y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderScholasticTable(doc, data, gradeScale, y);
-  y = renderSummaryBar(doc, data, y);
+  y = renderSummaryBar(doc, data, y, gradeScale, dispObtained, dispMax);
   y = renderCoScholasticSection(doc, data, y);
   y = renderGradeScaleTable(doc, gradeScale, y);
   y = renderRemarks(doc, data, y);
@@ -523,6 +524,64 @@ function infoCell(doc: jsPDF, label: string, value: string, x: number, y: number
 // Columns per the design:
 //   Subject | T1: PT(10) MA(5) Port(5) HY(80) Total(100) | T2: same | Overall: Marks Grade
 
+/** Sum displayed mark strings, ignoring absent/missing values. */
+function sumDisplayedMarks(...values: string[]): number {
+  return values.reduce((sum, v) => {
+    if (v === "-" || v === "AB") return sum;
+    return sum + (parseFloat(v) || 0);
+  }, 0);
+}
+
+/** Return the maxMarks of a named component (same search order as getComponentByName). */
+function getComponentMax(subj: TermSubjectResult | null, ...names: string[]): number {
+  if (!subj || subj.isAbsent) return 0;
+  const comp = subj.components?.find((c) =>
+    names.some((n) => c.shortName?.toUpperCase() === n || c.componentName?.toUpperCase() === n)
+  );
+  if (!comp) {
+    const idx = names.includes("PT") ? 0 : names.includes("MA") ? 1 : names.includes("PORTFOLIO") ? 2 : 3;
+    return subj.components?.[idx]?.maxMarks ?? 0;
+  }
+  return comp.maxMarks;
+}
+
+/**
+ * Re-compute obtained and max marks using ONLY the 4 displayed components per term
+ * (PT, MA, Portfolio, HY/Final), so the summary bar stays consistent with the table.
+ */
+function computeDisplayedTotals(data: MultiTermReportCardData): { obtained: number; max: number } {
+  const term1 = data.terms[0];
+  const term2 = data.terms.length > 1 ? data.terms[1] : null;
+  let obtained = 0;
+  let max = 0;
+
+  for (const subj of data.annualSubjects) {
+    if (subj.isAbsent) continue;
+    const t1s = findTermSubject(term1, subj.subjectId);
+    const t2s = term2 ? findTermSubject(term2, subj.subjectId) : null;
+
+    const t1pt   = getComponentByName(t1s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
+    const t1ma   = getComponentByName(t1s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
+    const t1port = getComponentByName(t1s, "PORTFOLIO");
+    const t1hy   = getComponentByName(t1s, "HALF_YEARLY", "HALF YEARLY", "HY");
+    const t2pt   = getComponentByName(t2s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
+    const t2ma   = getComponentByName(t2s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
+    const t2port = getComponentByName(t2s, "PORTFOLIO");
+    const t2hy   = getComponentByName(t2s, "ANNUAL", "FINAL", "HALF_YEARLY", "HY");
+    obtained += sumDisplayedMarks(t1pt, t1ma, t1port, t1hy, t2pt, t2ma, t2port, t2hy);
+
+    max += getComponentMax(t1s, "PT", "PERIODIC TEST", "PERIODIC_TEST")
+         + getComponentMax(t1s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT")
+         + getComponentMax(t1s, "PORTFOLIO")
+         + getComponentMax(t1s, "HALF_YEARLY", "HALF YEARLY", "HY")
+         + getComponentMax(t2s, "PT", "PERIODIC TEST", "PERIODIC_TEST")
+         + getComponentMax(t2s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT")
+         + getComponentMax(t2s, "PORTFOLIO")
+         + getComponentMax(t2s, "ANNUAL", "FINAL", "HALF_YEARLY", "HY");
+  }
+  return { obtained, max };
+}
+
 function renderScholasticTable(
   doc: jsPDF,
   data: MultiTermReportCardData,
@@ -576,15 +635,18 @@ function renderScholasticTable(
     const t1ma   = getComponentByName(t1s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
     const t1port = getComponentByName(t1s, "PORTFOLIO");
     const t1hy   = getComponentByName(t1s, "HALF_YEARLY", "HALF YEARLY", "HY");
-    const t1tot  = t1s && !t1s.isAbsent ? `${t1s.totalMarks}` : (t1s?.isAbsent ? "AB" : "-");
+    // Total = sum of only the 4 displayed components
+    const t1tot  = t1s?.isAbsent ? "AB" : (t1s ? `${sumDisplayedMarks(t1pt, t1ma, t1port, t1hy)}` : "-");
 
     const t2pt   = getComponentByName(t2s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
     const t2ma   = getComponentByName(t2s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
     const t2port = getComponentByName(t2s, "PORTFOLIO");
     const t2hy   = getComponentByName(t2s, "ANNUAL", "FINAL", "HALF_YEARLY", "HY");
-    const t2tot  = t2s && !t2s.isAbsent ? `${t2s.totalMarks}` : (t2s?.isAbsent ? "AB" : "-");
+    const t2tot  = t2s?.isAbsent ? "AB" : (t2s ? `${sumDisplayedMarks(t2pt, t2ma, t2port, t2hy)}` : "-");
 
-    const overall = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
+    // Overall = sum of the two term totals (based on displayed components only)
+    const overallNum = sumDisplayedMarks(t1tot, t2tot);
+    const overall = subj.isAbsent ? "AB" : `${overallNum}`;
     const grade   = subj.grade || "-";
 
     return [subj.subjectName || subj.subjectCode || "Subject", t1pt, t1ma, t1port, t1hy, t1tot, t2pt, t2ma, t2port, t2hy, t2tot, overall, grade];
@@ -654,6 +716,9 @@ function renderSummaryBar(
   doc: jsPDF,
   data: MultiTermReportCardData,
   startY: number,
+  gradeScale?: CBSEGradeEntry[],
+  displayedObtained?: number,
+  displayedMax?: number,
 ): number {
   const y = startY;
   const rowH = 7; // single row height
@@ -662,11 +727,16 @@ function renderSummaryBar(
   const totalDays    = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
   const totalPresent = data.terms.reduce((s, t) => s + t.attendance.daysPresent, 0);
 
+  const obtainedMarks = displayedObtained ?? perf.obtainedMarks;
+  const maxMarks      = displayedMax      ?? perf.maxMarks;
+  const percentage    = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : perf.percentage;
+  const grade         = (gradeScale ? getCBSEGrade(percentage, gradeScale) : null) ?? perf.grade ?? "-";
+
   const cells = [
     { label: "Attendance",   value: `${totalPresent}/${totalDays}` },
-    { label: "Total Marks",  value: `${perf.obtainedMarks}/${perf.maxMarks}` },
-    { label: "Percentage",   value: `${perf.percentage.toFixed(2)} %` },
-    { label: "Grade",        value: perf.grade || "-" },
+    { label: "Total Marks",  value: `${obtainedMarks}/${maxMarks}` },
+    { label: "Percentage",   value: `${percentage.toFixed(2)} %` },
+    { label: "Grade",        value: grade },
   ];
 
   const gap     = 2;  // mm gap between cells
@@ -980,7 +1050,7 @@ async function renderSecondaryPage(
   y = renderHeader(doc, data, resolvedOpts, y);
   y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderSecondaryScholasticTable(doc, data, y);
-  y = renderSummaryBar(doc, data, y);
+  y = renderSummaryBar(doc, data, y, gradeScale);
   y = renderCoScholasticSection(doc, data, y);
   y = renderGradeScaleTable(doc, gradeScale, y);
   y = renderRemarks(doc, data, y);
@@ -1071,7 +1141,7 @@ async function renderSeniorPage(
   y = renderHeader(doc, data, resolvedOpts, y);
   y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderSeniorScholasticTable(doc, data, y);
-  y = renderSummaryBar(doc, data, y);
+  y = renderSummaryBar(doc, data, y, gradeScale);
   y = renderGradeScaleTable(doc, gradeScale, y);
   y = renderRemarks(doc, data, y);
   renderSignatures(doc, y);
