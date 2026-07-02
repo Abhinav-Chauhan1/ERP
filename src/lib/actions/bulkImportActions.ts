@@ -84,8 +84,8 @@ const studentImportSchema = z.object({
   lastName: reqStr("Last name is required"),
   email: z
     .union([z.string(), z.undefined(), z.null()])
-    .transform((v) => (v == null ? "" : v.trim()))
-    .pipe(z.string().email("Invalid email format")),
+    .transform((v) => (v == null ? undefined : v.trim() || undefined))
+    .pipe(z.string().email("Invalid email format").optional()),
   admissionId: reqStr("Admission ID is required"),
   dateOfBirth: reqStr("Date of birth is required"),
   gender: z
@@ -241,7 +241,10 @@ async function processStudentRow(
   const existingStudent = await db.student.findFirst({
     where: {
       schoolId,
-      OR: [{ user: { email: validated.email } }, { admissionId: validated.admissionId }],
+      OR: [
+        ...(validated.email ? [{ user: { email: validated.email } }] : []),
+        { admissionId: validated.admissionId },
+      ],
     },
   });
 
