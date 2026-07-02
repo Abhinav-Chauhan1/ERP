@@ -309,21 +309,26 @@ async function processStudentRow(
   const tempPassword = `${validated.firstName.toLowerCase()}@123`;
   const hashedPassword = await hashPassword(tempPassword);
 
+  // Created as a separate call (not a nested `user: { create }` write) so this
+  // stays in Prisma's "unchecked" input style — required for the schoolId the
+  // tenant-isolation extension in db.ts injects into every tenant-model create.
+  const newUser = await db.user.create({
+    data: {
+      name: `${validated.firstName} ${validated.lastName}`,
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      email: validated.email,
+      phone: validated.phone || undefined,
+      role: "STUDENT" as UserRole,
+      passwordHash: hashedPassword,
+      emailVerified: new Date(),
+      mustChangePassword: true,
+    },
+  });
+
   const newStudent = await db.student.create({
     data: {
-      user: {
-        create: {
-          name: `${validated.firstName} ${validated.lastName}`,
-          firstName: validated.firstName,
-          lastName: validated.lastName,
-          email: validated.email,
-          phone: validated.phone || undefined,
-          role: "STUDENT" as UserRole,
-          passwordHash: hashedPassword,
-          emailVerified: new Date(),
-          mustChangePassword: true,
-        },
-      },
+      userId: newUser.id,
       admissionId: validated.admissionId,
       admissionDate: new Date(),
       dateOfBirth: parseImportDate(validated.dateOfBirth),
@@ -362,7 +367,7 @@ async function processStudentRow(
       guardianRelation: validated.guardianRelation || undefined,
       guardianPhone: validated.guardianPhone || undefined,
       guardianAadhaar: validated.guardianAadhaar || undefined,
-      school: { connect: { id: schoolId } },
+      schoolId,
     },
   });
 
@@ -602,25 +607,27 @@ export async function importTeachers(
           const tempPassword = randomBytes(12).toString("base64url");
           const hashedPassword = await hashPassword(tempPassword);
 
+          const newUser = await db.user.create({
+            data: {
+              name: `${validated.firstName} ${validated.lastName}`,
+              firstName: validated.firstName,
+              lastName: validated.lastName,
+              email: validated.email,
+              phone: validated.phone,
+              role: "TEACHER" as UserRole,
+              passwordHash: hashedPassword,
+              emailVerified: new Date(),
+            },
+          });
+
           await db.teacher.create({
             data: {
-              user: {
-                create: {
-                  name: `${validated.firstName} ${validated.lastName}`,
-                  firstName: validated.firstName,
-                  lastName: validated.lastName,
-                  email: validated.email,
-                  phone: validated.phone,
-                  role: "TEACHER" as UserRole,
-                  passwordHash: hashedPassword,
-                  emailVerified: new Date(),
-                },
-              },
+              userId: newUser.id,
               employeeId: validated.employeeId,
               qualification: validated.qualification,
               joinDate: parseImportDate(validated.joinDate),
               salary: validated.salary ? parseFloat(validated.salary) : undefined,
-              school: { connect: { id: schoolId } },
+              schoolId,
             },
           });
           result.summary.created++;
@@ -706,22 +713,24 @@ export async function importParents(
           const tempPassword = randomBytes(12).toString("base64url");
           const hashedPassword = await hashPassword(tempPassword);
 
+          const newUser = await db.user.create({
+            data: {
+              name: `${validated.firstName} ${validated.lastName}`,
+              firstName: validated.firstName,
+              lastName: validated.lastName,
+              email: validated.email,
+              phone: validated.phone,
+              role: "PARENT" as UserRole,
+              passwordHash: hashedPassword,
+              emailVerified: new Date(),
+            },
+          });
+
           const newParent = await db.parent.create({
             data: {
-              user: {
-                create: {
-                  name: `${validated.firstName} ${validated.lastName}`,
-                  firstName: validated.firstName,
-                  lastName: validated.lastName,
-                  email: validated.email,
-                  phone: validated.phone,
-                  role: "PARENT" as UserRole,
-                  passwordHash: hashedPassword,
-                  emailVerified: new Date(),
-                },
-              },
+              userId: newUser.id,
               occupation: validated.occupation,
-              school: { connect: { id: schoolId } },
+              schoolId,
             },
           });
 
