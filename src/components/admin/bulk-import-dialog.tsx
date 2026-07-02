@@ -77,11 +77,11 @@ interface BulkImportDialogProps {
 
 // Student CSV template headers (no classId/sectionId — selected via UI)
 const STUDENT_REQUIRED_HEADERS = [
-  "firstName", "lastName",
+  "firstName",
   "admissionId", "dateOfBirth", "gender",
 ];
 const STUDENT_OPTIONAL_HEADERS = [
-  "email", "phone",
+  "lastName", "email", "phone",
   "rollNumber", "address", "bloodGroup",
   "emergencyContact", "emergencyPhone", "height", "weight",
   // Indian-specific
@@ -402,8 +402,8 @@ export function BulkImportDialog({
                     Download the template to see all available fields and the required format.
                     {importType === "student" && (
                       <span className="block mt-1 text-xs text-muted-foreground">
-                        Required: firstName, lastName, admissionId, dateOfBirth, gender.
-                        All other fields (including email) are optional.
+                        Required: firstName, admissionId, dateOfBirth, gender.
+                        All other fields (including lastName and email) are optional.
                       </span>
                     )}
                     <Button variant="link" className="p-0 h-auto ml-0 mt-1 block" onClick={downloadTemplate}>

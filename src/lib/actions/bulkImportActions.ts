@@ -81,7 +81,7 @@ const reqStr = (msg: string) =>
 const studentImportSchema = z.object({
   // Required
   firstName: reqStr("First name is required"),
-  lastName: reqStr("Last name is required"),
+  lastName: optStr,
   email: z
     .union([z.string(), z.undefined(), z.null()])
     .transform((v) => (v == null ? undefined : v.trim() || undefined))
@@ -207,6 +207,10 @@ export async function validateImportData(
   return { valid: errors.length === 0, errors };
 }
 
+function fullName(firstName: string, lastName?: string): string {
+  return lastName ? `${firstName} ${lastName}` : firstName;
+}
+
 function initImportResult(total: number): ImportResult {
   return {
     success: true,
@@ -314,7 +318,7 @@ async function processStudentRow(
   // tenant-isolation extension in db.ts injects into every tenant-model create.
   const newUser = await db.user.create({
     data: {
-      name: `${validated.firstName} ${validated.lastName}`,
+      name: fullName(validated.firstName, validated.lastName),
       firstName: validated.firstName,
       lastName: validated.lastName,
       email: validated.email,
@@ -374,7 +378,7 @@ async function processStudentRow(
   if (validated.email) {
     sendStudentWelcomeEmail({
       to: validated.email,
-      studentName: `${validated.firstName} ${validated.lastName}`,
+      studentName: fullName(validated.firstName, validated.lastName),
       email: validated.email,
       password: tempPassword,
       schoolName,
