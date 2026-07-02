@@ -854,7 +854,8 @@ export async function deleteUser(userId: string) {
     const currentUserId = await checkPermission('USER', 'DELETE', 'You do not have permission to delete users');
 
     const user = await db.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      include: { student: { select: { id: true } } },
     });
 
     if (!user) {
@@ -874,6 +875,24 @@ export async function deleteUser(userId: string) {
       }
     );
 
+    // Student has several child records (enrollments, quiz/exam attempts, etc.)
+    // that aren't cascade-deleted at the DB level, so a plain user.delete() hits
+    // a foreign key violation. Clear those first; FeePayment/PaymentReceipt are
+    // intentionally left onDelete: Restrict to protect financial history.
+    if (user.student) {
+      const studentId = user.student.id;
+      await db.$transaction([
+        db.classEnrollment.deleteMany({ where: { studentId } }),
+        db.studentRoute.deleteMany({ where: { studentId } }),
+        db.examAttempt.deleteMany({ where: { studentId } }),
+        db.courseDiscussion.deleteMany({ where: { studentId } }),
+        db.quizAttempt.deleteMany({ where: { studentId } }),
+        db.alumni.deleteMany({ where: { studentId } }),
+        db.promotionRecord.deleteMany({ where: { studentId } }),
+        db.admissionApplication.updateMany({ where: { studentId }, data: { studentId: null } }),
+      ]);
+    }
+
     // Delete from our database
     await db.user.delete({
       where: { id: userId }
@@ -883,6 +902,11 @@ export async function deleteUser(userId: string) {
     return { success: true };
   } catch (error) {
     console.error('Error deleting user:', error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      throw new Error(
+        'Cannot delete this user: financial records (fee payments/receipts) exist. Deactivate the account instead of deleting it.'
+      );
+    }
     throw new Error('Failed to delete user');
   }
 }
