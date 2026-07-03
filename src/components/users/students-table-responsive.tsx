@@ -87,7 +87,7 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
-            <AvatarFallback>{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
+            <AvatarFallback>{student.user.firstName?.[0]}{student.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
             {student.user.firstName} {student.user.lastName}
