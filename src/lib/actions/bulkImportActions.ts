@@ -52,8 +52,14 @@ export type ImportResult = {
   };
   errors: Array<{
     row: number;
+    name?: string;
     field?: string;
     message: string;
+  }>;
+  skippedRecords: Array<{
+    row: number;
+    name: string;
+    reason: string;
   }>;
 };
 
@@ -216,19 +222,26 @@ function initImportResult(total: number): ImportResult {
     success: true,
     summary: { total, created: 0, updated: 0, skipped: 0, failed: 0 },
     errors: [],
+    skippedRecords: [],
   };
 }
 
-function handleImportError(error: unknown, rowNumber: number, result: ImportResult) {
+// Best-effort name for a raw CSV row, used when validation fails before we have a typed object
+function rawRowName(row: any): string | undefined {
+  if (!row?.firstName) return undefined;
+  return fullName(String(row.firstName).trim(), row.lastName ? String(row.lastName).trim() : undefined);
+}
+
+function handleImportError(error: unknown, rowNumber: number, result: ImportResult, name?: string) {
   result.summary.failed++;
   if (error instanceof z.ZodError) {
     error.errors.forEach((err) => {
-      result.errors.push({ row: rowNumber, field: err.path.join("."), message: err.message });
+      result.errors.push({ row: rowNumber, name, field: err.path.join("."), message: err.message });
     });
   } else if (error instanceof Error) {
-    result.errors.push({ row: rowNumber, message: error.message });
+    result.errors.push({ row: rowNumber, name, message: error.message });
   } else {
-    result.errors.push({ row: rowNumber, message: "Unknown error occurred" });
+    result.errors.push({ row: rowNumber, name, message: "Unknown error occurred" });
   }
 }
 
@@ -241,7 +254,7 @@ async function processStudentRow(
   classId: string,
   sectionId: string,
   duplicateHandling: DuplicateHandling
-): Promise<"created" | "updated" | "skipped"> {
+): Promise<{ status: "created" | "updated" | "skipped"; reason?: string }> {
   const existingStudent = await db.student.findFirst({
     where: {
       schoolId,
@@ -253,7 +266,12 @@ async function processStudentRow(
   });
 
   if (existingStudent) {
-    if (duplicateHandling === "skip") return "skipped";
+    if (duplicateHandling === "skip") {
+      const reason = existingStudent.admissionId === validated.admissionId
+        ? "Duplicate admission ID"
+        : "Duplicate email";
+      return { status: "skipped", reason };
+    }
     if (duplicateHandling === "update") {
       await db.student.update({
         where: { id: existingStudent.id },
@@ -304,7 +322,7 @@ async function processStudentRow(
           guardianAadhaar: validated.guardianAadhaar || undefined,
         },
       });
-      return "updated";
+      return { status: "updated" };
     }
     // "create" falls through
   }
@@ -397,7 +415,7 @@ async function processStudentRow(
     },
   });
 
-  return "created";
+  return { status: "created" };
 }
 
 /**
@@ -418,6 +436,7 @@ export async function importStudents(
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
       errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
+      skippedRecords: [],
     };
   }
 
@@ -467,9 +486,16 @@ export async function importStudents(
           const outcome = await processStudentRow(
             validated, rowNumber, schoolId, schoolName, defaultClassId, defaultSectionId, duplicateHandling
           );
-          result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
+          result.summary[outcome.status]++;
+          if (outcome.status === "skipped") {
+            result.skippedRecords.push({
+              row: rowNumber,
+              name: fullName(validated.firstName, validated.lastName),
+              reason: outcome.reason ?? "Duplicate record",
+            });
+          }
         } catch (error) {
-          handleImportError(error, rowNumber, result);
+          handleImportError(error, rowNumber, result, rawRowName(row));
         }
       })
     );
@@ -499,6 +525,7 @@ export async function importStudentsBatched(
       success: false,
       summary: { total: data.length, created: 0, updated: 0, skipped: 0, failed: 0 },
       errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
+      skippedRecords: [],
       nextBatch: null,
     };
   }
@@ -530,9 +557,16 @@ export async function importStudentsBatched(
         const outcome = await processStudentRow(
           validated, rowNumber, schoolId, schoolName, defaultClassId, defaultSectionId, duplicateHandling
         );
-        result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
+        result.summary[outcome.status]++;
+        if (outcome.status === "skipped") {
+          result.skippedRecords.push({
+            row: rowNumber,
+            name: fullName(validated.firstName, validated.lastName),
+            reason: outcome.reason ?? "Duplicate record",
+          });
+        }
       } catch (error) {
-        handleImportError(error, rowNumber, result);
+        handleImportError(error, rowNumber, result, rawRowName(row));
       }
     })
   );
@@ -560,6 +594,7 @@ export async function importTeachers(
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
       errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
+      skippedRecords: [],
     };
   }
 
@@ -582,7 +617,15 @@ export async function importTeachers(
           });
 
           if (existingTeacher) {
-            if (duplicateHandling === "skip") { result.summary.skipped++; return; }
+            if (duplicateHandling === "skip") {
+              result.summary.skipped++;
+              result.skippedRecords.push({
+                row: rowNumber,
+                name: `${validated.firstName} ${validated.lastName}`,
+                reason: existingTeacher.employeeId === validated.employeeId ? "Duplicate employee ID" : "Duplicate email",
+              });
+              return;
+            }
             if (duplicateHandling === "update") {
               await db.teacher.update({
                 where: { id: existingTeacher.id },
@@ -601,7 +644,12 @@ export async function importTeachers(
           if (validated.departmentId) {
             const departmentExists = await db.department.findUnique({ where: { id: validated.departmentId } });
             if (!departmentExists) {
-              result.errors.push({ row: rowNumber, field: "departmentId", message: `Department with ID ${validated.departmentId} not found` });
+              result.errors.push({
+                row: rowNumber,
+                name: `${validated.firstName} ${validated.lastName}`,
+                field: "departmentId",
+                message: `Department with ID ${validated.departmentId} not found`,
+              });
               result.summary.failed++;
               return;
             }
@@ -636,7 +684,7 @@ export async function importTeachers(
           });
           result.summary.created++;
         } catch (error) {
-          handleImportError(error, rowNumber, result);
+          handleImportError(error, rowNumber, result, rawRowName(row));
         }
       })
     );
@@ -662,6 +710,7 @@ export async function importParents(
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
       errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
+      skippedRecords: [],
     };
   }
 
@@ -681,7 +730,12 @@ export async function importParents(
           });
 
           if (!student) {
-            result.errors.push({ row: rowNumber, field: "studentAdmissionId", message: `Student with admission ID ${validated.studentAdmissionId} not found` });
+            result.errors.push({
+              row: rowNumber,
+              name: `${validated.firstName} ${validated.lastName}`,
+              field: "studentAdmissionId",
+              message: `Student with admission ID ${validated.studentAdmissionId} not found`,
+            });
             result.summary.failed++;
             return;
           }
@@ -691,7 +745,15 @@ export async function importParents(
           });
 
           if (existingParent) {
-            if (duplicateHandling === "skip") { result.summary.skipped++; return; }
+            if (duplicateHandling === "skip") {
+              result.summary.skipped++;
+              result.skippedRecords.push({
+                row: rowNumber,
+                name: `${validated.firstName} ${validated.lastName}`,
+                reason: "Duplicate email",
+              });
+              return;
+            }
             if (duplicateHandling === "update") {
               await db.parent.update({
                 where: { id: existingParent.id },
@@ -744,7 +806,7 @@ export async function importParents(
 
           result.summary.created++;
         } catch (error) {
-          handleImportError(error, rowNumber, result);
+          handleImportError(error, rowNumber, result, rawRowName(row));
         }
       })
     );

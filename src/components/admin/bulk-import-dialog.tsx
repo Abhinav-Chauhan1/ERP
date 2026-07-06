@@ -195,6 +195,7 @@ export function BulkImportDialog({
           success: true,
           summary: { total: parsedData.length, created: 0, updated: 0, skipped: 0, failed: 0 },
           errors: [],
+          skippedRecords: [],
         };
 
         for (let b = 0; b < totalBatches; b++) {
@@ -211,6 +212,7 @@ export function BulkImportDialog({
           accumulated.summary.skipped += batchResult.summary.skipped;
           accumulated.summary.failed += batchResult.summary.failed;
           accumulated.errors.push(...batchResult.errors);
+          accumulated.skippedRecords.push(...batchResult.skippedRecords);
 
           const processed = Math.min((b + 1) * BATCH_SIZE, parsedData.length);
           setImportedSoFar(processed);
@@ -584,12 +586,26 @@ export function BulkImportDialog({
 
               {importResult.errors.length > 0 && (
                 <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Errors ({importResult.errors.length})</h4>
+                  <h4 className="font-medium mb-2">Failed ({importResult.errors.length})</h4>
                   <div className="max-h-[280px] overflow-auto space-y-1">
                     {importResult.errors.map((err, i) => (
                       <div key={i} className="text-sm p-2 bg-red-50 dark:bg-red-950 rounded">
-                        <span className="font-medium">Row {err.row}:</span>{" "}
+                        <span className="font-medium">Row {err.row}{err.name ? ` — ${err.name}` : ""}:</span>{" "}
                         {err.field && `${err.field} — `}{err.message}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {importResult.skippedRecords.length > 0 && (
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Skipped ({importResult.skippedRecords.length})</h4>
+                  <div className="max-h-[280px] overflow-auto space-y-1">
+                    {importResult.skippedRecords.map((rec, i) => (
+                      <div key={i} className="text-sm p-2 bg-yellow-50 dark:bg-yellow-950 rounded">
+                        <span className="font-medium">Row {rec.row} — {rec.name}:</span>{" "}
+                        {rec.reason}
                       </div>
                     ))}
                   </div>
