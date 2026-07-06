@@ -348,6 +348,18 @@ async function processStudentRow(
     },
   });
 
+  // Without this, bulk-imported students can't log in and won't show up
+  // anywhere that resolves school membership via userSchools (e.g. the
+  // Users overview counts and recent-users list).
+  await db.userSchool.create({
+    data: {
+      userId: newUser.id,
+      schoolId,
+      role: "STUDENT" as UserRole,
+      isActive: true,
+    },
+  });
+
   const newStudent = await db.student.create({
     data: {
       userId: newUser.id,
@@ -682,6 +694,16 @@ export async function importTeachers(
               schoolId,
             },
           });
+
+          await db.userSchool.create({
+            data: {
+              userId: newUser.id,
+              schoolId,
+              role: "TEACHER" as UserRole,
+              isActive: true,
+            },
+          });
+
           result.summary.created++;
         } catch (error) {
           handleImportError(error, rowNumber, result, rawRowName(row));
@@ -797,6 +819,15 @@ export async function importParents(
               userId: newUser.id,
               occupation: validated.occupation,
               schoolId,
+            },
+          });
+
+          await db.userSchool.create({
+            data: {
+              userId: newUser.id,
+              schoolId,
+              role: "PARENT" as UserRole,
+              isActive: true,
             },
           });
 
