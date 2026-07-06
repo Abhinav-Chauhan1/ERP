@@ -38,7 +38,12 @@ export function StudentsTable({ students }: StudentsTableProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter((student) => {
@@ -233,6 +238,10 @@ export function StudentsTable({ students }: StudentsTableProps) {
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            showItemsPerPage
+            itemsPerPageOptions={[10, 20, 50]}
           />
         </div>
       )}
