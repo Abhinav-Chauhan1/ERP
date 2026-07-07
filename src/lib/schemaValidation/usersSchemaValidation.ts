@@ -16,7 +16,7 @@ export const baseUserSchema = z.object({
 // Base user schema for students and parents (email optional, phone required for login)
 export const mobileAuthUserSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  lastName: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().min(10, "Phone number is required for login"),
   avatar: z.string().url().optional(),

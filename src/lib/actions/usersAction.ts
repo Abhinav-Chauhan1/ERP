@@ -56,7 +56,7 @@ function generateSecureDefaultPassword(): string {
 // Helper function to create base user
 const createBaseUser = async (userData: {
   firstName: string;
-  lastName: string;
+  lastName?: string | null;
   email?: string;
   phone?: string;
   avatar?: string;
@@ -72,7 +72,7 @@ const createBaseUser = async (userData: {
   const sanitizedData: any = {
     name: `${formatFullName(userData.firstName, userData.lastName)}`,
     firstName: sanitizeText(userData.firstName),
-    lastName: sanitizeText(userData.lastName),
+    lastName: userData.lastName ? sanitizeText(userData.lastName) : undefined,
     phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,

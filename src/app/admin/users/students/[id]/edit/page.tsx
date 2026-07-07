@@ -30,7 +30,7 @@ import { format } from "date-fns";
 // Create a standalone edit schema
 const editStudentSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  lastName: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().optional(),
   role: z.literal(UserRole.STUDENT),
