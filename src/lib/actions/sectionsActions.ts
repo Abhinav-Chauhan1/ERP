@@ -55,15 +55,18 @@ export async function getSections(classFilter?: string) {
       ],
     });
 
-    // Get related teachers for these sections
-    const sectionsWithTeachers = await Promise.all(
-      sections.map(async (section) => {
-        // Find teacher specifically assigned to this section
-        let classTeacher = await db.classTeacher.findFirst({
+    // Batch-fetch class heads for all sections/classes in one query instead of
+    // firing up to 2 sequential lookups per section (was starving the DB
+    // connection pool when the section list is large).
+    const classIds = Array.from(new Set(sections.map((s) => s.classId)));
+    const sectionIds = sections.map((s) => s.id);
+
+    const classTeachers = classIds.length
+      ? await db.classTeacher.findMany({
           where: {
-            classId: section.classId,
-            sectionId: section.id,
+            classId: { in: classIds },
             isClassHead: true,
+            OR: [{ sectionId: { in: sectionIds } }, { sectionId: null }],
           },
           include: {
             teacher: {
@@ -77,56 +80,36 @@ export async function getSections(classFilter?: string) {
               }
             }
           }
-        });
+        })
+      : [];
 
-        // If no section-specific head, check for class-level head (sectionId: null)
-        if (!classTeacher) {
-          classTeacher = await db.classTeacher.findFirst({
-            where: {
-              classId: section.classId,
-              sectionId: null,
-              isClassHead: true,
-            },
-            include: {
-              teacher: {
-                include: {
-                  user: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                    }
-                  }
-                }
-              }
-            }
-          });
-        }
+    const sectionHeadBySection = new Map<string, (typeof classTeachers)[number]>();
+    const classHeadByClass = new Map<string, (typeof classTeachers)[number]>();
+    for (const ct of classTeachers) {
+      if (ct.sectionId) {
+        sectionHeadBySection.set(ct.sectionId, ct);
+      } else if (!classHeadByClass.has(ct.classId)) {
+        classHeadByClass.set(ct.classId, ct);
+      }
+    }
 
-        // Get room information
-        const timetableSlot = await db.timetableSlot.findFirst({
-          where: {
-            sectionId: section.id,
-          },
-          include: {
-            room: true,
-          }
-        });
+    const sectionsWithTeachers = sections.map((section) => {
+      const classTeacher = sectionHeadBySection.get(section.id) ?? classHeadByClass.get(section.classId);
 
-        return {
-          ...section,
-          teacherName: classTeacher
-            ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
-            : "Not assigned",
-          teacherId: classTeacher?.teacherId,
-          room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
-          roomId: section.homeRoom?.id || null,
-          students: section._count.enrollments,
-          academicYear: section.class.academicYear.name,
-          isCurrent: section.class.academicYear.isCurrent,
-          className: section.class.name,
-        };
-      })
-    );
+      return {
+        ...section,
+        teacherName: classTeacher
+          ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
+          : "Not assigned",
+        teacherId: classTeacher?.teacherId,
+        room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
+        roomId: section.homeRoom?.id || null,
+        students: section._count.enrollments,
+        academicYear: section.class.academicYear.name,
+        isCurrent: section.class.academicYear.isCurrent,
+        className: section.class.name,
+      };
+    });
 
     return { success: true, data: sectionsWithTeachers };
   } catch (error) {
@@ -188,16 +171,6 @@ export async function getSectionById(id: string) {
             }
           }
         }
-      }
-    });
-
-    // Get room information
-    const timetableSlot = await db.timetableSlot.findFirst({
-      where: {
-        sectionId: section.id,
-      },
-      include: {
-        room: true,
       }
     });
 
