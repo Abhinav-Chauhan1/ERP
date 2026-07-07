@@ -701,7 +701,7 @@ export default function EditStudentPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="General">General</SelectItem>
+                            <SelectItem value="GENERAL">General</SelectItem>
                             <SelectItem value="OBC">OBC</SelectItem>
                             <SelectItem value="SC">SC</SelectItem>
                             <SelectItem value="ST">ST</SelectItem>

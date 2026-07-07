@@ -101,7 +101,7 @@ const STUDENT_SAMPLE: Record<string, string> = {
   gender: "MALE", rollNumber: "1", address: "123 Main St", bloodGroup: "O+",
   emergencyContact: "Parent Name", emergencyPhone: "+919876543211",
   height: "150", weight: "45", aadhaarNumber: "123456789012",
-  nationality: "Indian", religion: "Hindu", category: "General",
+  nationality: "Indian", religion: "Hindu", category: "GENERAL",
   fatherName: "Robert Doe", fatherPhone: "+919876543212",
   motherName: "Jane Doe", motherPhone: "+919876543213",
 };
