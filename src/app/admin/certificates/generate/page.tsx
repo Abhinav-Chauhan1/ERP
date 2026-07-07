@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { formatFullName } from "@/lib/utils";
 
 async function CertificateGeneratorContent() {
   const session = await auth();
@@ -100,7 +101,7 @@ async function CertificateGeneratorContent() {
 
   const formattedStudents = students.map((student) => ({
     id: student.id,
-    name: `${student.user.firstName} ${student.user.lastName}`,
+    name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
     admissionId: student.admissionId,
     className: student.enrollments[0]?.class.name || 'N/A',
     sectionName: student.enrollments[0]?.section.name || 'N/A',

@@ -10,6 +10,7 @@ import { AppearanceSettings } from "@/components/shared/settings/appearance-sett
 import { ReminderPreferences } from "@/components/calendar/reminder-preferences";
 import type { ParentProfileData, ParentSettingsData } from "@/types/settings";
 import { User, Bell, Shield, Palette, Clock } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 
 interface SettingsPageClientProps {
   profile: ParentProfileData;
@@ -19,7 +20,7 @@ interface SettingsPageClientProps {
 export function SettingsPageClient({ profile, settings }: SettingsPageClientProps) {
   const [activeTab, setActiveTab] = useState("profile");
   
-  const userName = `${profile.user.firstName} ${profile.user.lastName}`;
+  const userName = `${formatFullName(profile.user.firstName, profile.user.lastName)}`;
   
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFullName } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
 
       <div className="flex justify-between items-start">
         <h1 className="text-2xl font-bold tracking-tight">
-          {administrator.user.firstName} {administrator.user.lastName}
+          {formatFullName(administrator.user.firstName, administrator.user.lastName)}
         </h1>
         <div className="flex gap-2">
           <Link href={`/admin/users/administrators/${administrator.id}/edit`}>
@@ -73,7 +73,7 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
                 <p className="font-medium">
-                  {administrator.user.firstName} {administrator.user.lastName}
+                  {formatFullName(administrator.user.firstName, administrator.user.lastName)}
                 </p>
               </div>
               <div>

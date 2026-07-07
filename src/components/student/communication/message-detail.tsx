@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MessageReplyForm } from "./message-reply-form";
+import { formatFullName } from "@/lib/utils";
 
 interface MessageDetailProps {
   message: {
@@ -57,7 +58,7 @@ export function MessageDetail({
   const [showReplyForm, setShowReplyForm] = useState(false);
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    return `${firstName?.charAt(0)}${lastName?.charAt(0)}`.toUpperCase();
   };
 
   const handleReplySuccess = () => {
@@ -137,7 +138,7 @@ export function MessageDetail({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold">
-                    {message.sender.firstName} {message.sender.lastName}
+                    {formatFullName(message.sender.firstName, message.sender.lastName)}
                   </p>
                   <Badge
                     variant="outline"
@@ -170,7 +171,7 @@ export function MessageDetail({
             <Mail className="h-4 w-4" />
             <span>To:</span>
             <span className="font-medium">
-              {message.recipient.firstName} {message.recipient.lastName}
+              {formatFullName(message.recipient.firstName, message.recipient.lastName)}
             </span>
             <span className="text-gray-400">({message.recipient.email})</span>
             <Badge

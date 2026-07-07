@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 
 interface AttendanceStatsCardProps {
   child: any;
@@ -31,7 +32,7 @@ export function AttendanceStatsCard({ child, attendanceData }: AttendanceStatsCa
           </span>
         </CardTitle>
         <CardDescription>
-          {child.user.firstName} {child.user.lastName}
+          {formatFullName(child.user.firstName, child.user.lastName)}
         </CardDescription>
       </CardHeader>
       <CardContent>

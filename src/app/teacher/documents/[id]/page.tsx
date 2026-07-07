@@ -10,6 +10,7 @@ import { DocumentViewer } from "@/components/teacher/documents/document-viewer";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Document Details | Teacher Portal",
@@ -197,7 +198,7 @@ const userId = session?.user?.id;
                 <div className="flex-1">
                   <p className="text-sm font-medium">Uploaded By</p>
                   <p className="text-sm text-muted-foreground">
-                    {document.user.firstName} {document.user.lastName}
+                    {formatFullName(document.user.firstName, document.user.lastName)}
                   </p>
                 </div>
               </div>

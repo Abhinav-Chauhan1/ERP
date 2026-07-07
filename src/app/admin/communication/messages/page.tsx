@@ -44,6 +44,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 // Import server actions
 import {
@@ -150,8 +151,8 @@ export default function MessagesPage() {
   // Filter messages
   const filteredMessages = messages.filter((message) => {
     const searchLower = searchTerm.toLowerCase();
-    const senderName = `${message.sender?.firstName} ${message.sender?.lastName}`.toLowerCase();
-    const recipientName = `${message.recipient?.firstName} ${message.recipient?.lastName}`.toLowerCase();
+    const senderName = `${formatFullName(message.sender?.firstName, message.sender?.lastName)}`.toLowerCase();
+    const recipientName = `${formatFullName(message.recipient?.firstName, message.recipient?.lastName)}`.toLowerCase();
     const subject = message.subject?.toLowerCase() || "";
     const content = message.content?.toLowerCase() || "";
 
@@ -547,8 +548,8 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between mb-1">
                       <p className={`font-medium ${!message.isRead && activeFolder === "inbox" ? "font-bold" : ""}`}>
                         {activeFolder === "inbox"
-                          ? `${message.sender?.firstName} ${message.sender?.lastName}`
-                          : `${message.recipient?.firstName} ${message.recipient?.lastName}`}
+                          ? `${formatFullName(message.sender?.firstName, message.sender?.lastName)}`
+                          : `${formatFullName(message.recipient?.firstName, message.recipient?.lastName)}`}
                       </p>
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(message.createdAt), "MMM dd, h:mm a")}
@@ -597,7 +598,7 @@ export default function MessagesPage() {
                 render={({ field }) => {
                   const selectedContact = contacts.find(c => c.id === field.value);
                   const filteredContacts = contacts.filter(contact =>
-                    `${contact.firstName} ${contact.lastName} ${contact.role}`
+                    `${formatFullName(contact.firstName, contact.lastName)} ${contact.role}`
                       .toLowerCase()
                       .includes(recipientSearch.toLowerCase())
                   );
@@ -611,7 +612,7 @@ export default function MessagesPage() {
                           <Input
                             placeholder="Search for a recipient..."
                             className="pl-9"
-                            value={selectedContact ? `${selectedContact.firstName} ${selectedContact.lastName} (${selectedContact.role})` : recipientSearch}
+                            value={selectedContact ? `${formatFullName(selectedContact.firstName, selectedContact.lastName)} (${selectedContact.role})` : recipientSearch}
                             onChange={(e) => {
                               setRecipientSearch(e.target.value);
                               setShowRecipientDropdown(true);
@@ -634,7 +635,7 @@ export default function MessagesPage() {
                                   }}
                                 >
                                   <div className="font-medium">
-                                    {contact.firstName} {contact.lastName}
+                                    {formatFullName(contact.firstName, contact.lastName)}
                                   </div>
                                   <div className="text-xs text-muted-foreground">{contact.role}</div>
                                 </div>
@@ -798,7 +799,7 @@ export default function MessagesPage() {
                 </Avatar>
                 <div>
                   <p className="font-medium">
-                    {selectedMessage.sender?.firstName} {selectedMessage.sender?.lastName}
+                    {formatFullName(selectedMessage.sender?.firstName, selectedMessage.sender?.lastName)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(selectedMessage.createdAt), "MMM dd, yyyy 'at' h:mm a")}
@@ -930,7 +931,7 @@ export default function MessagesPage() {
               <SelectContent>
                 {contacts.map((contact) => (
                   <SelectItem key={contact.id} value={contact.id}>
-                    {contact.firstName} {contact.lastName}
+                    {formatFullName(contact.firstName, contact.lastName)}
                   </SelectItem>
                 ))}
               </SelectContent>

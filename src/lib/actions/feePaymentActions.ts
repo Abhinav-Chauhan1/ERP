@@ -9,6 +9,7 @@ import { sendFeeReminder } from "@/lib/services/communication-service";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { format } from "date-fns";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -219,7 +220,7 @@ export async function recordPayment(data: any) {
         for (const parentRelation of payment.student.parents) {
           await sendFeeReminder({
             studentId: payment.studentId,
-            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
             amount: payment.paidAmount,
             dueDate: payment.paymentDate,
             isOverdue: false,
@@ -384,7 +385,7 @@ export async function getPendingFees(filters?: {
 
     const pendingFees = pendingPayments.map((payment) => ({
       studentId: payment.student.id,
-      studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+      studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
       admissionId: payment.student.admissionId,
       class: payment.student.enrollments[0]?.class.name ?? "N/A",
       section: payment.student.enrollments[0]?.section.name ?? "N/A",
@@ -504,7 +505,7 @@ export async function getStudentsForPayment() {
 
     const formattedStudents = students.map((student) => ({
       id: student.id,
-      name: `${student.user.firstName} ${student.user.lastName}`,
+      name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       admissionId: student.admissionId,
       class: student.enrollments[0]?.class.name || "N/A",
       section: student.enrollments[0]?.section.name || "N/A",
@@ -670,7 +671,7 @@ export async function getPaymentReceiptHTML(paymentId: string) {
       receiptNumber: payment.receiptNumber,
       paymentDate: payment.paymentDate,
       student: {
-        name: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+        name: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
         email: payment.student.user.email || "",
         class: payment.student.enrollments[0]?.class.name || "N/A",
         section: payment.student.enrollments[0]?.section.name || "N/A",
@@ -814,7 +815,7 @@ export async function getConsolidatedReceiptHTML(
       receiptNumber: `CONS-${format(new Date(paymentDate), "yyyyMMdd")}-${student.admissionId}`,
       paymentDate: firstPayment.paymentDate,
       student: {
-        name: student.user.name || `${student.user.firstName} ${student.user.lastName}`,
+        name: student.user.name || `${formatFullName(student.user.firstName, student.user.lastName)}`,
         email: student.user.email || "",
         class: enrollment?.class?.name || "N/A",
         section: enrollment?.section?.name || "N/A",
@@ -913,7 +914,7 @@ export async function sendFeeReminders() {
         for (const parentRelation of payment.student.parents) {
           await sendFeeReminder({
             studentId: payment.studentId,
-            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
             amount: payment.balance,
             dueDate,
             isOverdue,
@@ -990,7 +991,7 @@ export async function sendOverdueFeeAlerts() {
         for (const parentRelation of payment.student.parents) {
           await sendFeeReminder({
             studentId: payment.studentId,
-            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
             amount: payment.balance,
             dueDate: payment.feeStructure.validTo || payment.paymentDate,
             isOverdue: true,

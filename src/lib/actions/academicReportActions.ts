@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
+import { formatFullName } from "@/lib/utils";
 
 // Get student performance report
 export const getStudentPerformanceReport = withSchoolAuthAction(async (
@@ -234,7 +235,7 @@ export const getClassRankings = withSchoolAuthAction(async (
       if (!acc[studentId]) {
         acc[studentId] = {
           studentId,
-          studentName: `${result.student.user.firstName} ${result.student.user.lastName}`,
+          studentName: `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`,
           className: result.student.enrollments?.[0]?.class?.name || "N/A",
           totalMarks: 0,
           examCount: 0,

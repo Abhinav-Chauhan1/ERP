@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AttendanceStatus } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 const statusColors: Record<AttendanceStatus, string> = {
   PRESENT: "bg-green-500",
@@ -87,7 +88,7 @@ export default function AttendanceListPage() {
                   >
                     <div className="flex-1">
                       <div className="font-medium">
-                        {record.student.user.firstName} {record.student.user.lastName}
+                        {formatFullName(record.student.user.firstName, record.student.user.lastName)}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {record.section.class.name} - {record.section.name}

@@ -27,8 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface AnnouncementItem {
   id: string;
   title: string;
@@ -75,7 +74,7 @@ export function AnnouncementList({
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    return `${firstName?.charAt(0)}${lastName?.charAt(0)}`.toUpperCase();
   };
 
   const toggleExpanded = (id: string) => {
@@ -238,7 +237,7 @@ export function AnnouncementList({
                           </AvatarFallback>
                         </Avatar>
                         <span>
-                          {announcement.publisher.user.firstName} {announcement.publisher.user.lastName}
+                          {formatFullName(announcement.publisher.user.firstName, announcement.publisher.user.lastName)}
                         </span>
                       </div>
 

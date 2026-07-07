@@ -6,6 +6,7 @@ import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
+import { formatFullName } from "@/lib/utils";
 
 export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
@@ -109,7 +110,7 @@ export const getRecentUsers = withSchoolAuthAction(async (schoolId: string, user
       success: true,
       data: users.map((user) => ({
         id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
+        name: `${formatFullName(user.firstName, user.lastName)}`,
         email: user.email,
         role: user.role,
         date: user.createdAt.toISOString().split("T")[0],
@@ -348,7 +349,7 @@ export const getUsersForDropdown = withSchoolAuthAction(async (schoolId: string,
       success: true,
       data: users.map((user) => ({
         id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
+        name: `${formatFullName(user.firstName, user.lastName)}`,
         email: user.email,
         role: user.role,
       })),

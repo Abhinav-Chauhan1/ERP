@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, MapPin, Phone, Mail, Calendar, Tag, LifeBuoy, Users } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 
 interface StudentProfileInfoProps {
   student: any;
@@ -83,7 +84,7 @@ export function StudentProfileInfo({ student }: StudentProfileInfoProps) {
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold">{parentRel.parent.user.firstName} {parentRel.parent.user.lastName}</h4>
+                      <h4 className="font-semibold">{formatFullName(parentRel.parent.user.firstName, parentRel.parent.user.lastName)}</h4>
                       <p className="text-sm text-muted-foreground">{parentRel.relation || "Guardian"}</p>
                       <p className="text-sm text-muted-foreground">{parentRel.parent.user.email}</p>
                       {parentRel.parent.user.phone && (

@@ -10,6 +10,7 @@ import { getGradeScale } from "./gradeCalculationActions";
 import { logUpdate, logCreate } from "@/lib/utils/audit-log";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
+import { formatFullName } from "@/lib/utils";
 import {
   validateBulkMarks,
   formatValidationErrors,
@@ -127,7 +128,7 @@ export const getEnrolledStudentsForMarks = withSchoolAuthAction(
         const existingResult = student.examResults[0];
         return {
           id: student.id,
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           rollNumber: student.rollNumber || "",
           avatar: student.user.avatar,
           theoryMarks: existingResult?.theoryMarks ?? null,

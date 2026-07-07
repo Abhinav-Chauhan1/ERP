@@ -14,6 +14,7 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
+import { formatFullName } from "@/lib/utils";
 
 interface NotificationData {
     id: string;
@@ -122,7 +123,7 @@ export function NotificationsTable({
                     </div>
                     <div className="text-xs text-muted-foreground">
                         {notification.sender
-                            ? `By ${notification.sender.firstName} ${notification.sender.lastName}`
+                            ? `By ${formatFullName(notification.sender.firstName, notification.sender.lastName)}`
                             : "System"}
                     </div>
                 </>

@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // Get overall school performance
 export async function getOverallSchoolPerformance(filters?: {
@@ -100,7 +101,7 @@ export async function getTeacherPerformanceMetrics(filters?: {
     const teacherMetrics = exams.reduce((acc: any, exam) => {
       if (!exam.creator) return acc;
       const teacherId = exam.creatorId!;
-      const teacherName = `${exam.creator.user.firstName} ${exam.creator.user.lastName}`;
+      const teacherName = `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}`;
 
       if (!acc[teacherId]) {
         acc[teacherId] = {

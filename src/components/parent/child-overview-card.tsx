@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatFullName } from "@/lib/utils";
 
 interface ChildOverviewCardProps {
   child: {
@@ -55,10 +56,10 @@ export function ChildOverviewCard({ child }: ChildOverviewCardProps) {
             <Avatar className="h-28 w-28 border-4 border-card shadow-md">
               <AvatarImage 
                 src={child.user.avatar || ""} 
-                alt={`${child.user.firstName} ${child.user.lastName}'s profile picture`}
+                alt={`${formatFullName(child.user.firstName, child.user.lastName)}'s profile picture`}
               />
               <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                {child.user.firstName.charAt(0)}{child.user.lastName.charAt(0)}
+                {child.user.firstName?.charAt(0)}{child.user.lastName?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             
@@ -72,7 +73,7 @@ export function ChildOverviewCard({ child }: ChildOverviewCardProps) {
             {/* Name and Email */}
             <div>
               <h3 className="text-2xl font-bold">
-                {child.user.firstName} {child.user.lastName}
+                {formatFullName(child.user.firstName, child.user.lastName)}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">{child.user.email}</p>
             </div>
@@ -149,20 +150,20 @@ export function ChildOverviewCard({ child }: ChildOverviewCardProps) {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 pt-2">
               <Button size="sm" asChild className="flex-1 sm:flex-none">
-                <Link href={`/parent/children/${child.id}`} aria-label={`View full profile for ${child.user.firstName} ${child.user.lastName}`}>
+                <Link href={`/parent/children/${child.id}`} aria-label={`View full profile for ${formatFullName(child.user.firstName, child.user.lastName)}`}>
                   View Full Profile
                 </Link>
               </Button>
               
               <Button size="sm" variant="outline" asChild className="flex-1 sm:flex-none">
-                <Link href={`/parent/performance/results?childId=${child.id}`} aria-label={`View performance for ${child.user.firstName} ${child.user.lastName}`}>
+                <Link href={`/parent/performance/results?childId=${child.id}`} aria-label={`View performance for ${formatFullName(child.user.firstName, child.user.lastName)}`}>
                   <BarChart2 className="h-4 w-4 mr-1.5" aria-hidden="true" />
                   Performance
                 </Link>
               </Button>
               
               <Button size="sm" variant="outline" asChild className="flex-1 sm:flex-none">
-                <Link href={`/parent/academics/schedule?childId=${child.id}`} aria-label={`View schedule for ${child.user.firstName} ${child.user.lastName}`}>
+                <Link href={`/parent/academics/schedule?childId=${child.id}`} aria-label={`View schedule for ${formatFullName(child.user.firstName, child.user.lastName)}`}>
                   <Calendar className="h-4 w-4 mr-1.5" aria-hidden="true" />
                   Schedule
                 </Link>

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Eye, Trash2, Download } from "lucide-react";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
 import { format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 // --- Types ---
 
@@ -97,7 +98,7 @@ export function PaymentsTable({ payments, onView, onEdit, onDelete, emptyMessage
             render: (payment: Payment) => (
                 <div>
                     <div className="font-medium">
-                        {payment.student?.user?.firstName} {payment.student?.user?.lastName}
+                        {formatFullName(payment.student?.user?.firstName, payment.student?.user?.lastName)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                         {payment.student?.admissionId}
@@ -107,7 +108,7 @@ export function PaymentsTable({ payments, onView, onEdit, onDelete, emptyMessage
             mobileRender: (payment: Payment) => (
                 <div>
                     <div className="font-medium text-sm">
-                        {payment.student?.user?.firstName} {payment.student?.user?.lastName}
+                        {formatFullName(payment.student?.user?.firstName, payment.student?.user?.lastName)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                         {payment.student?.enrollments?.[0]?.class?.name || "—"}

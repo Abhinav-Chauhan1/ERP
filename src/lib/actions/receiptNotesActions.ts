@@ -9,6 +9,7 @@ import {
   logReceiptNoteDelete,
 } from "@/lib/services/receipt-audit-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Add a note to a payment receipt
@@ -85,7 +86,7 @@ export async function addReceiptNote(receiptId: string, note: string) {
         receiptId,
         note: note.trim(),
         authorId: user.id,
-        authorName: `${user.firstName} ${user.lastName}`,
+        authorName: `${formatFullName(user.firstName, user.lastName)}`,
       },
     });
 

@@ -37,6 +37,7 @@ import {
   getAvailableStudentsForRoute,
 } from "@/lib/actions/routeActions";
 import { studentRouteSchema } from "@/lib/schemas/route-schemas";
+import { formatFullName } from "@/lib/utils";
 
 interface AssignStudentToRouteDialogProps {
   routeId: string;
@@ -172,7 +173,7 @@ export function AssignStudentToRouteDialog({
                         ) : (
                           students.map((student) => (
                             <SelectItem key={student.id} value={student.id}>
-                              {student.user.firstName} {student.user.lastName}
+                              {formatFullName(student.user.firstName, student.user.lastName)}
                               {student.enrollments[0] && (
                                 <span className="text-muted-foreground ml-2">
                                   ({student.enrollments[0].class.name}

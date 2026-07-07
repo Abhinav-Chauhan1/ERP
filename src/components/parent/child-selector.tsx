@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 
 interface Child {
   id: string;
@@ -99,7 +100,7 @@ export function ChildSelector({ selectedChildId }: ChildSelectorProps) {
             <SelectItem key={child.id} value={child.id}>
               <div className="flex flex-col">
                 <span className="font-medium">
-                  {child.user.firstName} {child.user.lastName}
+                  {formatFullName(child.user.firstName, child.user.lastName)}
                 </span>
                 {className && (
                   <span className="text-xs text-gray-500">{className}</span>

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { AttendanceStatus } from "@prisma/client";
 import { sendAttendanceNotification } from "@/lib/services/notification-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 type StudentAttendanceData = {
   studentId: string;
@@ -211,7 +212,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
 
       return {
         id: enrollment.student.id,
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         rollNumber: enrollment.student.rollNumber || enrollment.rollNumber || "N/A",
         className: classDetails.name,
         section: enrollment.section.name,
@@ -611,7 +612,7 @@ export async function getClassAttendanceForDate(classId: string, sectionId: stri
 
       return {
         id: enrollment.student.id,
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         rollNumber: enrollment.student.rollNumber || enrollment.rollNumber || "N/A",
         status: record ? record.status : "ABSENT",
         reason: record?.reason || null,
@@ -874,7 +875,7 @@ export async function getTeacherAttendanceReports(filters?: {
       if (!studentMap.has(studentId)) {
         studentMap.set(studentId, {
           studentId,
-          studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
+          studentName: `${formatFullName(record.student.user.firstName, record.student.user.lastName)}`,
           rollNumber: record.student.rollNumber || '',
           className: record.section.class.name,
           presentCount: 0,
@@ -942,7 +943,7 @@ export async function getTeacherAttendanceReports(filters?: {
     const recentAttendanceFormatted = recentAttendance.map(record => ({
       id: record.id,
       studentId: record.studentId,
-      studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
+      studentName: `${formatFullName(record.student.user.firstName, record.student.user.lastName)}`,
       rollNumber: record.student.rollNumber || '',
       className: record.section.class.name,
       sectionName: record.section.name,
@@ -1092,7 +1093,7 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
     return {
       student: {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         rollNumber: student.rollNumber || '',
         class: student.enrollments[0]?.class.name || 'Not Assigned',
         section: student.enrollments[0]?.section.name || 'Not Assigned',

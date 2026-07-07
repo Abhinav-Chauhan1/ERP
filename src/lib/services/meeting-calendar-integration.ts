@@ -8,6 +8,7 @@
 
 import { ParentMeeting, EventSourceType, UserRole } from '@prisma/client';
 import { db } from '@/lib/db';
+import { formatFullName } from "@/lib/utils";
 import {
   createCalendarEvent,
   updateCalendarEvent,
@@ -50,8 +51,8 @@ export async function createCalendarEventFromMeeting(
     
     // Build event description
     const description = meeting.description 
-      ? `${meeting.description}\n\nParent: ${meeting.parent.user.firstName} ${meeting.parent.user.lastName}\nTeacher: ${meeting.teacher.user.firstName} ${meeting.teacher.user.lastName}\nStatus: ${meeting.status}`
-      : `Parent: ${meeting.parent.user.firstName} ${meeting.parent.user.lastName}\nTeacher: ${meeting.teacher.user.firstName} ${meeting.teacher.user.lastName}\nStatus: ${meeting.status}`;
+      ? `${meeting.description}\n\nParent: ${formatFullName(meeting.parent.user.firstName, meeting.parent.user.lastName)}\nTeacher: ${formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}\nStatus: ${meeting.status}`
+      : `Parent: ${formatFullName(meeting.parent.user.firstName, meeting.parent.user.lastName)}\nTeacher: ${formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}\nStatus: ${meeting.status}`;
 
     // Calculate end time based on duration
     const endDate = meeting.duration 
@@ -137,8 +138,8 @@ export async function updateCalendarEventFromMeeting(
     
     // Build updated event description
     const description = meeting.description 
-      ? `${meeting.description}\n\nParent: ${meeting.parent.user.firstName} ${meeting.parent.user.lastName}\nTeacher: ${meeting.teacher.user.firstName} ${meeting.teacher.user.lastName}\nStatus: ${meeting.status}`
-      : `Parent: ${meeting.parent.user.firstName} ${meeting.parent.user.lastName}\nTeacher: ${meeting.teacher.user.firstName} ${meeting.teacher.user.lastName}\nStatus: ${meeting.status}`;
+      ? `${meeting.description}\n\nParent: ${formatFullName(meeting.parent.user.firstName, meeting.parent.user.lastName)}\nTeacher: ${formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}\nStatus: ${meeting.status}`
+      : `Parent: ${formatFullName(meeting.parent.user.firstName, meeting.parent.user.lastName)}\nTeacher: ${formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}\nStatus: ${meeting.status}`;
 
     // Calculate end time based on duration
     const endDate = meeting.duration 

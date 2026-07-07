@@ -6,6 +6,7 @@ import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -417,7 +418,7 @@ export const getTeachersForPayroll = withSchoolAuthAction(async (schoolId: strin
     // Format the data for the dropdown
     const formattedTeachers = teachers.map((teacher) => ({
       id: teacher.id,
-      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
       employeeId: teacher.employeeId,
       email: teacher.user.email,
       position: teacher.qualification || "Teacher",

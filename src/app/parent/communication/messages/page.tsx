@@ -17,6 +17,7 @@ import {
   getAvailableRecipients,
 } from "@/lib/actions/parent-communication-actions";
 import { toast } from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface MessageData {
   id: string;
@@ -108,7 +109,7 @@ export default function MessagesPage() {
         // Transform the data to match the expected format
         const formattedRecipients = result.data.map((user: any) => ({
           id: user.id,
-          name: `${user.firstName} ${user.lastName}`,
+          name: `${formatFullName(user.firstName, user.lastName)}`,
           email: user.email,
           role: user.role,
           avatar: user.avatar,

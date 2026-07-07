@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { DocumentsPageClient } from "./documents-page-client";
+import { formatFullName } from "@/lib/utils";
 
 interface PageProps {
   searchParams: Promise<{
@@ -78,7 +79,7 @@ export default async function DocumentsPage({ searchParams: searchParamsPromise 
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
     isPrimary: pc.isPrimary

@@ -50,6 +50,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
+import { formatFullName } from "@/lib/utils";
 import {
   getParentMeetings,
   scheduleMeeting,
@@ -250,7 +251,7 @@ export default function ParentMeetingsPage() {
     const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
     const teacherName = `${meeting.teacher?.user?.firstName || ""} ${meeting.teacher?.user?.lastName || ""}`;
     const studentName = meeting.parent?.children?.[0]?.student?.user
-      ? `${meeting.parent.children[0].student.user.firstName} ${meeting.parent.children[0].student.user.lastName}`
+      ? `${formatFullName(meeting.parent.children[0].student.user.firstName, meeting.parent.children[0].student.user.lastName)}`
       : "";
 
     const matchesSearch =
@@ -333,7 +334,7 @@ export default function ParentMeetingsPage() {
                     {parents.map(parent => {
                       const studentInfo = parent.children?.[0]?.student;
                       const studentName = studentInfo?.user
-                        ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+                        ? `${formatFullName(studentInfo.user.firstName, studentInfo.user.lastName)}`
                         : "No student";
                       const grade = studentInfo?.enrollments?.[0]
                         ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
@@ -341,7 +342,7 @@ export default function ParentMeetingsPage() {
 
                       return (
                         <SelectItem key={parent.id} value={parent.id}>
-                          {parent.user.firstName} {parent.user.lastName} (Parent of {studentName}{grade ? `, ${grade}` : ""})
+                          {formatFullName(parent.user.firstName, parent.user.lastName)} (Parent of {studentName}{grade ? `, ${grade}` : ""})
                         </SelectItem>
                       );
                     })}
@@ -361,7 +362,7 @@ export default function ParentMeetingsPage() {
                   <SelectContent>
                     {teachers.map(teacher => (
                       <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.user.firstName} {teacher.user.lastName}
+                        {formatFullName(teacher.user.firstName, teacher.user.lastName)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -683,7 +684,7 @@ export default function ParentMeetingsPage() {
             const teacherInitials = `${selectedMeeting.teacher?.user?.firstName?.[0] || ""}${selectedMeeting.teacher?.user?.lastName?.[0] || ""}`;
             const studentInfo = selectedMeeting.parent?.children?.[0]?.student;
             const studentName = studentInfo?.user
-              ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+              ? `${formatFullName(studentInfo.user.firstName, studentInfo.user.lastName)}`
               : "No student";
             const grade = studentInfo?.enrollments?.[0]
               ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
@@ -860,11 +861,11 @@ export default function ParentMeetingsPage() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <User className="h-4 w-4" />
-                      <span>{meeting.parent?.user?.firstName} {meeting.parent?.user?.lastName}</span>
+                      <span>{formatFullName(meeting.parent?.user?.firstName, meeting.parent?.user?.lastName)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      <span>{meeting.teacher?.user?.firstName} {meeting.teacher?.user?.lastName}</span>
+                      <span>{formatFullName(meeting.teacher?.user?.firstName, meeting.teacher?.user?.lastName)}</span>
                     </div>
                   </div>
                   {meeting.location && (

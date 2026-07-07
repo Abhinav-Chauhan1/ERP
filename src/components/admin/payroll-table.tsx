@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertCircle, XCircle, Eye, Wallet, Edit } from "lucide-react";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
+import { formatFullName } from "@/lib/utils";
 
 interface PayrollTableProps {
     payments: any[];
@@ -25,13 +26,13 @@ export function PayrollTable({ payments, onViewPayslip, onMakePayment, onEdit, m
             isHeader: true,
             render: (payment: any) => (
                 <div>
-                    <div className="font-medium">{payment.staffName || `${payment.teacher?.user?.firstName} ${payment.teacher?.user?.lastName}`}</div>
+                    <div className="font-medium">{payment.staffName || `${formatFullName(payment.teacher?.user?.firstName, payment.teacher?.user?.lastName)}`}</div>
                     <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
                 </div>
             ),
             mobileRender: (payment: any) => (
                 <div>
-                    <div className="font-medium text-sm">{payment.staffName || `${payment.teacher?.user?.firstName} ${payment.teacher?.user?.lastName}`}</div>
+                    <div className="font-medium text-sm">{payment.staffName || `${formatFullName(payment.teacher?.user?.firstName, payment.teacher?.user?.lastName)}`}</div>
                     <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
                 </div>
             )

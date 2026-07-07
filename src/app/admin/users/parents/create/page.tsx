@@ -20,6 +20,7 @@ import { ArrowLeft, Loader2, Users, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { formatFullName } from "@/lib/utils";
 
 export default function CreateParentPage() {
   const router = useRouter();
@@ -188,7 +189,7 @@ export default function CreateParentPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{student.user.firstName} {student.user.lastName}</p>
+                <p className="font-medium">{formatFullName(student.user.firstName, student.user.lastName)}</p>
                 <p className="text-sm text-muted-foreground">
                   Admission ID: {student.admissionId}
                   {student.enrollments?.[0] && ` • Class: ${student.enrollments[0].class.name}`}
@@ -370,7 +371,7 @@ export default function CreateParentPage() {
                                     students
                                       .filter((s) => {
                                         if (!studentSearch) return true;
-                                        const fullName = `${s.user.firstName} ${s.user.lastName}`.toLowerCase();
+                                        const fullName = `${formatFullName(s.user.firstName, s.user.lastName)}`.toLowerCase();
                                         const admissionId = s.admissionId.toLowerCase();
                                         return fullName.includes(studentSearch) || admissionId.includes(studentSearch);
                                       })
@@ -383,7 +384,7 @@ export default function CreateParentPage() {
                                         >
                                           <div className="flex items-center justify-between">
                                             <div>
-                                              <p className="font-medium text-sm">{s.user.firstName} {s.user.lastName}</p>
+                                              <p className="font-medium text-sm">{formatFullName(s.user.firstName, s.user.lastName)}</p>
                                               <p className="text-xs text-muted-foreground">ID: {s.admissionId}</p>
                                             </div>
                                             {selectedStudentId === s.id && (

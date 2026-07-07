@@ -2,6 +2,7 @@ import { User } from "@prisma/client";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatFullName } from "@/lib/utils";
 
 interface StudentHeaderProps {
   student: any;
@@ -24,7 +25,7 @@ export function StudentHeader({ student }: StudentHeaderProps) {
           
           <div className="space-y-1">
             <h2 className="text-2xl font-bold">
-              {student.user?.firstName} {student.user?.lastName}
+              {formatFullName(student.user?.firstName, student.user?.lastName)}
             </h2>
             
             <div className="flex flex-wrap gap-x-4 text-sm text-muted-foreground">

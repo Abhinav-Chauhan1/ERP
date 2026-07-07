@@ -16,6 +16,7 @@ import {
   type GetClassComparisonInput,
 } from "@/lib/schemaValidation/parent-performance-schemas";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 import type {
   ExamResultData,
   ProgressReportData,
@@ -454,7 +455,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
           id: reportCard.id,
           student: {
             id: student.id,
-            name: `${student.user.firstName} ${student.user.lastName}`,
+            name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
             admissionId: student.admissionId,
             rollNumber: student.rollNumber,
             class: currentEnrollment.class.name,
@@ -835,7 +836,7 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
     const analytics: PerformanceAnalytics = {
       student: {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         admissionId: student.admissionId,
         class: currentEnrollment.class.name,
         section: currentEnrollment.section.name
@@ -1009,7 +1010,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
     // Prepare report card data for PDF generation
     const reportCardData = {
       student: {
-        name: `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`,
+        name: `${formatFullName(reportCard.student.user.firstName, reportCard.student.user.lastName)}`,
         admissionId: reportCard.student.admissionId,
         rollNumber: reportCard.student.rollNumber,
         class: reportCard.student.enrollments[0]?.class.name || "N/A",

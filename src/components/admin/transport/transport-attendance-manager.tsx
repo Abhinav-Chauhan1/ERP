@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatFullName } from "@/lib/utils";
 import { getRoutes } from "@/lib/actions/routeActions";
 import {
   getTransportAttendanceByRouteAndDate,
@@ -389,7 +389,7 @@ export function TransportAttendanceManager() {
                       >
                         <div className="flex-1">
                           <div className="font-medium">
-                            {student.user.firstName} {student.user.lastName}
+                            {formatFullName(student.user.firstName, student.user.lastName)}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {student.admissionId}

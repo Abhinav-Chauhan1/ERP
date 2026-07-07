@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle, DollarSign, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatFullName } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function FeePaymentSummary({ payments, children }: FeePaymentSummaryProps
         {paymentsByChild.map(({ child, totalFees, totalPaid, balance, latestPayment, hasOverdue }) => (
           <div key={child.id} className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-muted transition-all hover:bg-muted/30">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">{child.user.firstName} {child.user.lastName}</h3>
+              <h3 className="font-bold text-lg">{formatFullName(child.user.firstName, child.user.lastName)}</h3>
               {hasOverdue ? (
                 <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-none px-3 py-1 animate-pulse">
                   <AlertCircle className="h-3.5 w-3.5 mr-1" />

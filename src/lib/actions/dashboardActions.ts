@@ -2,6 +2,7 @@
 
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
@@ -473,7 +474,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
       ...recentExams.map((exam: any) => ({
         id: exam.id,
         user: {
-          name: exam.creator ? `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : 'Unknown',
+          name: exam.creator ? `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}` : 'Unknown',
           role: 'teacher',
         },
         action: 'created an exam for',
@@ -483,7 +484,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
       ...recentAssignments.map((assignment: any) => ({
         id: assignment.id,
         user: {
-          name: assignment.creator ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : 'Unknown',
+          name: assignment.creator ? `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}` : 'Unknown',
           role: 'teacher',
         },
         action: 'created an assignment in',
@@ -493,7 +494,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
       ...recentAnnouncements.map((announcement: any) => ({
         id: announcement.id,
         user: {
-          name: `${announcement.publisher.user.firstName} ${announcement.publisher.user.lastName}`,
+          name: `${formatFullName(announcement.publisher.user.firstName, announcement.publisher.user.lastName)}`,
           role: 'admin',
         },
         action: 'created an announcement for',

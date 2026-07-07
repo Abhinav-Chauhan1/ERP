@@ -8,6 +8,7 @@
 import { db } from "@/lib/db";
 import { ReceiptStatus } from "@prisma/client";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 interface ReportData {
   period: string;
@@ -166,7 +167,7 @@ async function generateReport(
       .map((r) => ({
         id: r.id,
         referenceNumber: r.referenceNumber,
-        studentName: `${r.student.user.firstName} ${r.student.user.lastName}`,
+        studentName: `${formatFullName(r.student.user.firstName, r.student.user.lastName)}`,
         amount: r.amount,
         daysWaiting: Math.floor((now.getTime() - r.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
       }))
@@ -213,7 +214,7 @@ async function generateReport(
       .map((admin) => {
         const stats = adminStats.get(admin.id) || { verified: 0, rejected: 0 };
         return {
-          adminName: `${admin.firstName} ${admin.lastName}`,
+          adminName: `${formatFullName(admin.firstName, admin.lastName)}`,
           verified: stats.verified,
           rejected: stats.rejected,
           total: stats.verified + stats.rejected,

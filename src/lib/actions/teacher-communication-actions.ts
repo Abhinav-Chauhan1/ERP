@@ -8,6 +8,7 @@ import { z } from "zod";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { sanitizeText, sanitizeHtml } from "@/lib/utils/input-sanitization";
+import { formatFullName } from "@/lib/utils";
 import {
   normalizePagination,
   calculatePaginationMeta,
@@ -266,7 +267,7 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
       data: {
         messageId: message.id,
         recipient: {
-          name: `${message.recipient.firstName} ${message.recipient.lastName}`,
+          name: `${formatFullName(message.recipient.firstName, message.recipient.lastName)}`,
           email: message.recipient.email
         }
       },

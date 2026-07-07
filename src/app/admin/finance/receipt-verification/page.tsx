@@ -36,6 +36,7 @@ import {
 import { getReceiptById } from "@/lib/actions/paymentReceiptActions";
 import { exportReceipts } from "@/lib/utils/receipt-export";
 import toast from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface Receipt {
   id: string;
@@ -197,7 +198,7 @@ export default function ReceiptVerificationPage() {
     const exportData = verifiedReceipts.map((receipt) => ({
       referenceNumber: receipt.referenceNumber,
       status: receipt.status,
-      studentName: `${receipt.student.user.firstName} ${receipt.student.user.lastName}`,
+      studentName: `${formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}`,
       studentEmail: receipt.student.user.email,
       admissionNumber: receipt.student.admissionNumber,
       class: receipt.student.enrollments[0]?.class.name || "N/A",
@@ -227,7 +228,7 @@ export default function ReceiptVerificationPage() {
     const exportData = rejectedReceipts.map((receipt) => ({
       referenceNumber: receipt.referenceNumber,
       status: receipt.status,
-      studentName: `${receipt.student.user.firstName} ${receipt.student.user.lastName}`,
+      studentName: `${formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}`,
       studentEmail: receipt.student.user.email,
       admissionNumber: receipt.student.admissionNumber,
       class: receipt.student.enrollments[0]?.class.name || "N/A",

@@ -39,6 +39,7 @@ import {
 } from "@/lib/actions/eventActions";
 import { getUsersForDropdown } from "@/lib/actions/userDashboardActions";
 import * as z from "zod";
+import { formatFullName } from "@/lib/utils";
 
 const formatDate = (d: Date | string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 const formatTime = (d: Date | string) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -311,7 +312,7 @@ export function AdminEventDetailClient({ event: initialEvent, initialParticipant
                                 <AvatarFallback className="text-xs">{p.user?.firstName?.[0]}{p.user?.lastName?.[0]}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="font-medium">{p.user?.firstName} {p.user?.lastName}</p>
+                                <p className="font-medium">{formatFullName(p.user?.firstName, p.user?.lastName)}</p>
                                 <p className="text-xs text-muted-foreground">{p.user?.email}</p>
                               </div>
                             </div>

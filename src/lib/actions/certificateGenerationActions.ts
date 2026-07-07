@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
+import { formatFullName } from "@/lib/utils";
 import {
   generateBulkCertificates,
   generateSingleCertificate,
@@ -98,9 +99,9 @@ export async function bulkGenerateCertificates(
       const currentEnrollment = student.enrollments[0];
       return {
         studentId: student.id,
-        studentName: `${student.user.firstName} ${student.user.lastName}`,
+        studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         data: {
-          studentName: `${student.user.firstName} ${student.user.lastName}`,
+          studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           studentFirstName: student.user.firstName,
           studentLastName: student.user.lastName,
           admissionId: student.admissionId,
@@ -217,9 +218,9 @@ export async function generateCertificateForStudent(
     // Prepare student data
     const studentData: CertificateGenerationData = {
       studentId: student.id,
-      studentName: `${student.user.firstName} ${student.user.lastName}`,
+      studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       data: {
-        studentName: `${student.user.firstName} ${student.user.lastName}`,
+        studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         studentFirstName: student.user.firstName,
         studentLastName: student.user.lastName,
         admissionId: student.admissionId,

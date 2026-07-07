@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, format, addDays } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // getTeacherDashboardData — single entry point, all queries parallelised
@@ -342,7 +343,7 @@ export async function getTeacherDashboardData() {
       success: true,
       data: {
         teacher: {
-          name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+          name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
           email: teacher.user.email,
         },
         stats: {
@@ -358,7 +359,7 @@ export async function getTeacherDashboardData() {
           id: a.id,
           title: a.title,
           content: a.content,
-          publisherName: `${a.publisher.user.firstName} ${a.publisher.user.lastName}`,
+          publisherName: `${formatFullName(a.publisher.user.firstName, a.publisher.user.lastName)}`,
           startDate: format(a.startDate, "MMM dd, yyyy"),
           createdAt: format(a.createdAt, "MMM dd, yyyy"),
         })),

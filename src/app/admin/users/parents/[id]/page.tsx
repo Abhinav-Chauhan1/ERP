@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFullName } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,7 +125,7 @@ export default async function ParentDetailPage({
 
       <div className="flex justify-between items-start">
         <h1 className="text-2xl font-bold tracking-tight">
-          {parent.user.firstName} {parent.user.lastName}
+          {formatFullName(parent.user.firstName, parent.user.lastName)}
         </h1>
         <div className="flex gap-2">
           <Link href={`/admin/users/parents/${parent.id}/edit`}>
@@ -152,7 +152,7 @@ export default async function ParentDetailPage({
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
                 <p className="font-medium">
-                  {parent.user.firstName} {parent.user.lastName}
+                  {formatFullName(parent.user.firstName, parent.user.lastName)}
                 </p>
               </div>
               <div>
@@ -223,7 +223,7 @@ export default async function ParentDetailPage({
                       {child.student.user.avatar ? (
                         <OptimizedImage
                           src={child.student.user.avatar}
-                          alt={`${child.student.user.firstName} ${child.student.user.lastName}`}
+                          alt={`${formatFullName(child.student.user.firstName, child.student.user.lastName)}`}
                           width={40}
                           height={40}
                           className="h-10 w-10 rounded-full object-cover"
@@ -295,7 +295,7 @@ export default async function ParentDetailPage({
                       {parent.meetings.map((meeting) => (
                         <tr key={meeting.id} className="border-b">
                           <td className="py-3 px-4 align-middle">{meeting.title}</td>
-                          <td className="py-3 px-4 align-middle">{meeting.teacher.user.firstName} {meeting.teacher.user.lastName}</td>
+                          <td className="py-3 px-4 align-middle">{formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}</td>
                           <td className="py-3 px-4 align-middle">{formatDate(meeting.scheduledDate)}</td>
                           <td className="py-3 px-4 align-middle">
                             <Badge

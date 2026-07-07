@@ -7,6 +7,7 @@ import { ChildSelector } from "@/components/parent/child-selector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
 import { format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 export default async function ParentAcademicProcessPage({
   searchParams: searchParamsPromise,
@@ -23,7 +24,7 @@ export default async function ParentAcademicProcessPage({
   const academicData = await getChildAcademicProcess(childId);
 
   const studentName = academicData.student
-    ? `${academicData.student.user.firstName} ${academicData.student.user.lastName}`
+    ? `${formatFullName(academicData.student.user.firstName, academicData.student.user.lastName)}`
     : undefined;
 
   const academicYear = academicData.currentEnrollment

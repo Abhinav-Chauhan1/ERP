@@ -26,6 +26,7 @@ import Link from "next/link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { AuditAction } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 interface AuditLog {
   id: string;
@@ -348,7 +349,7 @@ export default function ReceiptAuditLogsPage() {
                         <TableCell>
                           <div>
                             <p className="font-medium">
-                              {log.user.firstName} {log.user.lastName}
+                              {formatFullName(log.user.firstName, log.user.lastName)}
                             </p>
                             <p className="text-sm text-muted-foreground">{log.user.email}</p>
                           </div>

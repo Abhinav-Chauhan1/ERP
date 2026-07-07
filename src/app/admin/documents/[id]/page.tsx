@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { getDocument, deleteDocument } from "@/lib/actions/documentActions";
+import { formatFullName } from "@/lib/utils";
 
 // Utility function to format dates
 const formatDate = (date: Date | string) => {
@@ -243,7 +244,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
               <div>
                 <h3 className="text-sm font-medium">Uploaded By</h3>
                 <p className="text-sm text-gray-600">
-                  {document.user.firstName} {document.user.lastName}
+                  {formatFullName(document.user.firstName, document.user.lastName)}
                   <span className="block text-xs text-gray-500">{document.user.email}</span>
                 </p>
               </div>

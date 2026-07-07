@@ -8,6 +8,7 @@ import { Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import type { Book, BookIssue, Student, User } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 interface BookDetailProps {
   book: Book & {
@@ -143,7 +144,7 @@ export function BookDetail({ book }: BookDetailProps) {
                 >
                   <div>
                     <p className="font-medium">
-                      {issue.student.user.firstName} {issue.student.user.lastName}
+                      {formatFullName(issue.student.user.firstName, issue.student.user.lastName)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {issue.student.admissionId}

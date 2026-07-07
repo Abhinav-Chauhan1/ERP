@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { formatFullName } from "@/lib/utils";
 
 interface AttendanceSummaryProps {
   attendanceStats: {
@@ -30,7 +31,7 @@ export function AttendanceSummary({ attendanceStats, children }: AttendanceSumma
             return (
               <div key={stats.studentId} className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-muted transition-all hover:bg-muted/30">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-lg">{child.user.firstName} {child.user.lastName}</h3>
+                  <h3 className="font-bold text-lg">{formatFullName(child.user.firstName, child.user.lastName)}</h3>
                   <Badge variant={stats.attendancePercentage >= 90 ? "secondary" : "outline"} className={stats.attendancePercentage >= 90 ? "bg-emerald-500/10 text-emerald-600 border-none" : "text-amber-600 border-amber-500/20 bg-amber-500/5"}>
                     {stats.attendancePercentage.toFixed(1)}% Present
                   </Badge>

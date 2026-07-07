@@ -26,6 +26,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface CourseDetailProps {
   course: {
@@ -185,7 +186,7 @@ export function CourseDetail({
           <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              <span>{course.teacher.user.firstName} {course.teacher.user.lastName}</span>
+              <span>{formatFullName(course.teacher.user.firstName, course.teacher.user.lastName)}</span>
             </div>
             {course.duration && (
               <div className="flex items-center gap-2">

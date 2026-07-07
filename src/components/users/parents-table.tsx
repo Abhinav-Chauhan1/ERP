@@ -10,6 +10,7 @@ import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
 import { EmptyState } from "./empty-state";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
+import { formatFullName } from "@/lib/utils";
 
 interface Parent {
   id: string;
@@ -48,7 +49,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
 
   const filteredAndSortedParents = useMemo(() => {
     let filtered = parents.filter((parent) => {
-      const fullName = `${parent.user.firstName} ${parent.user.lastName}`.toLowerCase();
+      const fullName = `${formatFullName(parent.user.firstName, parent.user.lastName)}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         parent.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         parent.user.phone?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -68,9 +69,9 @@ export function ParentsTable({ parents }: ParentsTableProps) {
         case "oldest":
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case "name-asc":
-          return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+          return `${formatFullName(a.user.firstName, a.user.lastName)}`.localeCompare(`${formatFullName(b.user.firstName, b.user.lastName)}`);
         case "name-desc":
-          return `${b.user.firstName} ${b.user.lastName}`.localeCompare(`${a.user.firstName} ${a.user.lastName}`);
+          return `${formatFullName(b.user.firstName, b.user.lastName)}`.localeCompare(`${formatFullName(a.user.firstName, a.user.lastName)}`);
         default:
           return 0;
       }
@@ -93,23 +94,23 @@ export function ParentsTable({ parents }: ParentsTableProps) {
       render: (parent: Parent) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
+            <AvatarImage src={parent.user.avatar || undefined} alt={`${formatFullName(parent.user.firstName, parent.user.lastName)}`} />
             <AvatarFallback>{parent.user.firstName?.[0]}{parent.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
-            {parent.user.firstName} {parent.user.lastName}
+            {formatFullName(parent.user.firstName, parent.user.lastName)}
           </div>
         </div>
       ),
       mobileRender: (parent: Parent) => (
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
+            <AvatarImage src={parent.user.avatar || undefined} alt={`${formatFullName(parent.user.firstName, parent.user.lastName)}`} />
             <AvatarFallback className="text-xs">{parent.user.firstName?.[0]}{parent.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">
-              {parent.user.firstName} {parent.user.lastName}
+              {formatFullName(parent.user.firstName, parent.user.lastName)}
             </div>
           </div>
           <Badge
@@ -143,7 +144,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
             <>
               {parent.children.slice(0, 2).map((child) => (
                 <Badge key={child.id} variant="outline" className="text-xs">
-                  {child.student.user.firstName} {child.student.user.lastName}
+                  {formatFullName(child.student.user.firstName, child.student.user.lastName)}
                 </Badge>
               ))}
               {parent.children.length > 2 && (

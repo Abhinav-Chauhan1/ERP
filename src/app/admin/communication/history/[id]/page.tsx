@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, User, MessageSquare, DollarSign } from "lucide-rea
 import Link from "next/link";
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
+import { formatFullName } from "@/lib/utils";
 
 export default async function MessageHistoryDetailPage({
   params,
@@ -118,7 +119,7 @@ export default async function MessageHistoryDetailPage({
                   <div className="flex items-center gap-2 mt-1">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <p>
-                      {message.sender.firstName} {message.sender.lastName}
+                      {formatFullName(message.sender.firstName, message.sender.lastName)}
                     </p>
                   </div>
                 </div>

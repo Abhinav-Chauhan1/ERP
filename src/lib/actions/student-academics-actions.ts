@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { DayOfWeek } from "@prisma/client";
 import { z } from "zod";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get the current student's academic details including enrollment information
@@ -107,7 +108,7 @@ export async function getStudentSubjects() {
     syllabus: subjectClass.subject.syllabus[0] || null,
     teachers: subjectClass.subject.teachers.map((relation) => ({
       id: relation.teacher.id,
-      name: `${relation.teacher.user.firstName} ${relation.teacher.user.lastName}`,
+      name: `${formatFullName(relation.teacher.user.firstName, relation.teacher.user.lastName)}`,
     })),
   }));
 }
@@ -342,7 +343,7 @@ export async function getStudentTimetable() {
         id: slot.id,
         subject: slot.subjectTeacher.subject.name,
         subjectCode: slot.subjectTeacher.subject.code,
-        teacher: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`,
+        teacher: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`,
         teacherId: slot.subjectTeacher.teacher.id,
         room: slot.room?.name || "Not assigned",
         startTime: slot.startTime,

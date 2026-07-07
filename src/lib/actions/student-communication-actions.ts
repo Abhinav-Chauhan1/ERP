@@ -6,6 +6,7 @@ import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { uploadHandler } from "@/lib/services/upload-handler";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Helper function to get current student and verify authentication
@@ -854,7 +855,7 @@ export async function sendMessage(data: z.infer<typeof sendMessageSchema>) {
       data: {
         userId: validated.recipientId,
         title: "New Message",
-        message: `You have a new message from ${user.firstName} ${user.lastName}: ${validated.subject}`,
+        message: `You have a new message from ${formatFullName(user.firstName, user.lastName)}: ${validated.subject}`,
         type: "MESSAGE",
         link: `/student/communication/messages/${message.id}`,
         isRead: false,
@@ -980,7 +981,7 @@ export async function replyToMessage(data: z.infer<typeof replyToMessageSchema>)
       data: {
         userId: recipientId,
         title: "New Reply",
-        message: `${user.firstName} ${user.lastName} replied to your message: ${originalMessage.subject}`,
+        message: `${formatFullName(user.firstName, user.lastName)} replied to your message: ${originalMessage.subject}`,
         type: "MESSAGE",
         link: `/student/communication/messages/${replyMessage.id}`,
         isRead: false,

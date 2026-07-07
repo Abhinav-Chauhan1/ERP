@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 export async function getStudentProfile() {
   const session = await auth();
@@ -333,7 +334,7 @@ export async function getStudentTodaySchedule(studentId: string) {
     id: slot.id,
     subject: slot.subjectTeacher.subject.name,
     teacher: slot.subjectTeacher.teacher,
-    teacherName: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`,
+    teacherName: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`,
     room: slot.room?.name || "Not assigned",
     startTime: slot.startTime,
     endTime: slot.endTime,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFullName } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
@@ -47,7 +47,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter((student) => {
-      const fullName = `${student.user.firstName} ${student.user.lastName}`.toLowerCase();
+      const fullName = `${formatFullName(student.user.firstName, student.user.lastName)}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         student.admissionId.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -67,9 +67,9 @@ export function StudentsTable({ students }: StudentsTableProps) {
         case "oldest":
           return new Date(a.admissionDate).getTime() - new Date(b.admissionDate).getTime();
         case "name-asc":
-          return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+          return `${formatFullName(a.user.firstName, a.user.lastName)}`.localeCompare(`${formatFullName(b.user.firstName, b.user.lastName)}`);
         case "name-desc":
-          return `${b.user.firstName} ${b.user.lastName}`.localeCompare(`${a.user.firstName} ${a.user.lastName}`);
+          return `${formatFullName(b.user.firstName, b.user.lastName)}`.localeCompare(`${formatFullName(a.user.firstName, a.user.lastName)}`);
         default:
           return 0;
       }
@@ -92,23 +92,23 @@ export function StudentsTable({ students }: StudentsTableProps) {
       render: (student: Student) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+            <AvatarImage src={student.user.avatar || undefined} alt={`${formatFullName(student.user.firstName, student.user.lastName)}`} />
             <AvatarFallback>{student.user.firstName?.[0]}{student.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
-            {student.user.firstName} {student.user.lastName}
+            {formatFullName(student.user.firstName, student.user.lastName)}
           </div>
         </div>
       ),
       mobileRender: (student: Student) => (
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+            <AvatarImage src={student.user.avatar || undefined} alt={`${formatFullName(student.user.firstName, student.user.lastName)}`} />
             <AvatarFallback className="text-xs">{student.user.firstName?.[0]}{student.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">
-              {student.user.firstName} {student.user.lastName}
+              {formatFullName(student.user.firstName, student.user.lastName)}
             </div>
           </div>
           <Badge

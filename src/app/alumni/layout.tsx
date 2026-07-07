@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatFullName } from "@/lib/utils";
 
 interface AlumniLayoutProps {
   children: ReactNode;
@@ -218,7 +219,7 @@ export default async function AlumniLayout({ children }: AlumniLayoutProps) {
     redirect("/student");
   }
 
-  const userName = `${student.user.firstName} ${student.user.lastName}`;
+  const userName = `${formatFullName(student.user.firstName, student.user.lastName)}`;
   const userEmail = student.user.email;
   const userAvatar = student.alumni.profilePhoto || student.user.avatar || undefined;
 

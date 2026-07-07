@@ -11,6 +11,7 @@ import {
   deleteCalendarEventFromExam
 } from "../services/exam-calendar-integration";
 import { calculateGrade } from "../utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get all exams for a teacher
@@ -306,7 +307,7 @@ export async function getTeacherExam(examId: string) {
       return {
         id: existingResult?.id || `new-${enrollment.studentId}`,
         studentId: enrollment.studentId,
-        studentName: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        studentName: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         marks: existingResult ? existingResult.marks : 0,
         grade: existingResult ? (existingResult.grade || 'N/A') : 'N/A',
         remarks: existingResult ? (existingResult.remarks || '') : '',
@@ -693,7 +694,7 @@ export async function getStudentsForExam(subjectId: string) {
     // Format student data
     const students = enrollments.map(enrollment => ({
       id: enrollment.student.id,
-      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+      name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
       rollNumber: enrollment.student.rollNumber || enrollment.rollNumber || 'N/A',
       class: enrollment.class.name,
       section: enrollment.section.name,

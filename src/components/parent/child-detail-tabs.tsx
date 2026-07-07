@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { setPrimaryParent } from "@/lib/actions/parent-children-actions";
 import { toast } from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface ChildDetailTabsProps {
   childDetails: any;
@@ -64,7 +65,7 @@ export function ChildDetailTabs({ childDetails }: ChildDetailTabsProps) {
                 <div>
                   <p className="text-sm text-gray-500">Full Name</p>
                   <p className="font-medium">
-                    {childDetails.student.user.firstName} {childDetails.student.user.lastName}
+                    {formatFullName(childDetails.student.user.firstName, childDetails.student.user.lastName)}
                   </p>
                 </div>
                 <div>

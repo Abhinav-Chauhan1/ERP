@@ -4,7 +4,7 @@ import { use } from "react";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFullName } from "@/lib/utils";
 import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -192,7 +192,7 @@ function AddParentDialog({
                         parents
                           .filter((parent) => {
                             if (!parentSearch) return true;
-                            const fullName = `${parent.user.firstName} ${parent.user.lastName}`.toLowerCase();
+                            const fullName = `${formatFullName(parent.user.firstName, parent.user.lastName)}`.toLowerCase();
                             const email = parent.user.email.toLowerCase();
                             return fullName.includes(parentSearch) || email.includes(parentSearch);
                           })
@@ -205,7 +205,7 @@ function AddParentDialog({
                             >
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="font-medium text-sm">{parent.user.firstName} {parent.user.lastName}</p>
+                                  <p className="font-medium text-sm">{formatFullName(parent.user.firstName, parent.user.lastName)}</p>
                                   <p className="text-xs text-muted-foreground">{parent.user.email}</p>
                                 </div>
                                 {selectedParentId === parent.id && (
@@ -520,7 +520,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
       <div className="flex justify-between items-start">
         <h1 className="text-2xl font-bold tracking-tight">
-          {student.user.firstName} {student.user.lastName}
+          {formatFullName(student.user.firstName, student.user.lastName)}
         </h1>
         <div className="flex gap-2">
           <Link href={`/admin/users/students/${student.id}/edit`}>
@@ -565,7 +565,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                     {student.user.avatar ? (
                       <OptimizedImage
                         src={student.user.avatar}
-                        alt={`${student.user.firstName} ${student.user.lastName}`}
+                        alt={`${formatFullName(student.user.firstName, student.user.lastName)}`}
                         width={128}
                         height={128}
                         className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-md"
@@ -587,7 +587,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   </div>
 
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-y-4">
-                    <DetailItem label="Full Name" value={`${student.user.firstName} ${student.user.lastName}`} />
+                    <DetailItem label="Full Name" value={`${formatFullName(student.user.firstName, student.user.lastName)}`} />
                     <DetailItem label="Email" value={student.user.email} icon={Mail} />
                     <DetailItem label="Phone" value={student.user.phone} icon={Phone} />
                     <DetailItem label="Date of Birth" value={formatDate(student.dateOfBirth)} icon={Calendar} />
@@ -742,7 +742,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               </div>
               <AddParentDialog
                 studentId={student.id}
-                studentName={`${student.user.firstName} ${student.user.lastName}`}
+                studentName={`${formatFullName(student.user.firstName, student.user.lastName)}`}
                 onSuccess={fetchStudentDetails}
               />
             </CardHeader>
@@ -755,7 +755,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                         {parentRelation.parent.user.avatar ? (
                           <OptimizedImage
                             src={parentRelation.parent.user.avatar}
-                            alt={`${parentRelation.parent.user.firstName} ${parentRelation.parent.user.lastName}`}
+                            alt={`${formatFullName(parentRelation.parent.user.firstName, parentRelation.parent.user.lastName)}`}
                             width={40}
                             height={40}
                             className="h-10 w-10 rounded-full object-cover"
@@ -768,7 +768,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                           </div>
                         )}
                         <div>
-                          <p className="font-medium">{parentRelation.parent.user.firstName} {parentRelation.parent.user.lastName}</p>
+                          <p className="font-medium">{formatFullName(parentRelation.parent.user.firstName, parentRelation.parent.user.lastName)}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />
@@ -800,7 +800,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-muted-foreground mb-4">No parent accounts associated with this student</p>
                   <AddParentDialog
                     studentId={student.id}
-                    studentName={`${student.user.firstName} ${student.user.lastName}`}
+                    studentName={`${formatFullName(student.user.firstName, student.user.lastName)}`}
                     onSuccess={fetchStudentDetails}
                   />
                 </div>
@@ -1016,7 +1016,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <DialogHeader>
             <DialogTitle>Enroll Student</DialogTitle>
             <DialogDescription>
-              Enroll {student.user.firstName} {student.user.lastName} in a class
+              Enroll {formatFullName(student.user.firstName, student.user.lastName)} in a class
             </DialogDescription>
           </DialogHeader>
           <Form {...enrollmentForm}>
@@ -1205,7 +1205,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <DialogHeader>
             <DialogTitle>Delete Student</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <span className="font-semibold">{student.user.firstName} {student.user.lastName}</span>? This will permanently remove the student and all associated data. This action cannot be undone.
+              Are you sure you want to delete <span className="font-semibold">{formatFullName(student.user.firstName, student.user.lastName)}</span>? This will permanently remove the student and all associated data. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

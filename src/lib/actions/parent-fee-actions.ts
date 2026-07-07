@@ -22,6 +22,7 @@ import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -182,7 +183,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         data: {
           student: {
             id: student.id,
-            name: `${student.user.firstName} ${student.user.lastName}`,
+            name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
             class: currentEnrollment.class.name
           },
           totalFees: 0,
@@ -261,7 +262,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       data: {
         student: {
           id: student.id,
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           class: currentEnrollment.class.name
         },
         feeStructureId: feeStructure.id,
@@ -590,7 +591,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
       receiptNumber: payment.receiptNumber,
       paymentDate: payment.paymentDate,
       student: {
-        name: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+        name: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
         email: payment.student.user.email ?? '',
         class: payment.student.enrollments[0]?.class.name || "N/A",
         section: payment.student.enrollments[0]?.section.name || "N/A",

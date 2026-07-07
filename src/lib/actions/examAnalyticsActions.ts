@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get comprehensive analytics for an online exam
@@ -227,7 +228,7 @@ export async function getExamAnalytics(examId: string) {
 
       return {
         studentId: attempt.studentId,
-        studentName: `${attempt.student.user.firstName} ${attempt.student.user.lastName}`,
+        studentName: `${formatFullName(attempt.student.user.firstName, attempt.student.user.lastName)}`,
         score: attempt.score,
         percentage: ((attempt.score! / exam.totalMarks) * 100).toFixed(2),
         timeTaken,
@@ -359,7 +360,7 @@ export async function getQuestionWiseAnalysis(examId: string, questionId: string
 
       responseAnalysis.push({
         studentId: attempt.studentId,
-        studentName: `${attempt.student.user.firstName} ${attempt.student.user.lastName}`,
+        studentName: `${formatFullName(attempt.student.user.firstName, attempt.student.user.lastName)}`,
         answer: studentAnswer,
         isCorrect,
         score,

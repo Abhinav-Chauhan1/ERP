@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format, differenceInDays, isFuture } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 type CalendarEventWithCategory = CalendarEvent & {
   category: CalendarEventCategory;
@@ -311,7 +312,7 @@ export default function ParentCalendarPage() {
               {children.map((child) => (
                 <SelectItem key={child.id} value={child.id}>
                   <div className="flex flex-col">
-                    <span>{child.user.firstName} {child.user.lastName}</span>
+                    <span>{formatFullName(child.user.firstName, child.user.lastName)}</span>
                     {child.enrollments[0] && (
                       <span className="text-xs text-muted-foreground">
                         {child.enrollments[0].class.name} - {child.enrollments[0].section.name}

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { scheduleMeeting } from "@/lib/actions/parent-meeting-actions";
+import { formatFullName } from "@/lib/utils";
 
 interface Teacher {
   id: string;
@@ -178,7 +179,7 @@ export function MeetingScheduleForm({
               <SelectContent>
                 {teachers.map((teacher) => (
                   <SelectItem key={teacher.id} value={teacher.id}>
-                    {teacher.user.firstName} {teacher.user.lastName}
+                    {formatFullName(teacher.user.firstName, teacher.user.lastName)}
                   </SelectItem>
                 ))}
               </SelectContent>

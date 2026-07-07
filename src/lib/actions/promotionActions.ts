@@ -16,6 +16,7 @@ import { UserRole, EnrollmentStatus, AuditAction } from "@prisma/client";
 import { PromotionService } from "@/lib/services/promotionService";
 import { logAudit } from "@/lib/utils/audit-log";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 import {
   getStudentsForPromotionSchema,
   promotionPreviewSchema,
@@ -177,7 +178,7 @@ export async function getStudentsForPromotion(
     // Format student data
     const students = enrollments.map((enrollment) => ({
       id: enrollment.student.id,
-      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+      name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
       rollNumber: enrollment.rollNumber,
       admissionId: enrollment.student.admissionId,
       warnings: [], // Will be populated in preview
@@ -288,7 +289,7 @@ export async function previewPromotion(
 
       return {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         rollNumber: enrollment?.rollNumber || null,
         admissionId: student.admissionId,
         warnings,
@@ -572,7 +573,7 @@ export async function executeBulkPromotion(
       return {
         studentId: f.studentId,
         studentName: student
-          ? `${student.user.firstName} ${student.user.lastName}`
+          ? `${formatFullName(student.user.firstName, student.user.lastName)}`
           : "Unknown",
         reason: f.reason,
       };
@@ -721,7 +722,7 @@ export async function getPromotionHistory(
     });
 
     const executorMap = new Map(
-      executors.map((e) => [e.id, `${e.firstName} ${e.lastName}`])
+      executors.map((e) => [e.id, `${formatFullName(e.firstName, e.lastName)}`])
     );
 
     // Format history data
@@ -848,7 +849,7 @@ export async function getPromotionDetails(
     // Format student records
     const students = history.records.map((record) => ({
       id: record.student.id,
-      name: `${record.student.user.firstName} ${record.student.user.lastName}`,
+      name: `${formatFullName(record.student.user.firstName, record.student.user.lastName)}`,
       admissionId: record.student.admissionId,
       status: record.status,
       reason: record.reason,
@@ -904,7 +905,7 @@ export async function getPromotionDetails(
         failedStudents: history.failedStudents,
         executedAt: history.executedAt,
         executedBy: executor
-          ? `${executor.firstName} ${executor.lastName}`
+          ? `${formatFullName(executor.firstName, executor.lastName)}`
           : "Unknown",
         notes: history.notes,
         students,
@@ -1022,7 +1023,7 @@ export async function exportPromotionHistory(
     });
 
     const executorMap = new Map(
-      executors.map((e) => [e.id, `${e.firstName} ${e.lastName}`])
+      executors.map((e) => [e.id, `${formatFullName(e.firstName, e.lastName)}`])
     );
 
     // Format data for export

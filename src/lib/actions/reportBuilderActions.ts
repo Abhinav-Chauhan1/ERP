@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { requireSchoolAccess, withSchoolId } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 export interface ReportConfig {
   name: string;
@@ -159,7 +160,7 @@ async function queryStudents(config: ReportConfig, schoolId: string) {
     return {
       id: student.id,
       admissionId: student.admissionId,
-      name: `${student.user.firstName} ${student.user.lastName}`,
+      name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       email: student.user.email,
       class: enrollment?.class.name || "N/A",
       section: enrollment?.section?.name || "N/A",
@@ -195,7 +196,7 @@ async function queryTeachers(config: ReportConfig, schoolId: string) {
   return teachers.map((teacher) => ({
     id: teacher.id,
     employeeId: teacher.employeeId,
-    name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+    name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
     email: teacher.user.email,
     qualification: teacher.qualification || "N/A",
     joinDate: teacher.joinDate.toLocaleDateString(),
@@ -241,7 +242,7 @@ async function queryAttendance(config: ReportConfig, schoolId: string) {
     return {
       id: record.id,
       studentId: record.studentId,
-      studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
+      studentName: `${formatFullName(record.student.user.firstName, record.student.user.lastName)}`,
       date: record.date.toLocaleDateString(),
       status: record.status,
       class: enrollment?.class.name || "N/A",
@@ -286,7 +287,7 @@ async function queryFees(config: ReportConfig, schoolId: string) {
     return {
       id: payment.id,
       studentId: payment.studentId,
-      studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+      studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
       amount: payment.amount.toString(),
       paymentDate: payment.paymentDate.toLocaleDateString(),
       status: payment.status,
@@ -326,7 +327,7 @@ async function queryExams(config: ReportConfig, schoolId: string) {
     return {
       id: result.id,
       studentId: result.studentId,
-      studentName: `${result.student.user.firstName} ${result.student.user.lastName}`,
+      studentName: `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`,
       examName: result.exam.title,
       subject: result.exam.subject.name,
       marks: result.marks.toString(),
@@ -374,7 +375,7 @@ async function queryClasses(config: ReportConfig, schoolId: string) {
     name: cls.name,
     section: cls.sections.map((s) => s.name).join(", ") || "N/A",
     teacher: cls.teachers[0]
-      ? `${cls.teachers[0].teacher.user.firstName} ${cls.teachers[0].teacher.user.lastName}`
+      ? `${formatFullName(cls.teachers[0].teacher.user.firstName, cls.teachers[0].teacher.user.lastName)}`
       : "N/A",
     studentCount: cls.sections
       .reduce((sum, section) => sum + section._count.enrollments, 0)
@@ -416,7 +417,7 @@ async function queryAssignments(config: ReportConfig, schoolId: string) {
     dueDate: assignment.dueDate.toLocaleDateString(),
     status: new Date() > assignment.dueDate ? "Overdue" : "Active",
     submissionCount: assignment._count.submissions.toString(),
-    teacher: assignment.creator ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : "N/A",
+    teacher: assignment.creator ? `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}` : "N/A",
   }));
 }
 

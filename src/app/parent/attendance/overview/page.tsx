@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CalendarDays, CheckCircle2, XCircle, Clock, FileText } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 
 async function getAttendanceOverviewData() {
   const session = await auth();
@@ -66,7 +67,7 @@ async function getAttendanceOverviewData() {
 
       return {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`.trim(),
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`.trim(),
         class: enrollment ? `${enrollment.class.name} ${enrollment.section.name}` : "—",
         total, present, absent, late, leave,
         percentage: pct,

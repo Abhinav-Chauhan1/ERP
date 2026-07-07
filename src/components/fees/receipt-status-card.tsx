@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ReceiptStatus, PaymentMethod } from "@prisma/client";
 import { format } from "date-fns";
 import Link from "next/link";
+import { formatFullName } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -140,7 +141,7 @@ export function ReceiptStatusCard({
               <div>
                 <p className="text-xs text-gray-500">Student</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {receipt.student.user.firstName} {receipt.student.user.lastName}
+                  {formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}
                 </p>
               </div>
             )}

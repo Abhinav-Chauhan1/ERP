@@ -26,6 +26,7 @@ interface PageProps {
 }
 
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 export default async function ParentAttendancePage({ searchParams: searchParamsPromise }: PageProps) {
   const searchParams = await searchParamsPromise;
@@ -83,7 +84,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     firstName: pc.student.user.firstName,
     lastName: pc.student.user.lastName,
     avatar: pc.student.user.avatar,

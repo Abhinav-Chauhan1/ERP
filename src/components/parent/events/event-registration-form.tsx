@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { registerForEvent } from "@/lib/actions/parent-event-actions";
+import { formatFullName } from "@/lib/utils";
 
 const registrationSchema = z.object({
   childId: z.string().min(1, { message: "Please select a child" }),
@@ -112,7 +113,7 @@ export function EventRegistrationForm({
                   <SelectContent>
                     {children.map((child) => (
                       <SelectItem key={child.id} value={child.id}>
-                        {child.user.firstName} {child.user.lastName}
+                        {formatFullName(child.user.firstName, child.user.lastName)}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -26,6 +26,7 @@ import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { sanitizeHtml, sanitizeText } from "@/lib/utils/input-sanitization";
 import { revalidatePath } from "next/cache";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Helper function to get current parent and verify authentication
@@ -298,7 +299,7 @@ export async function sendMessage(input: SendMessageInput & { csrfToken?: string
       data: {
         userId: validated.recipientId,
         title: "New Message",
-        message: `You have a new message from ${user.firstName} ${user.lastName}`,
+        message: `You have a new message from ${formatFullName(user.firstName, user.lastName)}`,
         type: "MESSAGE",
         isRead: false,
         link: `/communication/messages/${message.id}`,
@@ -314,7 +315,7 @@ export async function sendMessage(input: SendMessageInput & { csrfToken?: string
       data: {
         messageId: message.id,
         recipient: {
-          name: `${message.recipient.firstName} ${message.recipient.lastName}`,
+          name: `${formatFullName(message.recipient.firstName, message.recipient.lastName)}`,
           email: message.recipient.email
         }
       },

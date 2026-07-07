@@ -36,6 +36,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatFullName } from "@/lib/utils";
 
 interface AuditLog {
   id: string;
@@ -334,7 +335,7 @@ export function MarksAuditLogViewer() {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium">
-                          {log.user.firstName} {log.user.lastName}
+                          {formatFullName(log.user.firstName, log.user.lastName)}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {log.user.email}
@@ -368,7 +369,7 @@ export function MarksAuditLogViewer() {
                                 <div>
                                   <p className="text-sm font-medium">User</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {log.user.firstName} {log.user.lastName}
+                                    {formatFullName(log.user.firstName, log.user.lastName)}
                                   </p>
                                 </div>
                                 <div>

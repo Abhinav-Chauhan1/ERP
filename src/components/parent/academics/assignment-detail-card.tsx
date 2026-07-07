@@ -18,8 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface AssignmentDetailCardProps {
   assignment: {
     id: string;
@@ -82,7 +81,7 @@ export function AssignmentDetailCard({
     : null;
 
   const teacherName = assignment.creator
-    ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`
+    ? `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}`
     : "Teacher";
 
   // Parse attachments (assuming comma-separated URLs)

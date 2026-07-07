@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // Get messages for a user (inbox, sent, archive)
 export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox") {
@@ -217,7 +218,7 @@ export async function sendMessage(data: any) {
       data: {
         userId: data.recipientId,
         title: "New Message",
-        message: `You have a new message from ${dbUser.firstName} ${dbUser.lastName}${data.subject ? `: ${data.subject}` : ""}`,
+        message: `You have a new message from ${formatFullName(dbUser.firstName, dbUser.lastName)}${data.subject ? `: ${data.subject}` : ""}`,
         type: "MESSAGE",
         link: `/communication/messages/${message.id}`,
         isRead: false,
@@ -306,7 +307,7 @@ export async function replyToMessage(messageId: string, content: string) {
       data: {
         userId: originalMessage.senderId,
         title: "New Reply",
-        message: `${dbUser.firstName} ${dbUser.lastName} replied: ${originalMessage.subject || "(No Subject)"}`,
+        message: `${formatFullName(dbUser.firstName, dbUser.lastName)} replied: ${originalMessage.subject || "(No Subject)"}`,
         type: "MESSAGE",
         link: `/communication/messages/${reply.id}`,
         isRead: false,
@@ -389,7 +390,7 @@ export async function forwardMessage(messageId: string, recipientId: string) {
       data: {
         userId: recipientId,
         title: "Forwarded Message",
-        message: `${dbUser.firstName} ${dbUser.lastName} forwarded a message to you`,
+        message: `${formatFullName(dbUser.firstName, dbUser.lastName)} forwarded a message to you`,
         type: "MESSAGE",
         link: `/communication/messages/${forwarded.id}`,
         isRead: false,

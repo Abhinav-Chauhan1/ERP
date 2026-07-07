@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserCircle2, ChevronDown } from "lucide-react";
+import { formatFullName } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -108,15 +109,15 @@ export function ParentHeader({ parent, children, onChildChange }: ParentHeaderPr
                     <Avatar className="h-6 w-6">
                       <AvatarImage 
                         src={child.user.avatar} 
-                        alt={`${child.user.firstName} ${child.user.lastName}'s profile picture`}
+                        alt={`${formatFullName(child.user.firstName, child.user.lastName)}'s profile picture`}
                       />
                       <AvatarFallback>
-                        {child.user.firstName.charAt(0)}{child.user.lastName.charAt(0)}
+                        {child.user.firstName?.charAt(0)}{child.user.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 truncate">
                       <span className="font-medium">
-                        {child.user.firstName} {child.user.lastName}
+                        {formatFullName(child.user.firstName, child.user.lastName)}
                       </span>
                       <p className="text-xs text-gray-500">
                         {child.enrollments.length > 0 

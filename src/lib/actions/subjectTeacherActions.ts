@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
+import { formatFullName } from "@/lib/utils";
 
 // Get a subject by ID with assigned teachers
 export async function getSubjectById(id: string) {
@@ -51,7 +52,7 @@ export async function getSubjectById(id: string) {
       department: subject.department?.name,
       teachers: subject.teachers.map(st => ({
         id: st.teacher.id,
-        name: `${st.teacher.user.firstName} ${st.teacher.user.lastName}`,
+        name: `${formatFullName(st.teacher.user.firstName, st.teacher.user.lastName)}`,
         avatar: st.teacher.user.avatar,
         employeeId: st.teacher.employeeId,
         department: st.teacher.departments[0]?.name || "No Department",
@@ -123,7 +124,7 @@ export async function getTeachersForAssignment(subjectId: string) {
     // Transform to a more usable format
     const formattedTeachers = availableTeachers.map(teacher => ({
       id: teacher.id,
-      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
       avatar: teacher.user.avatar,
       employeeId: teacher.employeeId,
       department: teacher.departments[0]?.name

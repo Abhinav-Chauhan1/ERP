@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, TrendingUp, BookOpen, Award, Target } from "lucide-react";
 import Link from "next/link";
 import { getPerformanceColor } from "@/lib/utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,7 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     firstName: pc.student.user.firstName,
     lastName: pc.student.user.lastName,
     avatar: pc.student.user.avatar,

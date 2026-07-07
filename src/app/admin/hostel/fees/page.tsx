@@ -23,8 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 export default function HostelFeesPage() {
   const [fees, setFees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,7 +344,7 @@ export default function HostelFeesPage() {
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">
-                        {fee.allocation.student.user.firstName} {fee.allocation.student.user.lastName}
+                        {formatFullName(fee.allocation.student.user.firstName, fee.allocation.student.user.lastName)}
                       </h3>
                       <Badge className={getStatusColor(fee.status)}>{fee.status}</Badge>
                     </div>

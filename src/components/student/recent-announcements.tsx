@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatFullName } from "@/lib/utils";
 
 interface RecentAnnouncementsProps {
   announcements: any[];
@@ -34,7 +35,7 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
                   {truncateText(announcement.content, 100)}
                 </p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>By {announcement.publisher.user.firstName} {announcement.publisher.user.lastName}</span>
+                  <span>By {formatFullName(announcement.publisher.user.firstName, announcement.publisher.user.lastName)}</span>
                   <Link href={`/student/communication/announcements/${announcement.id}`}>
                     <Button variant="ghost" size="sm" className="h-auto p-0 text-primary hover:underline">
                       Read more

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatFullName } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { deleteDocument } from "@/lib/actions/student-document-actions";
 
@@ -183,7 +183,7 @@ export function DocumentList({
                   {showUploader && doc.user && (
                     <span className="flex items-center">
                       <User className="h-3 w-3 mr-1" />
-                      {doc.user.firstName} {doc.user.lastName}
+                      {formatFullName(doc.user.firstName, doc.user.lastName)}
                     </span>
                   )}
                 </div>

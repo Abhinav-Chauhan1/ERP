@@ -11,6 +11,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { auth } from "@/auth";
 import { verifyPayment } from "@/lib/actions/parent-fee-actions";
+import { formatFullName } from "@/lib/utils";
 
 interface PageProps {
   searchParams: Promise<{
@@ -92,7 +93,7 @@ export default async function PaymentSuccessPage({ searchParams: searchParamsPro
           paymentDate: payment.paymentDate,
           paymentMethod: payment.paymentMethod,
           status: payment.status,
-          studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+          studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
           studentClass: payment.student.enrollments[0]?.class.name || "N/A",
           academicYear: payment.feeStructure.academicYear.name,
         };
@@ -133,7 +134,7 @@ export default async function PaymentSuccessPage({ searchParams: searchParamsPro
           paymentDate: payment.paymentDate,
           paymentMethod: payment.paymentMethod,
           status: payment.status,
-          studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+          studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
           studentClass: payment.student.enrollments[0]?.class.name || "N/A",
           academicYear: payment.feeStructure.academicYear.name,
         };

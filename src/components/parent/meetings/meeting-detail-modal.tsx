@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cancelMeeting } from "@/lib/actions/parent-meeting-actions";
+import { formatFullName } from "@/lib/utils";
 
 interface Meeting {
   id: string;
@@ -226,13 +227,13 @@ export function MeetingDetailModal({
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={meeting.teacher.user.avatar || ""} />
                   <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                    {meeting.teacher.user.firstName.charAt(0)}
-                    {meeting.teacher.user.lastName.charAt(0)}
+                    {meeting.teacher.user.firstName?.charAt(0)}
+                    {meeting.teacher.user.lastName?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <p className="font-semibold text-lg">
-                    {meeting.teacher.user.firstName} {meeting.teacher.user.lastName}
+                    {formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}
                   </p>
                   <p className="text-sm text-muted-foreground">{meeting.teacher.user.email}</p>
                   {meeting.teacher.user.phone && (

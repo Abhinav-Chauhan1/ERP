@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Compare Children | Parent Portal",
@@ -136,7 +137,7 @@ export default async function CompareChildrenPage() {
                 </Avatar>
                 <div>
                   <CardTitle className="text-lg">
-                    {child.user.firstName} {child.user.lastName}
+                    {formatFullName(child.user.firstName, child.user.lastName)}
                   </CardTitle>
                   <CardDescription>
                     {child.enrollments[0] ? (

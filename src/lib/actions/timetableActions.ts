@@ -12,6 +12,7 @@ import {
 import { formatISO, parseISO } from 'date-fns';
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // Get all timetables
 export async function getTimetables() {
@@ -99,7 +100,7 @@ export async function getTimetableById(id: string) {
       },
       teacher: {
         id: slot.subjectTeacher.teacher.id,
-        name: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`
+        name: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`
       },
       room: slot.room ? {
         id: slot.roomId!,
@@ -193,7 +194,7 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
       },
       teacher: {
         id: slot.subjectTeacher.teacher.id,
-        name: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`
+        name: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`
       },
       room: slot.room ? {
         id: slot.roomId!,
@@ -366,7 +367,7 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
       },
       teacher: {
         id: slot.subjectTeacher.teacher.id,
-        name: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`
+        name: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`
       }
     }));
 
@@ -795,9 +796,9 @@ export async function getSubjectTeachersForTimetable() {
       subjectName: st.subject.name,
       subjectCode: st.subject.code,
       teacherId: st.teacherId,
-      teacherName: `${st.teacher.user.firstName} ${st.teacher.user.lastName}`,
+      teacherName: `${formatFullName(st.teacher.user.firstName, st.teacher.user.lastName)}`,
       // This format makes it easier to display in a dropdown
-      display: `${st.subject.name} (${st.subject.code}) - ${st.teacher.user.firstName} ${st.teacher.user.lastName}`
+      display: `${st.subject.name} (${st.subject.code}) - ${formatFullName(st.teacher.user.firstName, st.teacher.user.lastName)}`
     }));
 
     return { success: true, data: formattedData };

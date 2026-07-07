@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export interface ConsolidatedMarkSheetFilters {
   examId?: string;
@@ -188,7 +189,7 @@ export async function getConsolidatedMarkSheet(filters: ConsolidatedMarkSheetFil
 
       return {
         studentId: student.id,
-        studentName: `${student.user.firstName} ${student.user.lastName}`,
+        studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         admissionId: student.admissionId,
         rollNumber: student.rollNumber || "",
         subjects,

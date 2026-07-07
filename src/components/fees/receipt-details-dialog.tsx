@@ -26,6 +26,7 @@ import {
 import { ReceiptStatus, PaymentMethod } from "@prisma/client";
 import { format } from "date-fns";
 import { generateCdnUrl } from "@/lib/config/r2-config";
+import { formatFullName } from "@/lib/utils";
 
 interface ReceiptDetailsDialogProps {
   open: boolean;
@@ -224,7 +225,7 @@ export function ReceiptDetailsDialog({
               <div>
                 <p className="text-xs text-gray-500">Name</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {receipt.student.user.firstName} {receipt.student.user.lastName}
+                  {formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}
                 </p>
               </div>
               <div>

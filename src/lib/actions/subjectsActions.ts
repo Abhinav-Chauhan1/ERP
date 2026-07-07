@@ -9,6 +9,7 @@ import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/
 import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
 import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(userId: string, resource: string, action: PermissionAction, errorMessage?: string) {
@@ -130,7 +131,7 @@ export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, user
     // Format teachers data
     const teachersData = subject.teachers.map(st => ({
       id: st.teacher.id,
-      name: `${st.teacher.user.firstName} ${st.teacher.user.lastName}`,
+      name: `${formatFullName(st.teacher.user.firstName, st.teacher.user.lastName)}`,
       avatar: st.teacher.user.avatar,
       qualification: st.teacher.qualification || "",
       classes: st.teacher.classes.map(ct => `${ct.class.name} ${ct.isClassHead ? '(Head)' : ''}`)
@@ -147,7 +148,7 @@ export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, user
         name: sc.class.name,
         students: 0,
         teacher: teacherForClass ?
-          `${teacherForClass.teacher.user.firstName} ${teacherForClass.teacher.user.lastName}` :
+          `${formatFullName(teacherForClass.teacher.user.firstName, teacherForClass.teacher.user.lastName)}` :
           "Not assigned",
         academicYear: sc.class.academicYear.name,
         isCurrent: sc.class.academicYear.isCurrent

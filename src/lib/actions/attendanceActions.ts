@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -238,7 +239,7 @@ export async function getRecentAbsences(limit: number = 10) {
 
     const formattedAbsences = absences.map((absence) => ({
       id: absence.id,
-      name: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+      name: `${formatFullName(absence.student.user.firstName, absence.student.user.lastName)}`,
       grade:
         absence.student.enrollments.length > 0
           ? `${absence.student.enrollments[0].class.name}-${absence.student.enrollments[0].section.name}`
@@ -418,7 +419,7 @@ export async function getStudentAttendanceByDate(date: Date, sectionId?: string)
       return {
         id: enrollment.studentId,
         studentId: enrollment.studentId,
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         avatar: enrollment.student.user.avatar,
         rollNumber: enrollment.rollNumber,
         admissionId: enrollment.student.admissionId,
@@ -537,7 +538,7 @@ export async function markStudentAttendance(data: {
           for (const parentRelation of student.parents) {
             await sendAttendanceAlert({
               studentId: data.studentId,
-              studentName: `${student.user.firstName} ${student.user.lastName}`,
+              studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
               date: data.date,
               status: data.status,
               attendancePercentage,
@@ -713,7 +714,7 @@ export async function getTeachersForDropdown() {
       data: teachers.map((teacher) => ({
         id: teacher.id,
         userId: teacher.userId,
-        name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+        name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
         employeeId: teacher.employeeId,
       })),
     };
@@ -756,7 +757,7 @@ export async function getStudentsForDropdown() {
       data: students.map((student) => ({
         id: student.id,
         userId: student.userId,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         admissionId: student.admissionId,
         class:
           student.enrollments.length > 0
@@ -808,7 +809,7 @@ export async function getTeacherAttendanceByDate(date: Date) {
       data: attendanceRecords.map((record) => ({
         id: record.id,
         teacherId: record.teacherId,
-        teacherName: `${record.teacher.user.firstName} ${record.teacher.user.lastName}`,
+        teacherName: `${formatFullName(record.teacher.user.firstName, record.teacher.user.lastName)}`,
         employeeId: record.teacher.employeeId,
         status: record.status,
         reason: record.reason,

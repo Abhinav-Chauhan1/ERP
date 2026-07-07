@@ -9,6 +9,7 @@ import { getFeePaymentsList } from "@/lib/actions/list-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
   PAID: "bg-green-500",
@@ -77,7 +78,7 @@ export default function FeePaymentsListPage() {
                   >
                     <div className="flex-1">
                       <div className="font-medium">
-                        {payment.student.user.firstName} {payment.student.user.lastName}
+                        {formatFullName(payment.student.user.firstName, payment.student.user.lastName)}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {payment.feeStructure.name}

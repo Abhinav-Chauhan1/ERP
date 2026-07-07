@@ -10,6 +10,7 @@ import {
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
 import { calculateGrade } from "../utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get all assignments for a teacher
@@ -211,7 +212,7 @@ export async function getAssignmentDetails(assignmentId: string) {
     const submissions = assignment.submissions.map(submission => ({
       id: submission.id,
       studentId: submission.studentId,
-      studentName: `${submission.student.user.firstName} ${submission.student.user.lastName}`,
+      studentName: `${formatFullName(submission.student.user.firstName, submission.student.user.lastName)}`,
       submissionDate: submission.submissionDate,
       status: submission.status,
       marks: submission.marks,

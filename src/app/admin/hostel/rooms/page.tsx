@@ -26,6 +26,7 @@ import {
   deleteHostelRoom,
 } from "@/lib/actions/hostelActions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatFullName } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -483,7 +484,7 @@ export default function HostelRoomsPage() {
                     <div className="space-y-1">
                       {room.allocations.map((allocation: any) => (
                         <p key={allocation.id} className="text-sm">
-                          {allocation.student.user.firstName} {allocation.student.user.lastName}
+                          {formatFullName(allocation.student.user.firstName, allocation.student.user.lastName)}
                           {allocation.bedNumber && ` (Bed ${allocation.bedNumber})`}
                         </p>
                       ))}

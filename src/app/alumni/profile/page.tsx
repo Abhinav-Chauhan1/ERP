@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { updateAlumniProfile } from "@/lib/actions/alumniActions";
 import { uploadHandler } from "@/lib/services/upload-handler";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata = {
   title: "My Profile - Alumni Portal",
@@ -94,7 +95,7 @@ async function getAlumniProfileData(userId: string) {
   return {
     alumniId: alumni.id,
     initialData: {
-      studentName: `${student.user.firstName} ${student.user.lastName}`,
+      studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       admissionId: student.admissionId,
       graduationDate: alumni.graduationDate,
       finalClass: alumni.finalClass,

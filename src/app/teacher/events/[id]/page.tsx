@@ -10,6 +10,7 @@ import { Calendar, Clock, MapPin, Users, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { formatFullName } from "@/lib/utils";
 
 async function EventDetailContent({ eventId }: { eventId: string }) {
   const session = await auth();
@@ -143,7 +144,7 @@ const userId = session?.user?.id;
                     </span>
                   </div>
                   <span className="text-sm">
-                    {rsvp.user.firstName} {rsvp.user.lastName}
+                    {formatFullName(rsvp.user.firstName, rsvp.user.lastName)}
                   </span>
                 </div>
               ))}

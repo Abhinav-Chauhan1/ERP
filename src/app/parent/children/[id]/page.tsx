@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, GraduationCap, MapPin, School } from "lucide-react";
 import { ChildDetailTabs } from "@/components/parent/child-detail-tabs";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Child Details | Parent Portal",
@@ -259,7 +260,7 @@ export default async function ChildDetailPage({
                 </div>
                 <p className="text-sm text-muted-foreground">{record.description}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(record.date), "MMM d, yyyy")} • {record.teacher?.user?.firstName} {record.teacher?.user?.lastName}
+                  {format(new Date(record.date), "MMM d, yyyy")} • {formatFullName(record.teacher?.user?.firstName, record.teacher?.user?.lastName)}
                 </p>
               </div>
             ))}

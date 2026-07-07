@@ -54,6 +54,7 @@ import {
   type ActivityRecord,
 } from "@/components/admin/alumni/alumni-activity-timeline";
 import { getAlumniProfile, updateAlumniProfile } from "@/lib/actions/alumniActions";
+import { formatFullName } from "@/lib/utils";
 
 export default function AlumniProfilePage() {
   const params = useParams();
@@ -286,7 +287,7 @@ export default function AlumniProfilePage() {
     },
   ];
 
-  const fullName = `${alumniData.student.firstName} ${alumniData.student.lastName}`;
+  const fullName = `${formatFullName(alumniData.student.firstName, alumniData.student.lastName)}`;
 
   return (
     <div className="space-y-6">

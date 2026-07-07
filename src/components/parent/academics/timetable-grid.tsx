@@ -4,8 +4,7 @@ import { format, isToday, parse } from "date-fns";
 import { Clock, MapPin, User, BookOpen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface TimetableSlot {
   id: string;
   day: string;
@@ -201,7 +200,7 @@ export function TimetableGrid({ schedule, studentName, className }: TimetableGri
 
                     const startTime = typeof slot.startTime === "string" ? new Date(slot.startTime) : slot.startTime;
                     const endTime = typeof slot.endTime === "string" ? new Date(slot.endTime) : slot.endTime;
-                    const teacherName = `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`;
+                    const teacherName = `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`;
                     const isCurrent = isCurrentClass(slot);
 
                     return (
@@ -276,7 +275,7 @@ export function TimetableGrid({ schedule, studentName, className }: TimetableGri
                   {daySlots.map((slot) => {
                     const startTime = typeof slot.startTime === "string" ? new Date(slot.startTime) : slot.startTime;
                     const endTime = typeof slot.endTime === "string" ? new Date(slot.endTime) : slot.endTime;
-                    const teacherName = `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`;
+                    const teacherName = `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`;
                     const isCurrent = isCurrentClass(slot);
 
                     return (

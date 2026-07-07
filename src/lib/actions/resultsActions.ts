@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
 import { ResultFilterValues, PublishResultsValues, GenerateReportCardValues } from "../schemaValidation/resultsSchemaValidation";
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 // Get all exam results with optional filtering
 export async function getExamResults(filters?: ResultFilterValues) {
@@ -140,7 +141,7 @@ export async function getExamResults(filters?: ResultFilterValues) {
         gradeDistribution,
         isPublished: true, // This would normally come from the database
         publishedOn: new Date(), // This would normally come from the database
-        createdBy: exam.creator ? `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : "System"
+        createdBy: exam.creator ? `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}` : "System"
       };
     });
 
@@ -258,12 +259,12 @@ export async function getExamResultById(examId: string) {
       gradeDistribution,
       isPublished: true, // This would normally come from the database
       publishedOn: new Date(), // This would normally come from the database
-      createdBy: exam.creator ? `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : "System",
+      createdBy: exam.creator ? `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}` : "System",
       studentResults: exam.results.map(result => ({
         id: result.id,
         student: {
           id: result.student.id,
-          name: `${result.student.user.firstName} ${result.student.user.lastName}`,
+          name: `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`,
           admissionId: result.student.admissionId,
           rollNumber: result.student.rollNumber || "",
         },
@@ -376,7 +377,7 @@ export async function getStudentResults(studentId: string, termId?: string) {
         data: {
           student: {
             id: student.id,
-            name: `${student.user.firstName} ${student.user.lastName}`,
+            name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
             admissionId: student.admissionId,
             rollNumber: student.rollNumber || "",
             photo: student.user.avatar,
@@ -446,7 +447,7 @@ export async function getStudentResults(studentId: string, termId?: string) {
       data: {
         student: {
           id: student.id,
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           studentId: student.admissionId,
           admissionId: student.admissionId,
           rollNumber: student.rollNumber || "",

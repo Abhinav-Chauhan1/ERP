@@ -51,6 +51,7 @@ import { examResultSchema, ExamResultFormValues } from "@/lib/schemaValidation/e
 import { getSubjectMarkConfigs } from "@/lib/actions/subjectMarkConfigActions";
 import { SubjectMarkConfigForm } from "@/components/admin/subject-mark-config-form";
 import { DeleteConfigButton } from "@/components/admin/delete-config-button";
+import { formatFullName } from "@/lib/utils";
 
 export default function ExamDetailsPage() {
   const params = useParams();
@@ -206,7 +207,7 @@ export default function ExamDetailsPage() {
   const filteredStudents = exam?.results.filter((result: any) => {
     if (!searchTerm) return true;
 
-    const studentName = `${result.student.user.firstName} ${result.student.user.lastName}`.toLowerCase();
+    const studentName = `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`.toLowerCase();
     const admissionId = result.student.admissionId?.toLowerCase() || "";
     const rollNumber = (result.student.rollNumber || "").toLowerCase();
 
@@ -332,7 +333,7 @@ export default function ExamDetailsPage() {
                 <span className="font-medium">Created By:</span>
                 <span>
                   {exam.creator ?
-                    `${exam.creator.user.firstName} ${exam.creator.user.lastName}` :
+                    `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}` :
                     "System"
                   }
                 </span>
@@ -476,7 +477,7 @@ export default function ExamDetailsPage() {
                             .map((result: any) => (
                               <tr key={result.id} className="border-b">
                                 <td className="py-2 px-4">
-                                  {result.student.user.firstName} {result.student.user.lastName}
+                                  {formatFullName(result.student.user.firstName, result.student.user.lastName)}
                                 </td>
                                 <td className="py-2 px-4">
                                   {result.marks}/{exam.totalMarks} ({(result.marks / exam.totalMarks * 100).toFixed(1)}%)
@@ -533,7 +534,7 @@ export default function ExamDetailsPage() {
                     {filteredStudents.map((result: any) => (
                       <tr key={result.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
-                          <div className="font-medium">{result.student.user.firstName} {result.student.user.lastName}</div>
+                          <div className="font-medium">{formatFullName(result.student.user.firstName, result.student.user.lastName)}</div>
                           <div className="text-xs text-gray-500">ID: {result.student.admissionId}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">

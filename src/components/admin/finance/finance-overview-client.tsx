@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Chart } from "@/components/dashboard/chart";
+import { formatFullName } from "@/lib/utils";
 
 interface RecentPayment {
   id: string;
@@ -179,7 +180,7 @@ export function FinanceOverviewClient({
                       {recentPayments.map((payment) => (
                         <tr key={payment.id} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">
-                            {payment.student.user.firstName} {payment.student.user.lastName}
+                            {formatFullName(payment.student.user.firstName, payment.student.user.lastName)}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {payment.student.enrollments[0]?.class.name || "N/A"}
@@ -233,7 +234,7 @@ export function FinanceOverviewClient({
                       {pendingPayments.map((payment) => (
                         <tr key={payment.id} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">
-                            {payment.student.user.firstName} {payment.student.user.lastName}
+                            {formatFullName(payment.student.user.firstName, payment.student.user.lastName)}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {payment.student.enrollments[0]?.class.name || "N/A"}

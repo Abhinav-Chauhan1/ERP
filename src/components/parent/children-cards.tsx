@@ -3,6 +3,7 @@ import { BarChart2, Book, Calendar, Clock, DollarSign, GraduationCap } from "luc
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { formatFullName } from "@/lib/utils";
 
 interface ChildrenCardsProps {
   children: any[];
@@ -29,13 +30,13 @@ export function ChildrenCards({ children }: ChildrenCardsProps) {
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={child.user.avatar} alt={child.user.firstName} />
                   <AvatarFallback className="text-lg">
-                    {child.user.firstName.charAt(0)}{child.user.lastName.charAt(0)}
+                    {child.user.firstName?.charAt(0)}{child.user.lastName?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 
                 <div className="flex-1">
                   <h3 className="font-bold text-lg flex items-center gap-2">
-                    {child.user.firstName} {child.user.lastName}
+                    {formatFullName(child.user.firstName, child.user.lastName)}
                     {child.isPrimary && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Primary</span>
                     )}

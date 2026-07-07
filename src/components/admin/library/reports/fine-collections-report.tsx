@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { convertToCSV, downloadCSV, generateFilename, formatDate, formatCurrency } from "@/lib/utils/export-utils";
+import { formatFullName } from "@/lib/utils";
 
 interface FineIssue {
   id: string;
@@ -58,7 +59,7 @@ export function FineCollectionsReport({ data }: FineCollectionsReportProps) {
     setIsExporting(true);
     try {
       const exportData = data.fineIssues.map((issue) => ({
-        "Student Name": `${issue.student.user.firstName} ${issue.student.user.lastName}`,
+        "Student Name": `${formatFullName(issue.student.user.firstName, issue.student.user.lastName)}`,
         "Student Email": issue.student.user.email,
         Class: issue.student.section
           ? `${issue.student.section.class.name} - ${issue.student.section.name}`
@@ -178,7 +179,7 @@ export function FineCollectionsReport({ data }: FineCollectionsReportProps) {
                   .map(
                     (issue) => `
                   <tr>
-                    <td>${issue.student.user.firstName} ${issue.student.user.lastName}</td>
+                    <td>${formatFullName(issue.student.user.firstName, issue.student.user.lastName)}</td>
                     <td>${
                       issue.student.section
                         ? `${issue.student.section.class.name} - ${issue.student.section.name}`
@@ -280,7 +281,7 @@ export function FineCollectionsReport({ data }: FineCollectionsReportProps) {
                 <TableRow key={issue.id}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{issue.student.user.firstName} {issue.student.user.lastName}</p>
+                      <p className="font-medium">{formatFullName(issue.student.user.firstName, issue.student.user.lastName)}</p>
                       <p className="text-sm text-muted-foreground">
                         {issue.student.user.email}
                       </p>

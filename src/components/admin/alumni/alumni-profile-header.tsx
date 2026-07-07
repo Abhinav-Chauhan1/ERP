@@ -24,8 +24,7 @@ import {
   X,
   Save
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-
+import { formatDate, formatFullName } from "@/lib/utils";
 export interface AlumniProfileHeaderData {
   id: string;
   student: {
@@ -64,7 +63,7 @@ export function AlumniProfileHeader({
 }: AlumniProfileHeaderProps) {
   const [editMode, setEditMode] = useState(isEditMode);
 
-  const fullName = `${alumni.student.firstName} ${alumni.student.lastName}`;
+  const fullName = `${formatFullName(alumni.student.firstName, alumni.student.lastName)}`;
   const initials = `${alumni.student.firstName?.[0] ?? ""}${alumni.student.lastName?.[0] ?? ""}`.toUpperCase();
   const graduationYear = new Date(alumni.graduationDate).getFullYear();
 

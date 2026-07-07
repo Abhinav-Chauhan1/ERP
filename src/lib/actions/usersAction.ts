@@ -16,6 +16,7 @@ import { hashPassword } from "@/lib/password";
 import { hasPermission } from "@/lib/utils/permissions";
 import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -69,7 +70,7 @@ const createBaseUser = async (userData: {
 
   // Sanitize inputs
   const sanitizedData: any = {
-    name: `${userData.firstName} ${userData.lastName}`,
+    name: `${formatFullName(userData.firstName, userData.lastName)}`,
     firstName: sanitizeText(userData.firstName),
     lastName: sanitizeText(userData.lastName),
     phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
@@ -91,7 +92,7 @@ const createBaseUser = async (userData: {
   if (userData.role === UserRole.STUDENT && userData.email) {
     sendStudentWelcomeEmail({
       to: userData.email,
-      studentName: `${userData.firstName} ${userData.lastName}`,
+      studentName: `${formatFullName(userData.firstName, userData.lastName)}`,
       email: userData.email,
       password: plainPassword,
       schoolName: userData.schoolName || "Your School",
@@ -831,7 +832,7 @@ export async function syncClerkUser(clerkId: string, userData: {
     } else {
       return await db.user.create({
         data: {
-          name: `${userData.firstName} ${userData.lastName}`,
+          name: `${formatFullName(userData.firstName, userData.lastName)}`,
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,

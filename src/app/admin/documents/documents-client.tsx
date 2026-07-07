@@ -22,6 +22,7 @@ import { documentSchema, documentTypeSchema, type DocumentData, type DocumentTyp
 import { getDocumentsPageData, getDocuments, createDocument, deleteDocument, createDocumentType } from "@/lib/actions/documentActions";
 import { Spinner } from "@/components/ui/spinner";
 import { uploadHandler } from "@/lib/services/upload-handler";
+import { formatFullName } from "@/lib/utils";
 
 const formatDate = (date: Date | string) => {
   if (!date) return "";
@@ -280,7 +281,7 @@ export function AdminDocumentsClient({ initialDocuments, initialDocumentTypes, i
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{doc.title}</p>
                     <div className="flex items-center text-xs text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1"><UserIcon className="h-3 w-3" />{doc.user.firstName} {doc.user.lastName}</span>
+                      <span className="flex items-center gap-1"><UserIcon className="h-3 w-3" />{formatFullName(doc.user.firstName, doc.user.lastName)}</span>
                       <span className="mx-2">•</span>
                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(doc.createdAt)}</span>
                       {doc.documentType && (<><span className="mx-2">•</span><span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{doc.documentType.name}</span></>)}

@@ -10,6 +10,7 @@ import { ReceiptHistoryList } from "@/components/fees/receipt-history-list";
 import { getStudentReceipts } from "@/lib/actions/paymentReceiptActions";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Payment Receipts | Parent Portal",
@@ -84,7 +85,7 @@ export default async function ParentReceiptsPage({ searchParams: searchParamsPro
 
   const children = parentChildren.map((pc) => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
   }));

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { formatFullName } from "@/lib/utils";
 
 interface RecipientOption {
   id: string;
@@ -284,7 +285,7 @@ export function ComposeMessage({
                       const selected = recipients.find((r) => r.id === recipientId);
                       return selected ? (
                         <div className="flex items-center gap-2">
-                          <span>{selected.firstName} {selected.lastName}</span>
+                          <span>{formatFullName(selected.firstName, selected.lastName)}</span>
                           <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
                             {selected.role}
                           </Badge>
@@ -304,7 +305,7 @@ export function ComposeMessage({
                       {recipients.map((recipient) => (
                         <CommandItem
                           key={recipient.id}
-                          value={`${recipient.firstName} ${recipient.lastName} ${recipient.email} ${recipient.role}`}
+                          value={`${formatFullName(recipient.firstName, recipient.lastName)} ${recipient.email} ${recipient.role}`}
                           onSelect={() => {
                             setRecipientId(recipient.id);
                             setRecipientSearchOpen(false);
@@ -317,7 +318,7 @@ export function ComposeMessage({
                           />
                           <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
                             <span className="font-medium truncate">
-                              {recipient.firstName} {recipient.lastName}
+                              {formatFullName(recipient.firstName, recipient.lastName)}
                             </span>
                             <Badge variant="outline" className={`${getRoleBadgeColor(recipient.role)} shrink-0`}>
                               {recipient.role}

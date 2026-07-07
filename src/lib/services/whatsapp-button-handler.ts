@@ -10,6 +10,7 @@
 import { logMessage } from './message-logging-service';
 import { CommunicationChannel, MessageLogStatus } from '@prisma/client';
 import { prisma } from '@/lib/db';
+import { formatFullName } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -353,7 +354,7 @@ async function handleAttendanceConfirmation(
     await logMessage({
       channel: CommunicationChannel.WHATSAPP,
       recipient: response.from,
-      body: `✅ Attendance confirmed for ${attendance.student.user.firstName} ${attendance.student.user.lastName} on ${new Date(dateStr).toLocaleDateString()}. Thank you!`,
+      body: `✅ Attendance confirmed for ${formatFullName(attendance.student.user.firstName, attendance.student.user.lastName)} on ${new Date(dateStr).toLocaleDateString()}. Thank you!`,
       status: MessageLogStatus.SENT,
       metadata: {
         type: 'attendance_confirmation_response',
@@ -451,7 +452,7 @@ async function handleFeePayment(
     await logMessage({
       channel: CommunicationChannel.WHATSAPP,
       recipient: response.from,
-      body: `💳 Fee Payment Link for ${student.user.firstName} ${student.user.lastName}\n\nClick here to complete your payment:\n${paymentLink}\n\nThis link will take you to our secure payment portal.`,
+      body: `💳 Fee Payment Link for ${formatFullName(student.user.firstName, student.user.lastName)}\n\nClick here to complete your payment:\n${paymentLink}\n\nThis link will take you to our secure payment portal.`,
       status: MessageLogStatus.SENT,
       metadata: {
         type: 'fee_payment_link',

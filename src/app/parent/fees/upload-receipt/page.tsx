@@ -17,6 +17,7 @@ import { ReceiptUploadForm } from "@/components/fees/receipt-upload-form";
 import { ReceiptUploadGuidelines } from "@/components/fees/receipt-upload-guidelines";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Upload Payment Receipt | Parent Portal",
@@ -96,7 +97,7 @@ export default async function ParentUploadReceiptPage({ searchParams: searchPara
 
   const children = parentChildren.map((pc) => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
     enrollment: pc.student.enrollments[0],

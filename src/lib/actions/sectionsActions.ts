@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
 import { SectionFormValues, SectionUpdateFormValues } from "../schemaValidation/sectionsSchemaValidation";
+import { formatFullName } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -99,7 +100,7 @@ export async function getSections(classFilter?: string) {
       return {
         ...section,
         teacherName: classTeacher
-          ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
+          ? `${formatFullName(classTeacher.teacher.user.firstName, classTeacher.teacher.user.lastName)}`
           : "Not assigned",
         teacherId: classTeacher?.teacherId,
         room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
@@ -177,7 +178,7 @@ export async function getSectionById(id: string) {
     const formattedSection = {
       ...section,
       teacherName: classTeacher
-        ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
+        ? `${formatFullName(classTeacher.teacher.user.firstName, classTeacher.teacher.user.lastName)}`
         : "Not assigned",
       teacherId: classTeacher?.teacherId,
       room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
@@ -185,7 +186,7 @@ export async function getSectionById(id: string) {
       students: section.enrollments.map(enrollment => ({
         id: enrollment.studentId,
         enrollmentId: enrollment.id,
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         rollNumber: enrollment.rollNumber,
         status: enrollment.status,
       }))
@@ -250,7 +251,7 @@ export async function getTeachersForDropdown() {
 
     const formattedTeachers = teachers.map(teacher => ({
       id: teacher.id,
-      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
       employeeId: teacher.employeeId,
     }));
 

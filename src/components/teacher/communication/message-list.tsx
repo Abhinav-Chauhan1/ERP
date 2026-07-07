@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatFullName } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
 interface MessageListItem {
@@ -139,7 +139,7 @@ export function MessageList({
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    return `${firstName?.charAt(0)}${lastName?.charAt(0)}`.toUpperCase();
   };
 
   const truncateContent = (content: string, maxLength: number = 100) => {
@@ -279,7 +279,7 @@ export function MessageList({
                           "text-sm truncate",
                           !message.isRead && type === "inbox" ? "font-semibold" : "font-medium"
                         )}>
-                          {displayUser.firstName} {displayUser.lastName}
+                          {formatFullName(displayUser.firstName, displayUser.lastName)}
                         </p>
                         <p className={cn(
                           "text-sm truncate",

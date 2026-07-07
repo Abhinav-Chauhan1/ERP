@@ -10,6 +10,7 @@
 import jsPDF from 'jspdf';
 import { db } from '@/lib/db';
 import { uploadHandler } from '@/lib/services/upload-handler';
+import { formatFullName } from "@/lib/utils";
 
 export interface IDCardGenerationResult {
   success: boolean;
@@ -294,7 +295,7 @@ export async function getStudentDataForIDCard(studentId: string): Promise<Templa
     return {
       studentId: student.id,
       schoolId: student.schoolId,
-      studentName: `${student.user.firstName} ${student.user.lastName}`,
+      studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       admissionId: student.admissionId,
       className: enrollment?.class.name,
       section: enrollment?.section?.name,
@@ -362,7 +363,7 @@ export async function getStudentsDataForIDCards(
       return {
         studentId: student.id,
         schoolId: student.schoolId,
-        studentName: `${student.user.firstName} ${student.user.lastName}`,
+        studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         admissionId: student.admissionId,
         className: enrollment?.class.name,
         section: enrollment?.section?.name,

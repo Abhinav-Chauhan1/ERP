@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Download, Trash2, FileText, Image as ImageIcon, File } from "lucide-react";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
+import { formatFullName } from "@/lib/utils";
 
 interface DocumentData {
     id: string;
@@ -100,11 +101,11 @@ export function DocumentsTable({ documents, onDelete, emptyMessage }: DocumentsT
             render: (doc: DocumentData) => (
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                        {doc.user.firstName.charAt(0)}
-                        {doc.user.lastName.charAt(0)}
+                        {doc.user.firstName?.charAt(0)}
+                        {doc.user.lastName?.charAt(0)}
                     </div>
                     <span>
-                        {doc.user.firstName} {doc.user.lastName}
+                        {formatFullName(doc.user.firstName, doc.user.lastName)}
                     </span>
                 </div>
             ),

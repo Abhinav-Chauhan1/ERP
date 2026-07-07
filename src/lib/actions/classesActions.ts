@@ -13,6 +13,7 @@ import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
 import { withSchoolAuthAction, createSecureQuery } from "@/lib/auth/security-wrapper";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 import {
   ClassFormValues,
   ClassUpdateFormValues,
@@ -263,7 +264,7 @@ export async function getClassById(id: string) {
       classTeacher: (() => {
         const classHeads = classDetails.teachers.filter(t => t.isClassHead);
         if (classHeads.length === 0) return null;
-        if (classHeads.length === 1) return `${classHeads[0].teacher.user.firstName} ${classHeads[0].teacher.user.lastName}`;
+        if (classHeads.length === 1) return `${formatFullName(classHeads[0].teacher.user.firstName, classHeads[0].teacher.user.lastName)}`;
         return `${classHeads.length} Teachers (Per Section)`;
       })(),
       classTeacherId: classDetails.teachers.find(t => t.isClassHead)?.teacher.id,
@@ -284,7 +285,7 @@ export async function getClassById(id: string) {
           id: subj.subjectId,
           name: subj.subject.name,
           code: subj.subject.code,
-          teacher: teacher ? `${teacher.user.firstName} ${teacher.user.lastName}` : 'Not Assigned',
+          teacher: teacher ? `${formatFullName(teacher.user.firstName, teacher.user.lastName)}` : 'Not Assigned',
           teacherId: teacher?.id
         };
       }),
@@ -292,7 +293,7 @@ export async function getClassById(id: string) {
         id: enrollment.studentId,
         enrollmentId: enrollment.id,
         rollNumber: enrollment.rollNumber || 'N/A',
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         avatar: enrollment.student.user.avatar,
         section: enrollment.section.name,
         sectionId: enrollment.sectionId,
@@ -329,7 +330,7 @@ export async function getClassById(id: string) {
           endTime: slot.endTime,
           subject: slot.subjectTeacher.subject.name,
           subjectId: slot.subjectTeacher.subject.id,
-          teacher: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`,
+          teacher: `${formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}`,
           teacherId: slot.subjectTeacher.teacherId,
           room: slot.room?.name || 'Not Assigned',
           roomId: slot.roomId,
@@ -943,7 +944,7 @@ export async function getTeachersForDropdown() {
     const formattedTeachers = teachers.map(teacher => ({
       id: teacher.id,
       employeeId: teacher.employeeId,
-      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
       email: teacher.user.email,
       avatar: teacher.user.avatar
     }));
@@ -1015,7 +1016,7 @@ export async function getAvailableStudentsForClass(classId: string) {
     // Format the response
     const formattedStudents = availableStudents.map(student => ({
       id: student.id,
-      name: `${student.user.firstName} ${student.user.lastName}`,
+      name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       admissionId: student.admissionId,
     }));
 

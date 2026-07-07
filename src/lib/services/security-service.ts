@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { auditService, AuditAction } from "./audit-service";
 import crypto from "crypto";
 import speakeasy from "speakeasy";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Security Service
@@ -549,7 +550,7 @@ class SecurityService {
 
       // Generate secret
       const secret = speakeasy.generateSecret({
-        name: `${user.firstName} ${user.lastName}`,
+        name: `${formatFullName(user.firstName, user.lastName)}`,
         issuer: 'SikshaERP',
         length: 32
       });

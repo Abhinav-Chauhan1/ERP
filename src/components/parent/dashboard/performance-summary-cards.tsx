@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus, BookOpen, CheckCircle, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface ChildPerformance {
   id: string;
   user: {
@@ -38,7 +37,7 @@ export function PerformanceSummaryCards({ children }: PerformanceSummaryCardsPro
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {children.map((child) => {
-        const fullName = `${child.user.firstName} ${child.user.lastName}`;
+        const fullName = `${formatFullName(child.user.firstName, child.user.lastName)}`;
         const examPercentage = child.latestExamResult
           ? Math.round((child.latestExamResult.score / child.latestExamResult.maxScore) * 100)
           : null;

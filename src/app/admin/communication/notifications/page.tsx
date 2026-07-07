@@ -41,6 +41,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatFullName } from "@/lib/utils";
 import {
   getNotifications,
   createNotification,
@@ -491,7 +492,7 @@ export default function NotificationsPage() {
                   <p className="text-sm text-muted-foreground">Sent By</p>
                   <p className="font-medium">
                     {selectedNotification.sender
-                      ? `${selectedNotification.sender.firstName} ${selectedNotification.sender.lastName}`
+                      ? `${formatFullName(selectedNotification.sender.firstName, selectedNotification.sender.lastName)}`
                       : "System"}
                   </p>
                   <p className="text-xs text-muted-foreground">

@@ -15,6 +15,7 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
+import { formatFullName } from "@/lib/utils";
 
 interface ParentMeetingData {
     id: string;
@@ -91,7 +92,7 @@ export function ParentMeetingsTable({
                 const parentInitials = `${meeting.parent?.user?.firstName?.[0] || ""}${meeting.parent?.user?.lastName?.[0] || ""}`;
                 const studentInfo = meeting.parent?.children?.[0]?.student;
                 const studentName = studentInfo?.user
-                    ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+                    ? `${formatFullName(studentInfo.user.firstName, studentInfo.user.lastName)}`
                     : "No student";
                 const grade = studentInfo?.enrollments?.[0]
                     ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`

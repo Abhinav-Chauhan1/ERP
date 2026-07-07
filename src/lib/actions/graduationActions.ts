@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { UserRole, EnrollmentStatus } from "@prisma/client";
 import { PromotionService } from "@/lib/services/promotionService";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -165,7 +166,7 @@ async function sendGraduationNotifications(
         messagesToCreate.push({
           senderId: "system",
           recipientId: parentRelation.parent.userId,
-          subject: `Congratulations! ${student.user.firstName} ${student.user.lastName} has graduated`,
+          subject: `Congratulations! ${formatFullName(student.user.firstName, student.user.lastName)} has graduated`,
           content: messageContent,
           schoolId,
         });
@@ -317,7 +318,7 @@ export async function markStudentsAsGraduated(
           if (!activeEnrollment) {
             failures.push({
               studentId,
-              studentName: `${student.user.firstName} ${student.user.lastName}`,
+              studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
               reason: "No active enrollment found",
             });
             continue;
@@ -597,7 +598,7 @@ export async function getStudentsForGraduation(
     // Format student data
     const students = enrollments.map((enrollment) => ({
       id: enrollment.student.id,
-      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+      name: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
       rollNumber: enrollment.rollNumber,
       admissionId: enrollment.student.admissionId,
       class: enrollment.class.name,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +165,7 @@ export const GET = withSchoolAuth(async (request, context) => {
     results.students = students.map((student) => ({
       id: student.id,
       type: "student" as const,
-      title: `${student.user.firstName} ${student.user.lastName}`,
+      title: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       subtitle: student.enrollments[0]
         ? `${student.enrollments[0].class.name} - ${student.enrollments[0].section.name} • ${student.admissionId}`
         : student.admissionId,
@@ -175,7 +176,7 @@ export const GET = withSchoolAuth(async (request, context) => {
     results.teachers = teachers.map((teacher) => ({
       id: teacher.id,
       type: "teacher" as const,
-      title: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      title: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
       subtitle: teacher.subjects.length > 0
         ? `${teacher.subjects.map((s) => s.subject.name).join(", ")} • ${teacher.employeeId}`
         : teacher.employeeId,
@@ -186,9 +187,9 @@ export const GET = withSchoolAuth(async (request, context) => {
     results.parents = parents.map((parent) => ({
       id: parent.id,
       type: "parent" as const,
-      title: `${parent.user.firstName} ${parent.user.lastName}`,
+      title: `${formatFullName(parent.user.firstName, parent.user.lastName)}`,
       subtitle: parent.children.length > 0
-        ? `Parent of ${parent.children.map((c) => `${c.student.user.firstName} ${c.student.user.lastName}`).join(", ")}`
+        ? `Parent of ${parent.children.map((c) => `${formatFullName(c.student.user.firstName, c.student.user.lastName)}`).join(", ")}`
         : parent.user.email || undefined,
       url: `/admin/users/parents/${parent.id}`,
       avatar: parent.user.avatar || undefined,
@@ -198,7 +199,7 @@ export const GET = withSchoolAuth(async (request, context) => {
       id: doc.id,
       type: "document" as const,
       title: doc.title,
-      subtitle: `${doc.fileType || 'Document'} • Uploaded by ${doc.user.firstName} ${doc.user.lastName}`,
+      subtitle: `${doc.fileType || 'Document'} • Uploaded by ${formatFullName(doc.user.firstName, doc.user.lastName)}`,
       url: `/admin/documents/${doc.id}`,
     }));
 
@@ -206,7 +207,7 @@ export const GET = withSchoolAuth(async (request, context) => {
       id: announcement.id,
       type: "announcement" as const,
       title: announcement.title,
-      subtitle: `Posted by ${announcement.publisher.user.firstName} ${announcement.publisher.user.lastName}`,
+      subtitle: `Posted by ${formatFullName(announcement.publisher.user.firstName, announcement.publisher.user.lastName)}`,
       url: `/admin/communication/announcements/${announcement.id}`,
     }));
 

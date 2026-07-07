@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { AlumniDashboard } from "@/components/alumni/alumni-dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata = {
   title: "Alumni Dashboard - SikshaMitra",
@@ -175,7 +176,7 @@ async function getAlumniDashboardData(userId: string) {
   return {
     alumniProfile: {
       id: alumni.id,
-      studentName: `${student.user.firstName} ${student.user.lastName}`,
+      studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       graduationDate: alumni.graduationDate,
       finalClass: alumni.finalClass,
       finalSection: alumni.finalSection,

@@ -24,8 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 // Define the type for the subject to avoid rendering raw object
 interface AssignmentSubject {
   name: string;
@@ -189,7 +188,7 @@ export function StudentAssignmentList({
                         <div className="flex items-center text-muted-foreground">
                           <User className="h-3.5 w-3.5 mr-1" />
                           {assignment.creator ? 
-                            `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : 
+                            `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}` : 
                             "Teacher"}
                         </div>
                         

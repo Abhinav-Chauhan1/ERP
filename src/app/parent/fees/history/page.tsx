@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatFullName } from "@/lib/utils";
 
 interface PaymentRecord {
   id: string;
@@ -68,7 +69,7 @@ export default function PaymentHistoryPage() {
         // Map API response to expected format
         const mappedChildren = (data.children || []).map((child: any) => ({
           id: child.id,
-          name: `${child.user.firstName} ${child.user.lastName}`,
+          name: `${formatFullName(child.user.firstName, child.user.lastName)}`,
           class: child.enrollments?.[0]?.class?.name || "N/A",
         }));
 

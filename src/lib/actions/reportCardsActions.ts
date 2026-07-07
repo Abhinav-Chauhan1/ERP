@@ -16,6 +16,7 @@ import {
   type AttendanceData
 } from "../utils/attendance-calculator";
 import { calculateGrade } from "../utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 import {
   aggregateMultiTermReportCardData,
   type MultiTermReportCardData,
@@ -72,7 +73,7 @@ export const getReportCards = withSchoolAuthAction(
         return {
           id: rc.id,
           studentId: rc.studentId,
-          studentName: `${rc.student.user.firstName} ${rc.student.user.lastName}`,
+          studentName: `${formatFullName(rc.student.user.firstName, rc.student.user.lastName)}`,
           studentAdmissionId: rc.student.admissionId,
           termId: rc.termId,
           term: rc.term?.name ?? "",
@@ -187,7 +188,7 @@ export const getReportCardById = withSchoolAuthAction(
         data: {
           id: reportCard.id,
           studentId: reportCard.studentId,
-          studentName: `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`,
+          studentName: `${formatFullName(reportCard.student.user.firstName, reportCard.student.user.lastName)}`,
           studentAdmissionId: reportCard.student.admissionId,
           studentAvatar: reportCard.student.user.avatar,
           termId: reportCard.termId,
@@ -460,7 +461,7 @@ export const publishReportCard = withSchoolAuthAction(
 
           // M-11: batch parent notifications with createMany instead of N sequential creates
           if (reportCard.student.parents.length > 0) {
-            const studentName = `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`;
+            const studentName = `${formatFullName(reportCard.student.user.firstName, reportCard.student.user.lastName)}`;
             await db.notification.createMany({
               data: reportCard.student.parents.map((sp) => ({
                 userId: sp.parent.userId,
@@ -476,7 +477,7 @@ export const publishReportCard = withSchoolAuthAction(
           const { sendEmail, isEmailConfigured } = await import("@/lib/services/email-service");
 
           if (isEmailConfigured()) {
-            const studentName = `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`;
+            const studentName = `${formatFullName(reportCard.student.user.firstName, reportCard.student.user.lastName)}`;
             const termName = reportCard.term?.name ?? "";
             const academicYear = reportCard.term?.academicYear.name ?? "";
 
@@ -493,7 +494,7 @@ export const publishReportCard = withSchoolAuthAction(
                 await sendEmail({
                   to: studentParent.parent.user.email,
                   subject: `Report Card Published for ${studentName}`,
-                  html: `<h1>Report Card Published</h1><p>Dear ${studentParent.parent.user.firstName} ${studentParent.parent.user.lastName},</p><p>The report card for <strong>${studentName}</strong> for ${termName} (${academicYear}) has been published.</p>`,
+                  html: `<h1>Report Card Published</h1><p>Dear ${formatFullName(studentParent.parent.user.firstName, studentParent.parent.user.lastName)},</p><p>The report card for <strong>${studentName}</strong> for ${termName} (${academicYear}) has been published.</p>`,
                 });
               }
             }
@@ -677,7 +678,7 @@ export const getStudentsForReportCard = withSchoolAuthAction(
         const currentEnrollment = student.enrollments[0];
         return {
           id: student.id,
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           admissionId: student.admissionId,
           rollNumber: student.rollNumber || "",
           class: currentEnrollment?.class.name || "",

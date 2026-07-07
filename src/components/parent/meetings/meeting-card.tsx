@@ -25,8 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cancelMeeting } from "@/lib/actions/parent-meeting-actions";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface Meeting {
   id: string;
   title: string;
@@ -208,16 +207,16 @@ export function MeetingCard({
                 <Avatar className="h-8 w-8">
                   <AvatarImage 
                     src={meeting.teacher.user.avatar || ""} 
-                    alt={`${meeting.teacher.user.firstName} ${meeting.teacher.user.lastName}'s profile picture`}
+                    alt={`${formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}'s profile picture`}
                   />
                   <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                    {meeting.teacher.user.firstName.charAt(0)}
-                    {meeting.teacher.user.lastName.charAt(0)}
+                    {meeting.teacher.user.firstName?.charAt(0)}
+                    {meeting.teacher.user.lastName?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {meeting.teacher.user.firstName} {meeting.teacher.user.lastName}
+                    {formatFullName(meeting.teacher.user.firstName, meeting.teacher.user.lastName)}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {meeting.teacher.user.email}

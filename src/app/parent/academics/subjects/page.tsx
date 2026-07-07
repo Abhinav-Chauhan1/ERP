@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { getMyChildren } from "@/lib/actions/parent-children-actions";
 import { getChildAcademicProcess } from "@/lib/actions/parent-academic-actions";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Subjects | Parent Portal",
@@ -65,7 +66,7 @@ export default async function ParentSubjectsPage({
         <TabsList className="mb-4">
           {children.map(child => (
             <TabsTrigger key={child.id} value={child.id}>
-              {child.user.firstName} {child.user.lastName}
+              {formatFullName(child.user.firstName, child.user.lastName)}
             </TabsTrigger>
           ))}
         </TabsList>

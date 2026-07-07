@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMyChildren } from "@/lib/actions/parent-children-actions";
 import { getChildAcademicProcess } from "@/lib/actions/parent-academic-actions";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Academics | Parent Portal",
@@ -55,7 +56,7 @@ export default async function ParentAcademicsPage() {
         <TabsList>
           {children.map(child => (
             <TabsTrigger key={child.id} value={child.id}>
-              {child.user.firstName} {child.user.lastName}
+              {formatFullName(child.user.firstName, child.user.lastName)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -188,7 +189,7 @@ export default async function ParentAcademicsPage() {
                             </td>
                             <td className="border px-4 py-2">{slot.subjectTeacher.subject.name}</td>
                             <td className="border px-4 py-2">
-                              {slot.subjectTeacher.teacher.user.firstName} {slot.subjectTeacher.teacher.user.lastName}
+                              {formatFullName(slot.subjectTeacher.teacher.user.firstName, slot.subjectTeacher.teacher.user.lastName)}
                             </td>
                             <td className="border px-4 py-2">{slot.room?.name || 'N/A'}</td>
                           </tr>

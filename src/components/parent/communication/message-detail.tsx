@@ -16,8 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface MessageDetailProps {
   message: {
     id: string;
@@ -73,7 +72,7 @@ export function MessageDetail({
   thread,
 }: MessageDetailProps) {
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    return `${firstName?.charAt(0)}${lastName?.charAt(0)}`.toUpperCase();
   };
 
   const getRoleBadge = (role: string) => {
@@ -168,7 +167,7 @@ export function MessageDetail({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <p className="font-semibold">
-                  {message.sender.firstName} {message.sender.lastName}
+                  {formatFullName(message.sender.firstName, message.sender.lastName)}
                 </p>
                 {getRoleBadge(message.sender.role)}
               </div>
@@ -183,7 +182,7 @@ export function MessageDetail({
           <div className="flex items-center gap-2 text-sm text-gray-600 pl-15">
             <span className="font-medium">To:</span>
             <span>
-              {message.recipient.firstName} {message.recipient.lastName}
+              {formatFullName(message.recipient.firstName, message.recipient.lastName)}
             </span>
             <span className="text-gray-400">({message.recipient.email})</span>
           </div>
@@ -260,7 +259,7 @@ export function MessageDetail({
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium">
-                        {msg.sender.firstName} {msg.sender.lastName}
+                        {formatFullName(msg.sender.firstName, msg.sender.lastName)}
                       </span>
                       <span className="text-xs text-gray-500">
                         {format(new Date(msg.createdAt), "MMM d, yyyy")}

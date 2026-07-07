@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get all students assigned to a teacher's classes
@@ -217,7 +218,7 @@ export async function getTeacherStudents(options?: {
 
       return {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         email: student.user.email,
         avatar: student.user.avatar,
         rollNumber: student.rollNumber || "",
@@ -544,7 +545,7 @@ export async function getStudentDetails(studentId: string) {
       studentEmail: student.user.email,
       studentPhone: student.user.phone || "-",
       parentName: primaryParent
-        ? `${primaryParent.user.firstName} ${primaryParent.user.lastName}`
+        ? `${formatFullName(primaryParent.user.firstName, primaryParent.user.lastName)}`
         : "-",
       parentEmail: primaryParent?.user.email || "-",
       parentPhone: primaryParent?.user.phone || "-",
@@ -554,7 +555,7 @@ export async function getStudentDetails(studentId: string) {
 
     return {
       id: student.id,
-      name: `${student.user.firstName} ${student.user.lastName}`,
+      name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       admissionId: student.admissionId,
       rollNumber: student.rollNumber || "-",
       avatar: student.user.avatar,
@@ -710,7 +711,7 @@ export async function getClassStudents(classId: string, sectionId?: string) {
 
       return {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         email: student.user.email,
         avatar: student.user.avatar,
         rollNumber: student.rollNumber || "-",
@@ -847,7 +848,7 @@ export async function getTeacherStudentsPerformance() {
       if (examResults.length > 0) {
         studentPerformances.push({
           id: student.id,
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           average: studentAverage,
           className
         });

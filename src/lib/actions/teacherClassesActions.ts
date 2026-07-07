@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ export async function getClassDetails(classId: string, sectionId?: string) {
 
   const students = enrollments.map((e) => ({
     id: e.student.id,
-    name: `${e.student.user.firstName} ${e.student.user.lastName}`,
+    name: `${formatFullName(e.student.user.firstName, e.student.user.lastName)}`,
     avatar: e.student.user.avatar,
     rollNumber: e.rollNumber ?? "",
     section: e.section.name,
@@ -431,7 +432,7 @@ export async function getClassStudents(classId: string, sectionId?: string) {
   return {
     students: enrollments.map((e) => ({
       id: e.student.id,
-      name: `${e.student.user.firstName} ${e.student.user.lastName}`,
+      name: `${formatFullName(e.student.user.firstName, e.student.user.lastName)}`,
       rollNumber: e.rollNumber ?? "",
       section: e.section.name,
       sectionId: e.section.id,

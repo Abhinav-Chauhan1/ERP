@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFullName } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
@@ -43,7 +43,7 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter((student) => {
-      const fullName = `${student.user.firstName} ${student.user.lastName}`.toLowerCase();
+      const fullName = `${formatFullName(student.user.firstName, student.user.lastName)}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         student.admissionId.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -63,9 +63,9 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
         case "oldest":
           return new Date(a.admissionDate).getTime() - new Date(b.admissionDate).getTime();
         case "name-asc":
-          return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+          return `${formatFullName(a.user.firstName, a.user.lastName)}`.localeCompare(`${formatFullName(b.user.firstName, b.user.lastName)}`);
         case "name-desc":
-          return `${b.user.firstName} ${b.user.lastName}`.localeCompare(`${a.user.firstName} ${a.user.lastName}`);
+          return `${formatFullName(b.user.firstName, b.user.lastName)}`.localeCompare(`${formatFullName(a.user.firstName, a.user.lastName)}`);
         default:
           return 0;
       }
@@ -86,7 +86,7 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
       admissionId: student.admissionId,
       firstName: student.user.firstName,
       lastName: student.user.lastName,
-      fullName: `${student.user.firstName} ${student.user.lastName}`,
+      fullName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
       gender: student.gender,
       class: student.enrollments.length > 0 ? student.enrollments[0].class.name : "Not enrolled",
       section: student.enrollments.length > 0 ? student.enrollments[0].section.name : "N/A",
@@ -162,11 +162,11 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+                          <AvatarImage src={student.user.avatar || undefined} alt={`${formatFullName(student.user.firstName, student.user.lastName)}`} />
                           <AvatarFallback>{student.user.firstName?.[0]}{student.user.lastName?.[0]}</AvatarFallback>
                         </Avatar>
                         <div className="font-medium">
-                          {student.user.firstName} {student.user.lastName}
+                          {formatFullName(student.user.firstName, student.user.lastName)}
                         </div>
                       </div>
                     </td>

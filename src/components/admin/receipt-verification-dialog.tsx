@@ -46,6 +46,7 @@ import { format } from "date-fns";
 import { verifyReceipt } from "@/lib/actions/receiptVerificationActions";
 import { addReceiptNote, getReceiptNotes, deleteReceiptNote } from "@/lib/actions/receiptNotesActions";
 import toast from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface ReceiptData {
   id: string;
@@ -256,7 +257,7 @@ export function ReceiptVerificationDialog({
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
                     <p className="font-medium">
-                      {receipt.student.user.firstName} {receipt.student.user.lastName}
+                      {formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}
                     </p>
                   </div>
                   <div>

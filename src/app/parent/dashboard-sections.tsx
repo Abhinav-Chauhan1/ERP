@@ -16,6 +16,7 @@ import { CalendarWidget } from "@/components/calendar/calendar-widget";
 import { RecentActivityFeed } from "@/components/parent/dashboard/recent-activity-feed";
 import { CACHE_TAGS } from "@/lib/utils/cache";
 import { prisma } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Cached per-request: fetch all dashboard data in parallel in one shot
@@ -437,7 +438,7 @@ export async function RecentActivityFeedSection() {
         description: `New assignment: ${assignment.title}`,
         timestamp: assignment.createdAt,
         childName: child
-          ? `${child.user.firstName} ${child.user.lastName}`
+          ? `${formatFullName(child.user.firstName, child.user.lastName)}`
           : "Unknown",
       };
     }),
@@ -449,7 +450,7 @@ export async function RecentActivityFeedSection() {
         description: `Exam: ${result.exam.title}`,
         timestamp: result.createdAt,
         childName: child
-          ? `${child.user.firstName} ${child.user.lastName}`
+          ? `${formatFullName(child.user.firstName, child.user.lastName)}`
           : "Unknown",
       };
     }),
@@ -468,7 +469,7 @@ export async function RecentActivityFeedSection() {
         description: "Absent from school",
         timestamp: absence.date,
         childName: child
-          ? `${child.user.firstName} ${child.user.lastName}`
+          ? `${formatFullName(child.user.firstName, child.user.lastName)}`
           : "Unknown",
       };
     }),

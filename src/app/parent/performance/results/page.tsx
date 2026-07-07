@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { formatFullName } from "@/lib/utils";
 
 // Enable caching with revalidation
 export const revalidate = 600; // Revalidate every 10 minutes
@@ -100,7 +101,7 @@ export default async function ExamResultsPage({ searchParams: searchParamsPromis
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
     academicYearId: pc.student.enrollments[0]?.class.academicYearId,

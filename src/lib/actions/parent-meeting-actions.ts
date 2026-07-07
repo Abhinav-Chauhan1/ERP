@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { formatFullName } from "@/lib/utils";
 import {
   createCalendarEventFromMeeting,
   updateCalendarEventFromMeeting,
@@ -166,7 +167,7 @@ export async function scheduleMeeting(formData: FormData, schoolId: string) {
         data: {
           userId: user.id,
           title: "Meeting Scheduled",
-          message: `Your meeting with ${teacher.user.firstName} ${teacher.user.lastName} has been scheduled for ${scheduledDateTime.toLocaleString()}`,
+          message: `Your meeting with ${formatFullName(teacher.user.firstName, teacher.user.lastName)} has been scheduled for ${scheduledDateTime.toLocaleString()}`,
           type: "INFO",
           schoolId,
         },
@@ -175,7 +176,7 @@ export async function scheduleMeeting(formData: FormData, schoolId: string) {
         data: {
           userId: teacher.userId,
           title: "New Meeting Request",
-          message: `${user.firstName} ${user.lastName} has scheduled a meeting with you for ${scheduledDateTime.toLocaleString()}`,
+          message: `${formatFullName(user.firstName, user.lastName)} has scheduled a meeting with you for ${scheduledDateTime.toLocaleString()}`,
           type: "INFO",
           schoolId,
         },
@@ -459,7 +460,7 @@ export async function cancelMeeting(formData: FormData, schoolId: string) {
       data: {
         userId: meeting.teacher.userId,
         title: "Meeting Cancelled",
-        message: `${user.firstName} ${user.lastName} has cancelled the meeting scheduled for ${meeting.scheduledDate.toLocaleString()}${validated.reason ? `. Reason: ${validated.reason}` : ""}`,
+        message: `${formatFullName(user.firstName, user.lastName)} has cancelled the meeting scheduled for ${meeting.scheduledDate.toLocaleString()}${validated.reason ? `. Reason: ${validated.reason}` : ""}`,
         type: "WARNING",
         schoolId,
       },
@@ -614,7 +615,7 @@ export async function rescheduleMeeting(formData: FormData, schoolId: string) {
       data: {
         userId: meeting.teacher.userId,
         title: "Meeting Rescheduled",
-        message: `${user.firstName} ${user.lastName} has rescheduled the meeting from ${meeting.scheduledDate.toLocaleString()} to ${newDateTime.toLocaleString()}`,
+        message: `${formatFullName(user.firstName, user.lastName)} has rescheduled the meeting from ${meeting.scheduledDate.toLocaleString()} to ${newDateTime.toLocaleString()}`,
         type: "INFO",
         schoolId,
       },
@@ -731,7 +732,7 @@ export async function getTeacherAvailability(teacherId: string, date: string) {
       success: true, 
       data: {
         teacherId,
-        teacherName: `${teacher.user.firstName} ${teacher.user.lastName}`,
+        teacherName: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
         date,
         availableSlots,
       },

@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { AlumniDirectoryView } from "@/components/alumni/alumni-directory-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatFullName } from "@/lib/utils";
 
 export const metadata = {
   title: "Alumni Directory - Alumni Portal",
@@ -124,7 +125,7 @@ async function getAlumniDirectoryData(currentUserId: string) {
   // Format alumni data with privacy controls
   const formattedAlumni = alumni.map((alumnus) => ({
     id: alumnus.id,
-    studentName: `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
+    studentName: `${formatFullName(alumnus.student.user.firstName, alumnus.student.user.lastName)}`,
     admissionId: alumnus.student.admissionId,
     graduationDate: alumnus.graduationDate,
     finalClass: alumnus.finalClass,

@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, format } from "date-fns";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get teacher attendance overview data
@@ -303,7 +304,7 @@ export async function getTeacherAttendanceOverview() {
         return {
           id: student.studentId,
           name: studentAttendance[0]
-            ? `${studentAttendance[0].student.user.firstName} ${studentAttendance[0].student.user.lastName}`
+            ? `${formatFullName(studentAttendance[0].student.user.firstName, studentAttendance[0].student.user.lastName)}`
             : "Unknown",
           admissionId: studentAttendance[0]?.student.admissionId || "N/A",
           className: student.className,
@@ -383,7 +384,7 @@ export async function getTeacherAttendanceOverview() {
 
     const recentAbsences = recentAbsencesRecords.map((absence) => ({
       id: absence.id,
-      name: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+      name: `${formatFullName(absence.student.user.firstName, absence.student.user.lastName)}`,
       grade:
         absence.student.enrollments.length > 0
           ? `${absence.student.enrollments[0].class.name}-${absence.student.enrollments[0].section.name}`

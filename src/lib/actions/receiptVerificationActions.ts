@@ -7,6 +7,7 @@ import { ReceiptStatus, PaymentStatus, PaymentSource } from "@prisma/client";
 import { sanitizeRejectionReason } from "@/lib/utils/input-sanitization";
 import { rateLimitVerification } from "@/lib/utils/receipt-rate-limit";
 import { getRequiredSchoolId } from "@/lib/utils/school-context-helper";
+import { formatFullName } from "@/lib/utils";
 import {
   logReceiptVerification,
   logReceiptRejection,
@@ -399,7 +400,7 @@ export async function verifyReceipt(receiptId: string) {
 
       const notificationData = {
         schoolId: schoolId, // Add required schoolId
-        studentName: `${result.receipt.student.user.firstName} ${result.receipt.student.user.lastName}`,
+        studentName: `${formatFullName(result.receipt.student.user.firstName, result.receipt.student.user.lastName)}`,
         receiptReference: result.receipt.referenceNumber,
         feeStructureName: result.receipt.feeStructure.name,
         amount: result.receipt.amount,
@@ -604,7 +605,7 @@ export async function rejectReceipt(
 
       const notificationData = {
         schoolId: schoolId, // Add required schoolId
-        studentName: `${updatedReceipt.student.user.firstName} ${updatedReceipt.student.user.lastName}`,
+        studentName: `${formatFullName(updatedReceipt.student.user.firstName, updatedReceipt.student.user.lastName)}`,
         receiptReference: updatedReceipt.referenceNumber,
         feeStructureName: updatedReceipt.feeStructure.name,
         amount: updatedReceipt.amount,

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatFullName } from "@/lib/utils";
 import NextLink from "next/link"; // Renaming to avoid conflict if I messed up, but standard is Link
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +84,7 @@ export default async function ParentPerformanceReportsPage({ searchParams: searc
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
     academicYearId: pc.student.enrollments[0]?.class.academicYearId,

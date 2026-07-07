@@ -7,6 +7,7 @@
 
 import { db } from "@/lib/db";
 import { AuditAction } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 interface AuditLogData {
   userId: string;
@@ -435,7 +436,7 @@ export function exportAuditLogsToCSV(logs: any[]): string {
     return [
       new Date(log.timestamp).toISOString(),
       log.action,
-      `${log.user.firstName} ${log.user.lastName}`,
+      `${formatFullName(log.user.firstName, log.user.lastName)}`,
       log.user.email,
       log.user.role,
       log.resourceId,

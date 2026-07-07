@@ -12,6 +12,7 @@ import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
 import { getCurrentParent } from '@/lib/utils/payment-helpers';
 import { getSchoolCashfreeCredentials } from '@/lib/actions/paymentConfigActions';
 import { z } from 'zod';
+import { formatFullName } from "@/lib/utils";
 
 async function verifyParentChildRelationship(
   parentId: string,
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest) {
         orderId,
         amount: validated.amount,
         currency: validated.currency || 'INR',
-        customerName: `${student.user.firstName} ${student.user.lastName}`,
+        customerName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         customerEmail: student.user.email || `${validated.childId}@student.school`,
         customerPhone: student.user.phone || '9999999999',
         returnUrl,

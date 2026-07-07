@@ -41,6 +41,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 import {
     assignSubjectToClass,
@@ -193,7 +194,7 @@ function AssignedChip({
     drag(drop(ref));
 
     const teacherName = assignment.teacher
-        ? `${assignment.teacher.user.firstName} ${assignment.teacher.user.lastName}`
+        ? `${formatFullName(assignment.teacher.user.firstName, assignment.teacher.user.lastName)}`
         : null;
 
     return (

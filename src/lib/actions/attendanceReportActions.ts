@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { AttendanceStatus } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 export async function getDailyAttendanceSummary(date: Date, sectionId?: string) {
   try {
@@ -58,7 +59,7 @@ export async function getDailyAttendanceSummary(date: Date, sectionId?: string) 
       data: {
         attendance: attendance.map((a) => ({
           id: a.id,
-          studentName: `${a.student.user.firstName} ${a.student.user.lastName}`,
+          studentName: `${formatFullName(a.student.user.firstName, a.student.user.lastName)}`,
           class: a.section.class.name,
           section: a.section.name,
           status: a.status,
@@ -186,7 +187,7 @@ export async function getAbsenteeismAnalysis(filters?: {
       if (!studentAbsences[absence.studentId]) {
         studentAbsences[absence.studentId] = {
           studentId: absence.studentId,
-          studentName: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+          studentName: `${formatFullName(absence.student.user.firstName, absence.student.user.lastName)}`,
           admissionId: absence.student.admissionId,
           class:
             absence.student.enrollments.length > 0
@@ -332,7 +333,7 @@ export async function getPerfectAttendance(filters?: {
       if (!studentRecords[record.studentId]) {
         studentRecords[record.studentId] = {
           studentId: record.studentId,
-          studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
+          studentName: `${formatFullName(record.student.user.firstName, record.student.user.lastName)}`,
           admissionId: record.student.admissionId,
           class:
             record.student.enrollments.length > 0

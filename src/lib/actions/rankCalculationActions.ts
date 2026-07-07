@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export interface ActionResult<T = any> {
   success: boolean;
@@ -304,7 +305,7 @@ export async function getRankStatistics(
     const rankedStudents = reportCards.filter((rc) => rc.rank !== null).length;
     const topRank = reportCards[0]?.rank || null;
     const topStudent = reportCards[0]
-      ? `${reportCards[0].student.user.firstName} ${reportCards[0].student.user.lastName}`
+      ? `${formatFullName(reportCards[0].student.user.firstName, reportCards[0].student.user.lastName)}`
       : null;
 
     // Count tied ranks
@@ -329,7 +330,7 @@ export async function getRankStatistics(
         tiedRanks,
         reportCards: reportCards.map((rc) => ({
           id: rc.id,
-          studentName: `${rc.student.user.firstName} ${rc.student.user.lastName}`,
+          studentName: `${formatFullName(rc.student.user.firstName, rc.student.user.lastName)}`,
           rank: rc.rank,
           totalMarks: rc.totalMarks,
           percentage: rc.percentage,

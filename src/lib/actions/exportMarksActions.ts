@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 export interface ExportMarksInput {
   examId: string;
@@ -140,7 +141,7 @@ export async function exportMarksToFile(
     const exportData: StudentMarkData[] = examResults.map((result) => ({
       studentId: result.studentId,
       rollNumber: result.student.rollNumber || "",
-      studentName: `${result.student.user.firstName} ${result.student.user.lastName}`,
+      studentName: `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`,
       theoryMarks: result.theoryMarks,
       practicalMarks: result.practicalMarks,
       internalMarks: result.internalMarks,

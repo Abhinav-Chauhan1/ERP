@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get all academic information for a child
@@ -128,7 +129,7 @@ export async function getChildAcademicProcess(childId: string) {
       code: sc.subject.code,
       teachers: sc.subject.teachers.map(teacher => ({
         id: teacher.teacher.id,
-        name: `${teacher.teacher.user.firstName} ${teacher.teacher.user.lastName}`
+        name: `${formatFullName(teacher.teacher.user.firstName, teacher.teacher.user.lastName)}`
       }))
     }));
   }

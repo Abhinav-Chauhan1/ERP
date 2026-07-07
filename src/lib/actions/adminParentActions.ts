@@ -2,6 +2,7 @@
 
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
+import { formatFullName } from "@/lib/utils";
 
 // Get parent with detailed information
 export const getParentWithDetails = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, parentId: string) => {
@@ -59,7 +60,7 @@ export const getParentWithDetails = withSchoolAuthAction(async (schoolId: string
     if (!parent) {
       console.log(`No parent found with ID: ${parentId}`);
     } else {
-      console.log(`Found parent: ${parent.user.firstName} ${parent.user.lastName}`);
+      console.log(`Found parent: ${formatFullName(parent.user.firstName, parent.user.lastName)}`);
     }
 
     return parent;

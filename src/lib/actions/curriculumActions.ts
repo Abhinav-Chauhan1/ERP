@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 export async function getClassSubjects(classId: string) {
     try {
@@ -422,7 +423,7 @@ export async function getTeachersForSchool() {
 
         const formatted = teachers.map((t) => ({
             id: t.id,
-            name: `${t.user.firstName} ${t.user.lastName}`,
+            name: `${formatFullName(t.user.firstName, t.user.lastName)}`,
             avatar: t.user.avatar,
             employeeId: t.employeeId,
             subjectNames: t.subjects.map((s) => s.subject.name),

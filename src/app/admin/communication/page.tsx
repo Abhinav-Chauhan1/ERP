@@ -18,6 +18,7 @@ import { getMessages, getMessageStats, getWeeklyCommunicationStats } from "@/lib
 import { getAnnouncements, getAnnouncementStats } from "@/lib/actions/announcementActions";
 import { getNotificationStats } from "@/lib/actions/notificationActions";
 import { getParentMeetings, getMeetingStats } from "@/lib/actions/parentMeetingActions";
+import { formatFullName } from "@/lib/utils";
 
 export default function CommunicationsPage() {
   const [loading, setLoading] = useState(true);
@@ -249,7 +250,7 @@ export default function CommunicationsPage() {
                             {!message.isRead && <Badge className="bg-primary/10 text-primary">New</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            From: {message.sender?.firstName} {message.sender?.lastName}
+                            From: {formatFullName(message.sender?.firstName, message.sender?.lastName)}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(message.createdAt).toLocaleString()}
@@ -420,7 +421,7 @@ export default function CommunicationsPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {meeting.teacher?.user?.firstName} {meeting.teacher?.user?.lastName}
+                            {formatFullName(meeting.teacher?.user?.firstName, meeting.teacher?.user?.lastName)}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(meeting.meetingDate).toLocaleString()}

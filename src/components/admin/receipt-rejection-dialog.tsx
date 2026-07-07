@@ -25,6 +25,7 @@ import { Loader2, AlertTriangle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { rejectReceipt } from "@/lib/actions/receiptVerificationActions";
 import toast from "react-hot-toast";
+import { formatFullName } from "@/lib/utils";
 
 interface ReceiptData {
   id: string;
@@ -158,7 +159,7 @@ export function ReceiptRejectionDialog({
               <div>
                 <p className="text-xs text-muted-foreground">Student</p>
                 <p className="font-medium">
-                  {receipt.student.user.firstName} {receipt.student.user.lastName}
+                  {formatFullName(receipt.student.user.firstName, receipt.student.user.lastName)}
                 </p>
               </div>
               <div>

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 
 // Instead of exporting the schema directly, create it as a constant
 const assignmentSubmissionSchema = z.object({
@@ -168,7 +169,7 @@ export async function getExamDetails(examId: string) {
     creator: exam.creator
       ? {
         id: exam.creator.id,
-        name: `${exam.creator.user.firstName} ${exam.creator.user.lastName}`,
+        name: `${formatFullName(exam.creator.user.firstName, exam.creator.user.lastName)}`,
       }
       : null,
   };
@@ -304,7 +305,7 @@ export async function getAssignments() {
       isOverdue:
         assignment.submissions.length === 0 && assignment.dueDate < currentDate,
       teacher: assignment.creator
-        ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`
+        ? `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}`
         : "Unknown",
     })),
 
@@ -379,7 +380,7 @@ export async function getAssignmentDetails(assignmentId: string) {
     teacher: assignment.creator
       ? {
         id: assignment.creator.id,
-        name: `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`,
+        name: `${formatFullName(assignment.creator.user.firstName, assignment.creator.user.lastName)}`,
       }
       : null,
   };

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get attendance records for a specific child within a date range
@@ -194,7 +195,7 @@ export async function getChildrenAttendanceSummary() {
       
       return {
         studentId: pc.student.id,
-        studentName: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+        studentName: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
         isPrimary: pc.isPrimary,
         totalDays,
         presentDays,

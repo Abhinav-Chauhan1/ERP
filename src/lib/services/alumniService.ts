@@ -11,6 +11,7 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { memoryCache, CACHE_DURATION, CACHE_TAGS } from "@/lib/utils/cache";
+import { formatFullName } from "@/lib/utils";
 
 // ============================================================================
 // Types and Interfaces
@@ -298,7 +299,7 @@ export class AlumniService {
       admissionId: alumnus.student.admissionId,
       firstName: alumnus.student.user.firstName,
       lastName: alumnus.student.user.lastName,
-      fullName: `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
+      fullName: `${formatFullName(alumnus.student.user.firstName, alumnus.student.user.lastName)}`,
       email: alumnus.student.user.email,
       phone: alumnus.student.user.phone || alumnus.student.phone,
       

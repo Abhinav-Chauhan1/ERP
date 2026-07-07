@@ -8,6 +8,7 @@ import { UserRole } from "@prisma/client";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 const BATCH_SIZE = 10;
 
@@ -633,7 +634,7 @@ export async function importTeachers(
               result.summary.skipped++;
               result.skippedRecords.push({
                 row: rowNumber,
-                name: `${validated.firstName} ${validated.lastName}`,
+                name: `${formatFullName(validated.firstName, validated.lastName)}`,
                 reason: existingTeacher.employeeId === validated.employeeId ? "Duplicate employee ID" : "Duplicate email",
               });
               return;
@@ -658,7 +659,7 @@ export async function importTeachers(
             if (!departmentExists) {
               result.errors.push({
                 row: rowNumber,
-                name: `${validated.firstName} ${validated.lastName}`,
+                name: `${formatFullName(validated.firstName, validated.lastName)}`,
                 field: "departmentId",
                 message: `Department with ID ${validated.departmentId} not found`,
               });
@@ -673,7 +674,7 @@ export async function importTeachers(
 
           const newUser = await db.user.create({
             data: {
-              name: `${validated.firstName} ${validated.lastName}`,
+              name: `${formatFullName(validated.firstName, validated.lastName)}`,
               firstName: validated.firstName,
               lastName: validated.lastName,
               email: validated.email,
@@ -754,7 +755,7 @@ export async function importParents(
           if (!student) {
             result.errors.push({
               row: rowNumber,
-              name: `${validated.firstName} ${validated.lastName}`,
+              name: `${formatFullName(validated.firstName, validated.lastName)}`,
               field: "studentAdmissionId",
               message: `Student with admission ID ${validated.studentAdmissionId} not found`,
             });
@@ -771,7 +772,7 @@ export async function importParents(
               result.summary.skipped++;
               result.skippedRecords.push({
                 row: rowNumber,
-                name: `${validated.firstName} ${validated.lastName}`,
+                name: `${formatFullName(validated.firstName, validated.lastName)}`,
                 reason: "Duplicate email",
               });
               return;
@@ -803,7 +804,7 @@ export async function importParents(
 
           const newUser = await db.user.create({
             data: {
-              name: `${validated.firstName} ${validated.lastName}`,
+              name: `${formatFullName(validated.firstName, validated.lastName)}`,
               firstName: validated.firstName,
               lastName: validated.lastName,
               email: validated.email,

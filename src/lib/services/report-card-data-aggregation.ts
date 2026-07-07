@@ -19,6 +19,7 @@ import { db } from "@/lib/db";
 import { calculateAttendanceForTerm, type AttendanceData } from "@/lib/utils/attendance-calculator";
 import { calculateGrade, calculateGradePoint, calculateCGPA } from "@/lib/utils/grade-calculator";
 import { aggregateMarksByRule, type AssessmentRule as AssessmentRuleBase } from "@/lib/utils/assessment-logic";
+import { formatFullName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Internal helper types
@@ -600,7 +601,7 @@ async function fetchStudentInformation(studentId: string): Promise<StudentInfo> 
 
   return {
     id: student.id,
-    name: `${student.user.firstName} ${student.user.lastName}`,
+    name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
     admissionId: student.admissionId,
     schoolId: student.schoolId,
     rollNumber: student.rollNumber,
@@ -675,7 +676,7 @@ export async function fetchStudentParentInfo(studentId: string): Promise<Student
 
   return {
     id: student.id,
-    name: `${student.user.firstName} ${student.user.lastName}`,
+    name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
     admissionId: student.admissionId,
     schoolId: student.schoolId,
     rollNumber: student.rollNumber,

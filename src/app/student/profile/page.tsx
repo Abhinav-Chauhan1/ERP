@@ -9,6 +9,7 @@ import { StudentAcademicDetails } from "@/components/student/student-academic-de
 import { PasswordChangeForm } from "@/components/forms/password-change-form";
 import { auth } from "@/auth";
 import Image from "next/image";
+import { formatFullName } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +98,7 @@ export default async function StudentProfilePage() {
                 {student.user.avatar ? (
                   <Image
                     src={student.user.avatar}
-                    alt={`${student.user.firstName} ${student.user.lastName}`}
+                    alt={`${formatFullName(student.user.firstName, student.user.lastName)}`}
                     fill
                     className="object-cover"
                     unoptimized
@@ -113,7 +114,7 @@ export default async function StudentProfilePage() {
             </div>
             <div className="flex-1 pb-4">
               <h2 className="text-2xl font-bold">
-                {student.user.firstName} {student.user.lastName}
+                {formatFullName(student.user.firstName, student.user.lastName)}
               </h2>
               <p className="text-muted-foreground">Admission ID: {student.admissionId}</p>
               <div className="flex flex-wrap gap-2 mt-2">

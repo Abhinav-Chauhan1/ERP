@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth-helpers";
 import { MessageType, MessageStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { formatFullName } from "@/lib/utils";
 
 export interface MessageHistoryFilters {
   messageType?: MessageType;
@@ -416,7 +417,7 @@ export async function getMessageAnalytics(
           sentCount: msg.sentCount,
           status: msg.status,
           totalCost: msg.totalCost,
-          sentBy: `${msg.sender.firstName} ${msg.sender.lastName}`,
+          sentBy: `${formatFullName(msg.sender.firstName, msg.sender.lastName)}`,
           sentAt: msg.sentAt,
         })),
       },

@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { Prisma, EnrollmentStatus, PromotionStatus } from "@prisma/client";
 import { sendNotification } from "./communication-service";
 import { NotificationType } from "@/lib/types/communication";
+import { formatFullName } from "@/lib/utils";
 
 // ============================================================================
 // Types and Interfaces
@@ -754,7 +755,7 @@ export class PromotionService {
         // Send notifications to parents
         for (const studentParent of student.parents) {
           try {
-            const parentMessage = `Your child ${student.user.firstName} ${student.user.lastName} has been promoted to ${promotionDetails.targetClass} - ${promotionDetails.targetSection} for the academic year ${promotionDetails.targetAcademicYear}.`;
+            const parentMessage = `Your child ${formatFullName(student.user.firstName, student.user.lastName)} has been promoted to ${promotionDetails.targetClass} - ${promotionDetails.targetSection} for the academic year ${promotionDetails.targetAcademicYear}.`;
 
             await sendNotification({
               userId: studentParent.parent.id,
@@ -763,7 +764,7 @@ export class PromotionService {
               message: parentMessage,
               data: {
                 studentId,
-                studentName: `${student.user.firstName} ${student.user.lastName}`,
+                studentName: `${formatFullName(student.user.firstName, student.user.lastName)}`,
                 targetClass: promotionDetails.targetClass,
                 targetSection: promotionDetails.targetSection,
                 targetAcademicYear: promotionDetails.targetAcademicYear,

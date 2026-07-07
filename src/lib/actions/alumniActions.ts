@@ -17,6 +17,7 @@ import { AlumniService } from "@/lib/services/alumniService";
 import { logAudit } from "@/lib/utils/audit-log";
 import { memoryCache, CACHE_DURATION } from "@/lib/utils/cache";
 import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
+import { formatFullName } from "@/lib/utils";
 import {
   alumniSearchSchema,
   getAlumniProfileSchema,
@@ -832,7 +833,7 @@ export async function exportAlumniDirectory(
     // Format data for export
     const exportData = alumni.map((alumnus) => ({
       "Admission ID": alumnus.student.admissionId,
-      "Name": `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
+      "Name": `${formatFullName(alumnus.student.user.firstName, alumnus.student.user.lastName)}`,
       "Graduation Date": alumnus.graduationDate.toLocaleDateString(),
       "Final Class": alumnus.finalClass,
       "Final Section": alumnus.finalSection,
@@ -1047,7 +1048,7 @@ export async function sendAlumniMessage(
             // Add new result
             results.push({
               alumniId: alumnus.id,
-              alumniName: `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
+              alumniName: `${formatFullName(alumnus.student.user.firstName, alumnus.student.user.lastName)}`,
               success: result?.success || false,
               error: result?.error,
             });
@@ -1173,7 +1174,7 @@ export async function getAlumniForCommunication(
     // Format alumni data
     const formattedAlumni = alumni.map((alumnus) => ({
       id: alumnus.id,
-      studentName: `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
+      studentName: `${formatFullName(alumnus.student.user.firstName, alumnus.student.user.lastName)}`,
       admissionId: alumnus.student.admissionId,
       graduationDate: alumnus.graduationDate,
       finalClass: alumnus.finalClass,

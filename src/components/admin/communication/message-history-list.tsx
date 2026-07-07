@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Eye, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { MessageType, MessageStatus } from "@prisma/client";
+import { formatFullName } from "@/lib/utils";
 
 interface MessageHistoryData {
   id: string;
@@ -249,7 +250,7 @@ export function MessageHistoryList() {
                         <TableCell>₹{message.totalCost.toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(message.status)}</TableCell>
                         <TableCell>
-                          {message.sender.firstName} {message.sender.lastName}
+                          {formatFullName(message.sender.firstName, message.sender.lastName)}
                         </TableCell>
                         <TableCell>
                           <Button

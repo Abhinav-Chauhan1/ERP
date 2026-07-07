@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { formatFullName } from "@/lib/utils";
 
 // Enable caching with revalidation
 export const revalidate = 300; // Revalidate every 5 minutes
@@ -95,7 +96,7 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
 
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
+    name: `${formatFullName(pc.student.user.firstName, pc.student.user.lastName)}`,
     class: pc.student.enrollments[0]?.class.name || "N/A",
     section: pc.student.enrollments[0]?.section.name || "N/A",
     isPrimary: pc.isPrimary

@@ -16,8 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-
+import { cn, formatFullName } from "@/lib/utils";
 interface AnnouncementCardProps {
   announcement: {
     id: string;
@@ -66,7 +65,7 @@ export function AnnouncementCard({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    return `${firstName?.charAt(0)}${lastName?.charAt(0)}`.toUpperCase();
   };
 
   const getCategoryBadge = (cat: string) => {
@@ -164,7 +163,7 @@ export function AnnouncementCard({
               </AvatarFallback>
             </Avatar>
             <span>
-              {announcement.publisher.firstName} {announcement.publisher.lastName}
+              {formatFullName(announcement.publisher.firstName, announcement.publisher.lastName)}
             </span>
           </div>
 

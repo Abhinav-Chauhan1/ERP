@@ -5,6 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Joins first/last name parts, skipping any that are null/undefined/empty —
+// avoids literal "null" showing up when lastName (or firstName) isn't set.
+export function formatFullName(
+  firstName?: string | null,
+  lastName?: string | null
+): string {
+  return [firstName, lastName].filter(Boolean).join(" ");
+}
+
 export function isValidDate(date: Date): boolean {
   return date instanceof Date && !isNaN(date.getTime());
 }

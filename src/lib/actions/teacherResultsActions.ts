@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
+import { formatFullName } from "@/lib/utils";
 
 /**
  * Get all results for a teacher (exams and assignments)
@@ -360,7 +361,7 @@ export async function getExamResultDetails(examId: string) {
 
       return {
         id: result.student.id,
-        name: `${result.student.user.firstName} ${result.student.user.lastName}`,
+        name: `${formatFullName(result.student.user.firstName, result.student.user.lastName)}`,
         className: enrollment ? `${enrollment.class.name}-${enrollment.section.name}` : "N/A",
         rollNumber: result.student.rollNumber || "N/A",
         marks: result.marks,
@@ -507,7 +508,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
       return {
         id: submission.id,
         studentId: submission.student.id,
-        studentName: `${submission.student.user.firstName} ${submission.student.user.lastName}`,
+        studentName: `${formatFullName(submission.student.user.firstName, submission.student.user.lastName)}`,
         className: enrollment ? `${enrollment.class.name}-${enrollment.section.name}` : "N/A",
         rollNumber: submission.student.rollNumber || "N/A",
         submissionDate: submission.submissionDate,
@@ -832,7 +833,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     return {
       student: {
         id: student.id,
-        name: `${student.user.firstName} ${student.user.lastName}`,
+        name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
         class: student.enrollments[0]?.class.name || 'N/A',
         section: student.enrollments[0]?.section.name || 'N/A',
         rollNumber: student.rollNumber || 'N/A',
@@ -1045,7 +1046,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
 
       return {
         studentId: enrollment.studentId,
-        studentName: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        studentName: `${formatFullName(enrollment.student.user.firstName, enrollment.student.user.lastName)}`,
         rollNumber: enrollment.student.rollNumber || enrollment.rollNumber || 'N/A',
         section: enrollment.section.name,
         totalMarks,

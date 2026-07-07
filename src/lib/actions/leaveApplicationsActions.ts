@@ -12,6 +12,7 @@ import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
+import { formatFullName } from "@/lib/utils";
 
 // Create a new leave application
 export const createLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, data: LeaveApplicationFormValues) => {
@@ -60,7 +61,7 @@ export const createLeaveApplication = withSchoolAuthAction(async (schoolId, user
       if (!student) {
         return { success: false, error: "Student not found" };
       }
-      applicantName = `${student.user.firstName} ${student.user.lastName}`;
+      applicantName = `${formatFullName(student.user.firstName, student.user.lastName)}`;
       applicantUserId = student.userId;
     } else if (data.applicantType === "TEACHER") {
       const teacher = await db.teacher.findFirst({
@@ -70,7 +71,7 @@ export const createLeaveApplication = withSchoolAuthAction(async (schoolId, user
       if (!teacher) {
         return { success: false, error: "Teacher not found" };
       }
-      applicantName = `${teacher.user.firstName} ${teacher.user.lastName}`;
+      applicantName = `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`;
       applicantUserId = teacher.userId;
     }
 
@@ -140,7 +141,7 @@ export const createLeaveApplication = withSchoolAuthAction(async (schoolId, user
         for (const admin of admins) {
           await sendLeaveNotification({
             applicantId: admin.id,
-            applicantName: `Admin (${admin.firstName} ${admin.lastName})`,
+            applicantName: `Admin (${formatFullName(admin.firstName, admin.lastName)})`,
             leaveType: `Teacher Leave: ${applicantName}`,
             startDate: data.fromDate,
             endDate: data.toDate,
@@ -288,7 +289,7 @@ export const processLeaveApplication = withSchoolAuthAction(async (schoolId, use
         include: { user: true },
       });
       if (student) {
-        applicantName = `${student.user.firstName} ${student.user.lastName}`;
+        applicantName = `${formatFullName(student.user.firstName, student.user.lastName)}`;
         applicantUserId = student.userId;
       }
     } else if (existingApplication.applicantType === "TEACHER") {
@@ -297,7 +298,7 @@ export const processLeaveApplication = withSchoolAuthAction(async (schoolId, use
         include: { user: true },
       });
       if (teacher) {
-        applicantName = `${teacher.user.firstName} ${teacher.user.lastName}`;
+        applicantName = `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`;
         applicantUserId = teacher.userId;
       }
     }
@@ -311,7 +312,7 @@ export const processLeaveApplication = withSchoolAuthAction(async (schoolId, use
       where: { id: approverId },
     });
     if (approver) {
-      approverName = `${approver.firstName} ${approver.lastName}`;
+      approverName = `${formatFullName(approver.firstName, approver.lastName)}`;
     }
 
     const leaveApplication = await db.leaveApplication.update({
@@ -638,7 +639,7 @@ export const getLeaveApplications = withSchoolAuthAction(async (
         const student = studentMap.get(app.applicantId);
         if (student) {
           applicantDetails = {
-            name: `${student.user.firstName} ${student.user.lastName}`,
+            name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
             avatar: student.user.avatar,
             id: student.admissionId,
             class: student.enrollments[0]?.class.name,
@@ -649,7 +650,7 @@ export const getLeaveApplications = withSchoolAuthAction(async (
         const teacher = teacherMap.get(app.applicantId);
         if (teacher) {
           applicantDetails = {
-            name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+            name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
             avatar: teacher.user.avatar,
             id: teacher.employeeId,
           };
@@ -736,7 +737,7 @@ export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, use
 
       if (student) {
         applicantDetails = {
-          name: `${student.user.firstName} ${student.user.lastName}`,
+          name: `${formatFullName(student.user.firstName, student.user.lastName)}`,
           avatar: student.user.avatar,
           id: student.admissionId,
           email: student.user.email,
@@ -761,7 +762,7 @@ export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, use
 
       if (teacher) {
         applicantDetails = {
-          name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+          name: `${formatFullName(teacher.user.firstName, teacher.user.lastName)}`,
           avatar: teacher.user.avatar,
           id: teacher.employeeId,
           email: teacher.user.email,
@@ -783,7 +784,7 @@ export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, use
 
       if (approver) {
         approverDetails = {
-          name: `${approver.firstName} ${approver.lastName}`,
+          name: `${formatFullName(approver.firstName, approver.lastName)}`,
           avatar: approver.avatar,
         };
       }

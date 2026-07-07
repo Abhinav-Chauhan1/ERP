@@ -15,6 +15,7 @@ import {
 } from "../services/assignment-calendar-integration";
 import { uploadHandler } from "@/lib/services/upload-handler";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { formatFullName } from "@/lib/utils";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {
@@ -135,7 +136,7 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
         submissions: totalSubmissions,
         totalStudents: totalStudents || totalSubmissions,
         createdBy: typedAssignment.creator?.user
-          ? `${typedAssignment.creator.user.firstName} ${typedAssignment.creator.user.lastName}`
+          ? `${formatFullName(typedAssignment.creator.user.firstName, typedAssignment.creator.user.lastName)}`
           : "Admin", // Handle null creator
         attachments: assignment.attachments ? JSON.parse(assignment.attachments).length : 0,
         instructions: assignment.instructions || "",
@@ -252,14 +253,14 @@ export async function getAssignmentById(id: string) {
       totalMarks: assignment.totalMarks,
       status: status,
       createdBy: typedAssignment.creator?.user
-        ? `${typedAssignment.creator.user.firstName} ${typedAssignment.creator.user.lastName}`
+        ? `${formatFullName(typedAssignment.creator.user.firstName, typedAssignment.creator.user.lastName)}`
         : "Admin", // Handle null creator
       attachments: attachmentsArray,
       instructions: assignment.instructions || "",
       submissions: typedAssignment.submissions?.map(sub => ({
         id: sub.id,
         studentId: sub.studentId,
-        studentName: `${sub.student.user.firstName} ${sub.student.user.lastName}`,
+        studentName: `${formatFullName(sub.student.user.firstName, sub.student.user.lastName)}`,
         studentAdmissionId: sub.student.admissionId,
         submissionDate: sub.submissionDate,
         content: sub.content || "",
@@ -575,7 +576,7 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
     const formattedSubmissions = submissions.map(sub => ({
       id: sub.id,
       studentId: sub.studentId,
-      studentName: `${sub.student.user.firstName} ${sub.student.user.lastName}`,
+      studentName: `${formatFullName(sub.student.user.firstName, sub.student.user.lastName)}`,
       studentAdmissionId: sub.student.admissionId,
       submissionDate: sub.submissionDate,
       content: sub.content || "",
