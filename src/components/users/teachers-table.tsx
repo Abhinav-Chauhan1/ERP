@@ -94,7 +94,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={teacher.user.avatar || undefined} alt={`${teacher.user.firstName} ${teacher.user.lastName}`} />
-            <AvatarFallback>{teacher.user.firstName[0]}{teacher.user.lastName[0]}</AvatarFallback>
+            <AvatarFallback>{teacher.user.firstName?.[0]}{teacher.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
             {teacher.user.firstName} {teacher.user.lastName}
@@ -105,7 +105,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
             <AvatarImage src={teacher.user.avatar || undefined} alt={`${teacher.user.firstName} ${teacher.user.lastName}`} />
-            <AvatarFallback className="text-xs">{teacher.user.firstName[0]}{teacher.user.lastName[0]}</AvatarFallback>
+            <AvatarFallback className="text-xs">{teacher.user.firstName?.[0]}{teacher.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">

@@ -573,8 +573,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                       />
                     ) : (
                       <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold border-4 border-white shadow-md">
-                        {student.user.firstName[0]}
-                        {student.user.lastName[0]}
+                        {student.user.firstName?.[0]}
+                        {student.user.lastName?.[0]}
                       </div>
                     )}
                     <div className="text-center">
@@ -763,8 +763,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                           />
                         ) : (
                           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                            {parentRelation.parent.user.firstName[0]}
-                            {parentRelation.parent.user.lastName[0]}
+                            {parentRelation.parent.user.firstName?.[0]}
+                            {parentRelation.parent.user.lastName?.[0]}
                           </div>
                         )}
                         <div>

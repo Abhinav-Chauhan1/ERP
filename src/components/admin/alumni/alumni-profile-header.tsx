@@ -65,7 +65,7 @@ export function AlumniProfileHeader({
   const [editMode, setEditMode] = useState(isEditMode);
 
   const fullName = `${alumni.student.firstName} ${alumni.student.lastName}`;
-  const initials = `${alumni.student.firstName[0]}${alumni.student.lastName[0]}`.toUpperCase();
+  const initials = `${alumni.student.firstName?.[0] ?? ""}${alumni.student.lastName?.[0] ?? ""}`.toUpperCase();
   const graduationYear = new Date(alumni.graduationDate).getFullYear();
 
   const handleEditToggle = () => {

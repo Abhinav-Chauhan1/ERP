@@ -105,7 +105,7 @@ export default async function StudentProfilePage() {
                 ) : (
                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                     <span className="text-4xl font-bold text-primary">
-                      {student.user.firstName[0]}{student.user.lastName[0]}
+                      {student.user.firstName?.[0]}{student.user.lastName?.[0]}
                     </span>
                   </div>
                 )}

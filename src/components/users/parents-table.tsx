@@ -94,7 +94,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
-            <AvatarFallback>{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
+            <AvatarFallback>{parent.user.firstName?.[0]}{parent.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
             {parent.user.firstName} {parent.user.lastName}
@@ -105,7 +105,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
             <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
-            <AvatarFallback className="text-xs">{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
+            <AvatarFallback className="text-xs">{parent.user.firstName?.[0]}{parent.user.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">
