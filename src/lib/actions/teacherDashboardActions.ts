@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, format, addDays } from "date-fns";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // getTeacherDashboardData — single entry point, all queries parallelised
@@ -57,7 +57,7 @@ export async function getTeacherDashboardData() {
       weekAttendanceRecords,
       recentAssignments,
       pendingTasksRaw,
-      classes,
+      classesUnsorted,
     ] = await Promise.all([
       // Today's timetable slots
       db.timetableSlot.findMany({
@@ -221,9 +221,10 @@ export async function getTeacherDashboardData() {
       db.class.findMany({
         where: { schoolId, teachers: { some: { teacherId } } },
         select: { id: true, name: true },
-        take: 10,
       }),
     ]);
+
+    const classes = sortByClassName(classesUnsorted).slice(0, 10);
 
     // -----------------------------------------------------------------------
     // Wave 2 — needs classIds from wave 1

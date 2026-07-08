@@ -20,6 +20,7 @@ import {
   type IDCardGenerationResult,
 } from '@/lib/services/idCardGenerationService';
 import { db } from '@/lib/db';
+import { sortByClassName } from "@/lib/utils";
 
 export interface ClassData {
   id: string;
@@ -373,14 +374,11 @@ export async function getClassesForIDCardGeneration(): Promise<ActionResponse<Cl
           },
         },
       },
-      orderBy: {
-        name: 'asc',
-      },
     });
 
     return {
       success: true,
-      data: classes.map(c => ({
+      data: sortByClassName(classes).map(c => ({
         id: c.id,
         name: c.name,
         sections: c.sections,

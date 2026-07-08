@@ -16,6 +16,7 @@ import {
 } from "../services/exam-calendar-integration";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { getActivePTPattern, generatePTExamsAndRule } from "./ptPatternActions";
+import { sortByClassName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Lightweight permission check — no audit log on reads, no extra auth() call
@@ -129,11 +130,11 @@ async function fetchAllTerms(schoolId: string) {
 }
 
 async function fetchClasses(schoolId: string) {
-  return db.class.findMany({
+  const classes = await db.class.findMany({
     where: { schoolId },
     select: { id: true, name: true },
-    orderBy: { name: "asc" },
   });
+  return sortByClassName(classes);
 }
 
 async function fetchExamStatistics(schoolId: string, now = new Date()) {

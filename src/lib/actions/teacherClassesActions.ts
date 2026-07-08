@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, compareClassNames } from "@/lib/utils";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -191,9 +191,9 @@ export async function getTeacherClasses() {
     };
   });
 
-  // Sort: by class name, then section name
+  // Sort: by class name (grade-aware, so "Class 2" sorts before "Class 10"), then section name
   classes.sort((a, b) => {
-    const cn = a.name.localeCompare(b.name);
+    const cn = compareClassNames(a.name, b.name);
     if (cn !== 0) return cn;
     return (a.section ?? "").localeCompare(b.section ?? "");
   });

@@ -13,7 +13,7 @@ import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
 import { withSchoolAuthAction, createSecureQuery } from "@/lib/auth/security-wrapper";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassNameWithinGroups } from "@/lib/utils";
 import {
   ClassFormValues,
   ClassUpdateFormValues,
@@ -47,7 +47,7 @@ export const getClasses = withSchoolAuthAction(async (schoolId: string, userId: 
   try {
     const where = academicYearFilter ? { academicYearId: academicYearFilter } : {};
 
-    const classes = await db.class.findMany({
+    const rawClasses = await db.class.findMany({
       where: {
         schoolId,
         ...where,
@@ -90,9 +90,12 @@ export const getClasses = withSchoolAuthAction(async (schoolId: string, userId: 
       },
       orderBy: [
         { academicYear: { startDate: 'desc' } },
-        { name: 'asc' },
       ],
     });
+
+    // DB orderBy only sorts lexicographically ("Class 10" before "Class 2") —
+    // apply the grade-aware natural sort on top, within each academic year group.
+    const classes = sortByClassNameWithinGroups(rawClasses, (c) => c.academicYearId);
 
     // Group classes by "grade" (extract from name)
     const classesByGrade = classes.reduce((acc: any, cls) => {

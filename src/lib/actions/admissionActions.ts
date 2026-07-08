@@ -10,6 +10,7 @@ import {
 import { uploadHandler } from "@/lib/services/upload-handler";
 import { sendAdmissionConfirmationEmail } from "@/lib/utils/email-service";
 import { revalidatePath } from "next/cache";
+import { sortByClassName } from "@/lib/utils";
 
 // Generate unique application number
 function generateApplicationNumber(): string {
@@ -35,12 +36,9 @@ export const getAvailableClasses = withSchoolAuthAction(async (schoolId: string,
           }
         },
       },
-      orderBy: {
-        name: 'asc',
-      }
     });
 
-    return classes;
+    return sortByClassName(classes);
   } catch (error) {
     console.error("Error fetching available classes:", error);
     throw new Error("Failed to fetch available classes");

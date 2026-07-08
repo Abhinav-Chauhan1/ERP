@@ -16,7 +16,7 @@ import {
   type AttendanceData
 } from "../utils/attendance-calculator";
 import { calculateGrade } from "../utils/grade-calculator";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 import {
   aggregateMultiTermReportCardData,
   type MultiTermReportCardData,
@@ -634,7 +634,6 @@ export const getReportCardFilters = withSchoolAuthAction(
         }),
         db.class.findMany({
           where: { schoolId },
-          orderBy: { name: "asc" },
           include: { academicYear: true },
         }),
         db.classSection.findMany({
@@ -644,7 +643,7 @@ export const getReportCardFilters = withSchoolAuthAction(
         }),
       ]);
 
-      return { success: true, data: { terms, classes, sections } };
+      return { success: true, data: { terms, classes: sortByClassName(classes), sections } };
     } catch (error) {
       console.error("Error fetching report card filters:", error);
       return {

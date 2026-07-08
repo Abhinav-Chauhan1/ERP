@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 export interface ActionResult<T = any> {
   success: boolean;
@@ -228,14 +228,11 @@ export async function getClassesAndTermsForRanks(): Promise<ActionResult> {
           },
         },
       },
-      orderBy: {
-        name: "asc",
-      },
     });
 
     return {
       success: true,
-      data: classes,
+      data: sortByClassName(classes),
     };
   } catch (error) {
     console.error("Error fetching classes and terms:", error);

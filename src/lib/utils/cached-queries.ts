@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { cachedQuery, CACHE_CONFIG, CACHE_DURATION, CACHE_TAGS } from "./cache";
 import { runWithTenantContext } from "@/lib/tenant-context";
 import { USER_SELECT_MINIMAL, CLASS_SELECT_MINIMAL, SUBJECT_SELECT_MINIMAL } from "./query-optimization";
+import { sortByClassName } from "@/lib/utils";
 
 /**
  * Cached query for getting isActive users (for dropdowns)
@@ -40,12 +41,10 @@ export const getActiveUsersForDropdown = cachedQuery(
  */
 export const getClassesForDropdown = cachedQuery(
   async () => {
-    return await db.class.findMany({
+    const classes = await db.class.findMany({
       select: CLASS_SELECT_MINIMAL,
-      orderBy: {
-        name: "asc",
-      },
     });
+    return sortByClassName(classes);
   },
   {
     name: "classes-dropdown",
@@ -165,7 +164,7 @@ export const getSystemSettings = getSchoolSettings;
  */
 export const getTeacherClasses = cachedQuery(
   async (teacherId: string) => {
-    return await db.class.findMany({
+    const classes = await db.class.findMany({
       where: {
         teachers: {
           some: {
@@ -183,10 +182,8 @@ export const getTeacherClasses = cachedQuery(
           },
         },
       },
-      orderBy: {
-        name: "asc",
-      },
     });
+    return sortByClassName(classes);
   },
   {
     name: "teacher-classes",

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { sortByClassNameWithinGroups } from "@/lib/utils";
 
 export interface CoScholasticActivityInput {
   name: string;
@@ -653,6 +654,7 @@ export async function getClassesForCoScholastic(): Promise<ActionResult> {
       select: {
         id: true,
         name: true,
+        academicYearId: true,
         sections: {
           select: {
             id: true,
@@ -675,13 +677,10 @@ export async function getClassesForCoScholastic(): Promise<ActionResult> {
             isCurrent: 'desc',
           },
         },
-        {
-          name: 'asc',
-        },
       ],
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassNameWithinGroups(classes, (c) => c.academicYearId) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

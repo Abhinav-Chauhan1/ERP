@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
 import { SectionFormValues, SectionUpdateFormValues } from "../schemaValidation/sectionsSchemaValidation";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassNameWithinGroups } from "@/lib/utils";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -205,10 +205,9 @@ export async function getSectionById(id: string) {
 // Get all classes for dropdown
 export async function getClassesForDropdown() {
   try {
-    const classes = await db.class.findMany({
+    const rawClasses = await db.class.findMany({
       orderBy: [
         { academicYear: { startDate: 'desc' } },
-        { name: 'asc' },
       ],
       include: {
         academicYear: {
@@ -219,6 +218,10 @@ export async function getClassesForDropdown() {
         }
       }
     });
+
+    // DB orderBy is lexicographic ("Class 10" before "Class 2") — apply the
+    // grade-aware natural sort within each academic year group.
+    const classes = sortByClassNameWithinGroups(rawClasses, (c) => c.academicYearId);
 
     return { success: true, data: classes };
   } catch (error) {

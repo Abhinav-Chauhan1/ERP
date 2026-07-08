@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { AttendanceStatus, PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
+import { sortByClassName } from "@/lib/utils";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { revalidatePath } from "next/cache";
@@ -156,7 +157,10 @@ export async function getAttendanceByClass() {
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
-    const classes = await db.class.findMany({
+    // orderBy+take at the DB level would slice lexicographically ("Class 1",
+    // "Class 10", "Class 11", ...) before we can apply the natural sort — so
+    // sort in JS first, then take the first 6.
+    const allClasses = await db.class.findMany({
       where: { schoolId },
       include: {
         sections: {
@@ -171,9 +175,9 @@ export async function getAttendanceByClass() {
           },
         },
       },
-      take: 6,
-      orderBy: { name: "asc" },
     });
+
+    const classes = sortByClassName(allClasses).slice(0, 6);
 
     const classAttendance = classes.map((cls) => {
       let totalRecords = 0;
@@ -322,15 +326,14 @@ export async function getClassSectionsForDropdown() {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
-    const classes = await db.class.findMany({
+    const classes = sortByClassName(await db.class.findMany({
       where: { schoolId },
       include: {
         sections: {
           orderBy: { name: "asc" },
         },
       },
-      orderBy: { name: "asc" },
-    });
+    }));
 
     return {
       success: true,

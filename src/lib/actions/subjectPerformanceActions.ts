@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { sortByClassName } from "@/lib/utils";
 
 interface SubjectPerformanceFilters {
   termId: string;
@@ -42,7 +43,6 @@ export async function getSubjectPerformanceFilters() {
           sections: true,
           academicYear: true,
         },
-        orderBy: { name: "asc" },
       }),
       db.term.findMany({
         where: { schoolId }, // Add school isolation
@@ -56,7 +56,7 @@ export async function getSubjectPerformanceFilters() {
     return {
       success: true,
       data: {
-        classes,
+        classes: sortByClassName(classes),
         terms,
         sections: [],
       },

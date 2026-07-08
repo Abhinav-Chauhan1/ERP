@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { sortByClassName } from "@/lib/utils";
 
 // Get teacher with detailed information
 export async function getTeacherWithDetails(teacherId: string) {
@@ -155,12 +156,11 @@ export async function getAvailableClassesForTeacher(teacherId: string) {
           }
         }
       },
-      orderBy: { name: 'asc' }
     });
 
     return {
       success: true,
-      data: availableClasses.map(c => ({
+      data: sortByClassName(availableClasses).map(c => ({
         id: c.id,
         name: c.name,
         sections: c.sections,

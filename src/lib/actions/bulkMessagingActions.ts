@@ -19,6 +19,7 @@ import {
 import { sendBulkNotification } from "@/lib/services/communication-service";
 import { requirePlanFeature } from "@/lib/utils/requirePlanFeature";
 import { revalidatePath } from "next/cache";
+import { sortByClassName } from "@/lib/utils";
 
 /**
  * Action result type
@@ -1147,14 +1148,11 @@ export async function getAvailableClasses(): Promise<
         id: true,
         name: true,
       },
-      orderBy: {
-        name: "asc",
-      },
     });
 
     return {
       success: true,
-      data: classes,
+      data: sortByClassName(classes),
     };
   } catch (error: any) {
     console.error("Error getting available classes:", error);

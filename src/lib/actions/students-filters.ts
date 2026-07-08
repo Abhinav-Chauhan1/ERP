@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { sortByClassName } from "@/lib/utils";
 
 export interface StudentFilters {
   classId?: string;
@@ -165,7 +166,7 @@ export async function getFilterOptions() {
 
     return {
       success: true,
-      classes,
+      classes: sortByClassName(classes),
       sections,
     };
   } catch (error) {

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { AttendanceStatus } from "@prisma/client";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 export async function getDailyAttendanceSummary(date: Date, sectionId?: string) {
   try {
@@ -238,7 +238,7 @@ export async function getClassWiseAttendance(filters?: {
       if (filters.endDate) where.date.lte = filters.endDate;
     }
 
-    const classes = await db.class.findMany({
+    const classes = sortByClassName(await db.class.findMany({
       where: {
         schoolId, // Add school isolation
       },
@@ -251,8 +251,7 @@ export async function getClassWiseAttendance(filters?: {
           },
         },
       },
-      orderBy: { name: "asc" },
-    });
+    }));
 
     const classWiseData = classes.map((cls) => {
       let totalRecords = 0;

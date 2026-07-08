@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { RoomFormValues, RoomUpdateFormValues } from "../schemaValidation/roomsSchemaValidation";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
+import { sortByClassName } from "@/lib/utils";
 
 // Get all rooms with usage information
 export const getRooms = withSchoolAuthAction(async (schoolId: string) => {
@@ -356,12 +357,9 @@ export const getClassesAndSections = withSchoolAuthAction(async (schoolId: strin
       include: {
         sections: true
       },
-      orderBy: {
-        name: 'asc'
-      }
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassName(classes) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

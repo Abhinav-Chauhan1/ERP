@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
+import { compareClassNames } from "@/lib/utils";
 
 // Type definitions for better type safety
 interface ModuleWithProgress {
@@ -177,19 +178,22 @@ export const getTeacherSubjects = withSchoolAuthAction(async (schoolId, userId) 
       ).length;
       const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
-      // Class+section assignments for this subject
-      const classAssignments = rows.map((r) => ({
-        id: r.class.id,
-        name: r.class.name,
-        sectionId: r.sectionId ?? null,
-        sectionName: r.section?.name ?? null,
-        displayName: r.section
-          ? `${r.class.name} — Section ${r.section.name}`
-          : r.class.name,
-        studentCount: r.sectionId
-          ? (sectionCounts.get(r.sectionId) ?? 0)
-          : (classCounts.get(r.classId) ?? 0),
-      }));
+      // Class+section assignments for this subject (grade-aware sort — DB
+      // orderBy on class.name is lexicographic, e.g. "Class 10" before "Class 2")
+      const classAssignments = rows
+        .map((r) => ({
+          id: r.class.id,
+          name: r.class.name,
+          sectionId: r.sectionId ?? null,
+          sectionName: r.section?.name ?? null,
+          displayName: r.section
+            ? `${r.class.name} — Section ${r.section.name}`
+            : r.class.name,
+          studentCount: r.sectionId
+            ? (sectionCounts.get(r.sectionId) ?? 0)
+            : (classCounts.get(r.classId) ?? 0),
+        }))
+        .sort((a, b) => compareClassNames(a.name, b.name));
 
       // Legacy fields for existing UI components
       const uniqueClassNames = [...new Set(classAssignments.map((c) => c.name))];

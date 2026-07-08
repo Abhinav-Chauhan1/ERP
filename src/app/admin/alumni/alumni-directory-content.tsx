@@ -15,6 +15,7 @@ import { searchAlumni, getAlumniStatistics } from "@/lib/actions/alumniActions";
 import { toast } from "react-hot-toast";
 import type { AlumniCardData } from "@/components/admin/alumni/alumni-card";
 import type { AlumniStatisticsData } from "@/components/admin/alumni/alumni-stats";
+import { compareClassNames } from "@/lib/utils";
 
 export function AlumniDirectoryContent() {
   const [initialData, setInitialData] = useState<{
@@ -70,7 +71,7 @@ export function AlumniDirectoryContent() {
           alumni: alumniResult.data.alumni,
           pagination: alumniResult.data.pagination,
           statistics,
-          availableClasses: Array.from(classes).sort(),
+          availableClasses: Array.from(classes).sort(compareClassNames),
           availableCities: Array.from(cities).sort(),
           availableOccupations: Array.from(occupations).sort(),
         });

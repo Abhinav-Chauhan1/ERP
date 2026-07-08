@@ -10,6 +10,7 @@ import {
 } from "../schemaValidation/syllabusSchemaValidations";
 import { SyllabusStatus, CurriculumType, Prisma } from "@prisma/client";
 import { uploadHandler } from "@/lib/services/upload-handler";
+import { sortByClassName } from "@/lib/utils";
 
 // Get all subjects for dropdown
 export const getSubjectsForDropdown = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
@@ -73,16 +74,13 @@ export const getClassesForDropdown = withSchoolAuthAction(async (schoolId: strin
 
     const classes = await db.class.findMany({
       where,
-      orderBy: {
-        name: 'asc',
-      },
       select: {
         id: true,
         name: true,
       }
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassName(classes) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

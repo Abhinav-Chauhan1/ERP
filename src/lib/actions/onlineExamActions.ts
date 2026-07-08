@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
+import { sortByClassName } from "@/lib/utils";
 
 /**
  * Get teacher's subjects for online exam creation
@@ -57,12 +58,9 @@ export async function getClassesForExam() {
       include: {
         academicYear: true,
       },
-      orderBy: {
-        name: "asc",
-      },
     });
 
-    return { success: true, classes };
+    return { success: true, classes: sortByClassName(classes) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return { success: false, error: "Failed to fetch classes" };

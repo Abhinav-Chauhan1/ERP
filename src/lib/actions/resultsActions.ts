@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
 import { ResultFilterValues, PublishResultsValues, GenerateReportCardValues } from "../schemaValidation/resultsSchemaValidation";
 import { auth } from "@/auth";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 // Get all exam results with optional filtering
 export async function getExamResults(filters?: ResultFilterValues) {
@@ -635,7 +635,6 @@ export async function getResultFilters() {
     // For grades/classes, get distinct class names
     const classes = await db.class.findMany({
       where: { schoolId }, // CRITICAL: Filter by current school
-      orderBy: { name: 'asc' },
       distinct: ['name'],
     });
 
@@ -645,7 +644,7 @@ export async function getResultFilters() {
         subjects,
         examTypes,
         terms,
-        classes
+        classes: sortByClassName(classes)
       }
     };
   } catch (error) {

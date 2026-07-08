@@ -12,7 +12,7 @@ import {
 import { formatISO, parseISO } from 'date-fns';
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 // Get all timetables
 export async function getTimetables() {
@@ -717,12 +717,9 @@ export async function getClassesForTimetable() {
         academicYear: true,
         sections: true
       },
-      orderBy: {
-        name: 'asc'
-      }
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassName(classes) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

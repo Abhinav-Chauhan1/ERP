@@ -2,7 +2,7 @@
 
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
@@ -372,7 +372,7 @@ export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, 
 
 export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const classes = await db.class.findMany({
+    const allClasses = await db.class.findMany({
       where: { schoolId },
       select: {
         id: true,
@@ -390,11 +390,11 @@ export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: s
           },
         },
       },
-      take: 6,
-      orderBy: {
-        name: 'asc',
-      },
     });
+
+    // Sort naturally before slicing — a name-based orderBy+take at the DB
+    // level would pick the lexicographically-first 6 classes instead.
+    const classes = sortByClassName(allClasses).slice(0, 6);
 
     const data = classes.map((cls) => ({
       name: cls.name,

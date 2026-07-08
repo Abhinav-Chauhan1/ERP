@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { SubjectFormValues, UpdateSubjectFormValues } from "../schemaValidation/teachingSchemaValidation";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
+import { sortByClassNameWithinGroups } from "@/lib/utils";
 
 // Get teaching dashboard stats
 export const getTeachingStats = withSchoolAuthAction(async (schoolId) => {
@@ -121,7 +122,7 @@ export const getDepartments = withSchoolAuthAction(async (schoolId) => {
 // Get all classes
 export const getClasses = withSchoolAuthAction(async (schoolId) => {
   try {
-    const classes = await db.class.findMany({
+    const rawClasses = await db.class.findMany({
       where: { schoolId },
       include: {
         academicYear: {
@@ -137,13 +138,10 @@ export const getClasses = withSchoolAuthAction(async (schoolId) => {
             isCurrent: 'desc'
           }
         },
-        {
-          name: 'asc'
-        }
       ]
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassNameWithinGroups(rawClasses, (c) => c.academicYearId) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

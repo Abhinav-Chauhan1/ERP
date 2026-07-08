@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 export interface ConsolidatedMarkSheetFilters {
   examId?: string;
@@ -241,7 +241,6 @@ export async function getConsolidatedMarkSheetFilters() {
       }),
       db.class.findMany({
         where: { schoolId }, // Add school isolation
-        orderBy: { name: 'asc' },
         include: { academicYear: true }
       }),
       db.classSection.findMany({
@@ -267,7 +266,7 @@ export async function getConsolidatedMarkSheetFilters() {
       success: true,
       data: {
         terms,
-        classes,
+        classes: sortByClassName(classes),
         sections,
         exams
       }

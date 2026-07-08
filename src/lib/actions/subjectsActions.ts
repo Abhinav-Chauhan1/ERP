@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/subjectsSchemaValidation";
 import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
+import { sortByClassNameWithinGroups } from "@/lib/utils";
 import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 import { formatFullName } from "@/lib/utils";
 
@@ -210,18 +211,17 @@ export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, user
 // Get all classes for the dropdown
 export const getClasses = withSchoolAuthAction(async (schoolId) => {
   try {
-    const classes = await db.class.findMany({
+    const rawClasses = await db.class.findMany({
       where: { schoolId },
       include: {
         academicYear: true,
       },
       orderBy: [
         { academicYear: { isCurrent: 'desc' } },
-        { name: 'asc' },
       ],
     });
 
-    return { success: true, data: classes };
+    return { success: true, data: sortByClassNameWithinGroups(rawClasses, (c) => c.academicYearId) };
   } catch (error) {
     console.error("Error fetching classes:", error);
     return {

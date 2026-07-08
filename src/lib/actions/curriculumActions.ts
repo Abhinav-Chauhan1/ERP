@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassName } from "@/lib/utils";
 
 export async function getClassSubjects(classId: string) {
     try {
@@ -213,10 +213,9 @@ export async function getClassesWithSections() {
             include: {
                 sections: { orderBy: { name: "asc" } },
             },
-            orderBy: { name: "asc" },
         });
 
-        return { success: true, data: classes };
+        return { success: true, data: sortByClassName(classes) };
     } catch (error) {
         console.error("Error fetching classes:", error);
         return { success: false, error: "Failed to fetch classes" };

@@ -44,6 +44,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { compareClassNames } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -160,7 +161,7 @@ export function AlumniDirectoryView({
     new Set(alumni.map((a) => formatGraduationYear(a.graduationDate)))
   ).sort((a, b) => b.localeCompare(a));
 
-  const classes = Array.from(new Set(alumni.map((a) => a.finalClass))).sort();
+  const classes = Array.from(new Set(alumni.map((a) => a.finalClass))).sort(compareClassNames);
 
   const cities = Array.from(
     new Set(alumni.map((a) => a.currentCity).filter(Boolean) as string[])

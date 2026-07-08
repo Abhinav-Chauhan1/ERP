@@ -15,7 +15,7 @@ import {
 } from "../services/assignment-calendar-integration";
 import { uploadHandler } from "@/lib/services/upload-handler";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, sortByClassNameWithinGroups } from "@/lib/utils";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {
@@ -678,7 +678,7 @@ export async function getClassesForAssignments() {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
-    const classes = await db.class.findMany({
+    const rawClasses = await db.class.findMany({
       where: { schoolId },
       orderBy: [
         {
@@ -686,9 +686,6 @@ export async function getClassesForAssignments() {
             isCurrent: 'desc',
           }
         },
-        {
-          name: 'asc',
-        }
       ],
       include: {
         academicYear: {
@@ -699,6 +696,8 @@ export async function getClassesForAssignments() {
         }
       }
     });
+
+    const classes = sortByClassNameWithinGroups(rawClasses, (c) => c.academicYearId);
 
     return { success: true, data: classes };
   } catch (error) {

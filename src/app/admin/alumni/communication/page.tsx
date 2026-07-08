@@ -62,6 +62,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import toast from "react-hot-toast";
+import { compareClassNames } from "@/lib/utils";
 
 // Import server actions
 import {
@@ -283,7 +284,7 @@ export default function AlumniCommunicationPage() {
   }
 
   // Get unique classes for filter
-  const uniqueClasses = Array.from(new Set(alumni.map((a) => a.finalClass))).sort();
+  const uniqueClasses = Array.from(new Set(alumni.map((a) => a.finalClass))).sort(compareClassNames);
 
   // Get unique cities for filter
   const uniqueCities = Array.from(

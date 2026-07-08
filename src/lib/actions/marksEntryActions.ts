@@ -10,6 +10,7 @@ import { getGradeScale } from "./gradeCalculationActions";
 import { logUpdate, logCreate } from "@/lib/utils/audit-log";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
+import { sortByClassName } from "@/lib/utils";
 import { formatFullName } from "@/lib/utils";
 import {
   validateBulkMarks,
@@ -454,9 +455,8 @@ export const getClassesForMarksEntry = withSchoolAuthAction(
           sections: { orderBy: { name: "asc" } },
           academicYear: { select: { name: true, isCurrent: true } },
         },
-        orderBy: { name: "asc" },
       });
-      return { success: true, data: classes };
+      return { success: true, data: sortByClassName(classes) };
     } catch (error) {
       console.error("Error fetching classes:", error);
       return {
@@ -700,7 +700,6 @@ export const getMarksEntryPageData = withSchoolAuthAction(
             },
             academicYear: { select: { name: true, isCurrent: true } },
           },
-          orderBy: { name: "asc" },
         }),
         db.term.findMany({
           where: { schoolId },
@@ -720,7 +719,7 @@ export const getMarksEntryPageData = withSchoolAuthAction(
 
       return {
         success: true,
-        data: { exams, classes, terms, examTypes },
+        data: { exams, classes: sortByClassName(classes), terms, examTypes },
       };
     } catch (error) {
       console.error("Error fetching marks entry page data:", error);
