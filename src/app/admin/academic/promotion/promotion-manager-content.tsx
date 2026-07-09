@@ -149,7 +149,30 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       });
 
       if (result.success && result.data) {
-        setPreviewData(result.data);
+        // previewPromotion returns { students, summary: { total, eligible, withWarnings } } -
+        // transform it into the flat shape PromotionPreview/PromotionConfirmDialog expect.
+        const { summary, students: previewStudents } = result.data;
+        const sourceAcademicYear = academicYears.find((y) => y.isCurrent)?.name || "Current Year";
+
+        setPreviewData({
+          sourceClassName: data.sourceClassName || "",
+          sourceSectionName: data.sourceSectionName,
+          sourceAcademicYear,
+          targetClassName: data.targetClassName || "",
+          targetSectionName: data.targetSectionName,
+          targetAcademicYear: data.targetAcademicYearName || "",
+          totalStudents: summary.total,
+          eligibleStudents: summary.eligible,
+          studentsWithWarnings: summary.withWarnings,
+          warnings: previewStudents
+            .filter((s: any) => s.warnings.length > 0)
+            .map((s: any) => ({
+              studentId: s.id,
+              studentName: s.name,
+              warnings: s.warnings,
+            })),
+          estimatedTimeMinutes: Math.max(1, Math.ceil(summary.total / 20)),
+        });
       } else {
         throw new Error(result.error || "Failed to load preview");
       }
