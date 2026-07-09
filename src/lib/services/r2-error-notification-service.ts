@@ -248,7 +248,7 @@ export class R2ErrorNotificationService {
             severity: severity,
             message: error.message,
             resolved: false,
-            school: { connect: { id: context.schoolId as string } },
+            schoolId: context.schoolId as string,
           },
         });
       } catch (dbError) {

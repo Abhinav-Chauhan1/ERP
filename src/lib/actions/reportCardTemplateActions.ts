@@ -190,7 +190,7 @@ export async function createReportCardTemplate(input: ReportCardTemplateInput): 
         pageSize: input.pageSize || "A4",
         orientation: input.orientation || "PORTRAIT",
         sections: input.sections as any,
-        school: { connect: { id: schoolId } }, // Add required school connection
+        schoolId, // Add required schoolId
         styling: input.styling as any,
         headerImage: input.headerImage,
         footerImage: input.footerImage,
@@ -501,7 +501,7 @@ export async function duplicateTemplate(id: string): Promise<ActionResult> {
         isActive: false, // New duplicates start as inactive
         isDefault: false,
         createdBy: userId,
-        school: { connect: { id: schoolId } }, // Add required school connection
+        schoolId, // Add required schoolId
       },
     });
 

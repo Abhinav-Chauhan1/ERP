@@ -142,10 +142,10 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
             name: data.name,
             daysOfWeek: data.daysOfWeek,
             isActive: true,
-            school: { connect: { id: schoolId } } // Add required school connection
+            schoolId // Add required schoolId
           }
         });
-        
+
         // Create periods one by one to avoid potential issues
         for (const period of data.periods) {
           await db.timetablePeriod.create({

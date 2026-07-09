@@ -379,9 +379,9 @@ export async function markClassAttendance(
       }
       return db.studentAttendance.create({
         data: {
-          student: { connect: { id: record.studentId } },
-          section: { connect: { id: sectionId } },
-          school: { connect: { id: schoolId } },
+          studentId: record.studentId,
+          sectionId,
+          schoolId,
           date: today,
           status: record.status,
           reason: record.reason,

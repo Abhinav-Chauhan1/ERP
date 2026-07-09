@@ -202,7 +202,7 @@ export const createRoom = withSchoolAuthAction(async (schoolId: string, userId: 
         floor: data.floor,
         capacity: data.capacity,
         description: description,
-        school: { connect: { id: schoolId } },
+        schoolId,
       }
     });
 
