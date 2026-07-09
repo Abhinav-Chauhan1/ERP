@@ -162,11 +162,6 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
     }
   }
 
-  // Load preview when moving to step 2
-  useEffect(() => {
-    // This will be triggered by the wizard when needed
-  }, []);
-
   // Execute promotion
   async function executePromotion(data: PromotionWizardData) {
     setExecuting(true);
@@ -270,17 +265,17 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       )}
 
       {/* Promotion Wizard */}
-      <PromotionWizard onComplete={handleWizardComplete} onCancel={handleCancel}>
+      <PromotionWizard
+        onComplete={handleWizardComplete}
+        onCancel={handleCancel}
+        onStepChange={(newStep, data) => {
+          // Moving into the Preview step - load preview data
+          if (newStep === 1) {
+            loadPreview(data);
+          }
+        }}
+      >
         {({ currentStep, data, updateData, nextStep, prevStep, canGoNext, canGoPrev }) => {
-          // Load preview when moving from step 1 to step 2
-          const handleNext = () => {
-            if (currentStep === 0 && canGoNext) {
-              // Moving to preview step - load preview data
-              loadPreview(data);
-            }
-            nextStep();
-          };
-
           return (
             <>
               {/* Step 1: Select Students */}

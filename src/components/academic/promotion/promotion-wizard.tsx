@@ -48,6 +48,7 @@ export interface PromotionWizardData {
 interface PromotionWizardProps {
   onComplete: (data: PromotionWizardData) => void;
   onCancel: () => void;
+  onStepChange?: (newStep: number, data: PromotionWizardData) => void;
   children: (props: {
     currentStep: number;
     data: PromotionWizardData;
@@ -77,7 +78,7 @@ const initialData: PromotionWizardData = {
   sendNotifications: true,
 };
 
-export function PromotionWizard({ onComplete, onCancel, children }: PromotionWizardProps) {
+export function PromotionWizard({ onComplete, onCancel, onStepChange, children }: PromotionWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState<PromotionWizardData>(initialData);
 
@@ -91,9 +92,12 @@ export function PromotionWizard({ onComplete, onCancel, children }: PromotionWiz
       // trigger completion in the same action (there is no further button
       // once the Execute step is shown, so this must happen together).
       setCurrentStep(PROMOTION_STEPS.length - 1);
+      onStepChange?.(PROMOTION_STEPS.length - 1, data);
       onComplete(data);
     } else if (currentStep < PROMOTION_STEPS.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      onStepChange?.(newStep, data);
     }
   };
 
