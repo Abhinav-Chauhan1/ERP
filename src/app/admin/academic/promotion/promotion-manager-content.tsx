@@ -49,6 +49,10 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   const [previewData, setPreviewData] = useState<any>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  // The wizard's collected selection (source/target class, selected students, etc.),
+  // captured on completion so it can actually be sent to executePromotion later.
+  const [wizardData, setWizardData] = useState<PromotionWizardData | null>(null);
+
   // Execution state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
@@ -208,7 +212,9 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
 
   // Handle wizard completion
   function handleWizardComplete(data: PromotionWizardData) {
-    // Show confirmation dialog before executing
+    // Store the wizard's selection so it can be sent to executePromotion
+    // once the user confirms in the dialog below.
+    setWizardData(data);
     setShowConfirmDialog(true);
   }
 
@@ -463,8 +469,9 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
                 <Card>
                   <CardContent className="py-12">
                     <div className="flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <p className="text-muted-foreground">
-                        Click "Review & Execute" to proceed with promotion
+                        Confirm the promotion details in the dialog to continue
                       </p>
                     </div>
                   </CardContent>
@@ -476,14 +483,20 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       </PromotionWizard>
 
       {/* Confirmation Dialog */}
-      {showConfirmDialog && previewData && (
+      {showConfirmDialog && previewData && wizardData && (
         <PromotionConfirmDialog
           open={showConfirmDialog}
           onOpenChange={setShowConfirmDialog}
           onConfirm={(confirmedData) => {
             setShowConfirmDialog(false);
-            // Execute promotion with the wizard data
-            executePromotion({} as any);
+            // Execute promotion with the wizard's selection plus the
+            // exclusions/roll-number/notification choices made in this dialog
+            executePromotion({
+              ...wizardData,
+              excludedStudents: confirmedData.excludedStudents,
+              rollNumberStrategy: confirmedData.rollNumberStrategy,
+              sendNotifications: confirmedData.sendNotifications,
+            });
           }}
           data={previewData}
           onCancel={() => setShowConfirmDialog(false)}

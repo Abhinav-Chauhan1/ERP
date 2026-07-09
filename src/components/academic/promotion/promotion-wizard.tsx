@@ -86,11 +86,14 @@ export function PromotionWizard({ onComplete, onCancel, children }: PromotionWiz
   };
 
   const nextStep = () => {
-    if (currentStep < PROMOTION_STEPS.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      // Final step - complete the wizard
+    if (currentStep === PROMOTION_STEPS.length - 2) {
+      // "Review & Execute" - advance to the Execute step visually and
+      // trigger completion in the same action (there is no further button
+      // once the Execute step is shown, so this must happen together).
+      setCurrentStep(PROMOTION_STEPS.length - 1);
       onComplete(data);
+    } else if (currentStep < PROMOTION_STEPS.length - 1) {
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
