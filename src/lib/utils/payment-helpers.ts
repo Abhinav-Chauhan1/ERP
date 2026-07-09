@@ -1,4 +1,5 @@
-import { PaymentStatus, PaymentMethod, UserRole } from "@prisma/client";
+import { PaymentStatus, PaymentMethod, UserRole, FeeFrequency } from "@prisma/client";
+import { differenceInCalendarMonths } from "date-fns";
 import { FeeItemStatus } from "@/lib/types/fees";
 import { currentUser } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
@@ -262,6 +263,162 @@ export function isValidReceiptNumber(receiptNumber: string): boolean {
   // Format: RCP + YYYY + MM + XXXX (e.g., RCP202411001)
   const pattern = /^RCP\d{4}(0[1-9]|1[0-2])\d{4}$/;
   return pattern.test(receiptNumber);
+}
+
+export interface DiscountInput {
+  discountType: "FLAT_AMOUNT" | "PERCENTAGE";
+  value: number;
+}
+
+/**
+ * Calculates the rupee value of a discount for a given gross total, clamped to [0, grossTotal].
+ */
+export function calculateDiscountAmount(
+  grossTotal: number,
+  discount: DiscountInput | null
+): number {
+  if (!discount || grossTotal <= 0) return 0;
+  const raw =
+    discount.discountType === "PERCENTAGE"
+      ? (grossTotal * discount.value) / 100
+      : discount.value;
+  return Math.min(Math.max(raw, 0), grossTotal);
+}
+
+/**
+ * Returns grossTotal minus the applicable discount, floored at 0.
+ */
+export function calculateNetPayable(
+  grossTotal: number,
+  discount: DiscountInput | null
+): number {
+  return grossTotal - calculateDiscountAmount(grossTotal, discount);
+}
+
+/**
+ * Fetches the active FeeDiscount for a student+feeStructure, scoped by schoolId, or null.
+ */
+export async function getActiveFeeDiscount(
+  studentId: string,
+  feeStructureId: string,
+  schoolId: string
+): Promise<DiscountInput | null> {
+  const row = await db.feeDiscount.findUnique({
+    where: { studentId_feeStructureId: { studentId, feeStructureId } },
+  });
+  if (!row || !row.isActive || row.schoolId !== schoolId) return null;
+  return { discountType: row.discountType, value: row.value };
+}
+
+/**
+ * Number of billing occurrences per academic year for a fee type's frequency,
+ * used to expand a per-occurrence amount (e.g. Monthly tuition) into its annual total.
+ */
+export function getFeeFrequencyMultiplier(frequency: FeeFrequency): number {
+  switch (frequency) {
+    case "MONTHLY":
+      return 12;
+    case "QUARTERLY":
+      return 4;
+    case "SEMI_ANNUAL":
+      return 2;
+    case "ANNUAL":
+    case "ONE_TIME":
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Resolves the annualized amount owed for each fee type against a class: the
+ * class-specific override (FeeTypeClassAmount) or the fee type's own default
+ * amount, expanded by its billing frequency (e.g. Monthly x12).
+ */
+export async function getFeeAmountsForClass(
+  feeTypeIds: string[],
+  classId: string | undefined,
+  schoolId: string
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  const uniqueFeeTypeIds = Array.from(new Set(feeTypeIds));
+  if (uniqueFeeTypeIds.length === 0) return result;
+
+  const [feeTypes, classAmounts] = await Promise.all([
+    db.feeType.findMany({ where: { id: { in: uniqueFeeTypeIds }, schoolId } }),
+    classId
+      ? db.feeTypeClassAmount.findMany({
+          where: { feeTypeId: { in: uniqueFeeTypeIds }, classId, schoolId },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const classAmountMap = new Map(classAmounts.map((ca) => [ca.feeTypeId, ca.amount]));
+
+  feeTypes.forEach((ft) => {
+    const baseAmount = classAmountMap.get(ft.id) ?? ft.amount;
+    result.set(ft.id, baseAmount * getFeeFrequencyMultiplier(ft.frequency));
+  });
+
+  return result;
+}
+
+/**
+ * Single-fee-type convenience wrapper around getFeeAmountsForClass.
+ */
+export async function getFeeAmountForClass(
+  feeTypeId: string,
+  classId: string | undefined,
+  schoolId: string
+): Promise<number> {
+  const amounts = await getFeeAmountsForClass([feeTypeId], classId, schoolId);
+  return amounts.get(feeTypeId) ?? 0;
+}
+
+/**
+ * How much of a recurring fee item should have accrued by now, given when it
+ * effectively started for this student. ONE_TIME/ANNUAL items are due in full
+ * as soon as they've started (no accrual); MONTHLY/QUARTERLY/SEMI_ANNUAL items
+ * accrue one occurrence per elapsed billing period, capped at the frequency's
+ * annual occurrence count so it never exceeds the already-annualized total.
+ */
+export function calculateAccruedAmount(
+  perOccurrenceAmount: number,
+  frequency: FeeFrequency,
+  effectiveStartDate: Date,
+  asOfDate: Date = new Date()
+): number {
+  if (asOfDate < effectiveStartDate) return 0;
+
+  if (frequency === "ONE_TIME" || frequency === "ANNUAL") {
+    return perOccurrenceAmount;
+  }
+
+  const periodMonths = frequency === "MONTHLY" ? 1 : frequency === "QUARTERLY" ? 3 : 6; // SEMI_ANNUAL
+  const monthsElapsed = differenceInCalendarMonths(asOfDate, effectiveStartDate) + 1; // the current period counts as started
+  const periodsElapsed = Math.ceil(monthsElapsed / periodMonths);
+  const maxOccurrences = getFeeFrequencyMultiplier(frequency);
+
+  return perOccurrenceAmount * Math.min(Math.max(periodsElapsed, 0), maxOccurrences);
+}
+
+/**
+ * Sums how much of a fee structure should have been paid by now across all of
+ * its items: items with an explicit dueDate contribute their full (annualized)
+ * amount once that date has passed (unchanged due-date behavior), and items
+ * without one accrue over elapsed billing periods per calculateAccruedAmount.
+ */
+export function calculateAccruedFeeTotal(
+  items: Array<{ annualizedAmount: number; frequency: FeeFrequency; dueDate: Date | null }>,
+  effectiveStartDate: Date,
+  asOfDate: Date = new Date()
+): number {
+  return items.reduce((sum, item) => {
+    if (item.dueDate) {
+      return sum + (item.dueDate <= asOfDate ? item.annualizedAmount : 0);
+    }
+    const perOccurrenceAmount = item.annualizedAmount / getFeeFrequencyMultiplier(item.frequency);
+    return sum + calculateAccruedAmount(perOccurrenceAmount, item.frequency, effectiveStartDate, asOfDate);
+  }, 0);
 }
 
 export async function getCurrentParent() {

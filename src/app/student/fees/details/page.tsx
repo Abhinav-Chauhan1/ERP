@@ -19,13 +19,16 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentFeeDetailsPage() {
-  const { 
-    student, 
-    feeStructure, 
-    feePayments, 
-    totalFees, 
-    paidAmount, 
-    balance, 
+  const {
+    student,
+    feeStructure,
+    feePayments,
+    totalFees,
+    grossTotalFees,
+    discountAmount,
+    paidAmount,
+    balance,
+    overdueAmount,
     paymentPercentage,
     upcomingFees,
     overdueFees,
@@ -46,10 +49,15 @@ export default async function StudentFeeDetailsPage() {
       {/* Fee Summary Card with Gradient */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
               <p className="text-sm text-blue-900 mb-1">Total Fees</p>
               <div className="text-3xl font-bold text-blue-900">₹{totalFees.toFixed(2)}</div>
+              {discountAmount > 0 && (
+                <p className="text-xs text-blue-800 mt-1">
+                  Gross ₹{grossTotalFees.toFixed(2)} · Discount -₹{discountAmount.toFixed(2)}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-sm text-green-900 mb-1">Paid Amount</p>
@@ -58,6 +66,10 @@ export default async function StudentFeeDetailsPage() {
             <div>
               <p className="text-sm text-amber-900 mb-1">Balance</p>
               <div className="text-3xl font-bold text-amber-900">₹{balance.toFixed(2)}</div>
+            </div>
+            <div>
+              <p className="text-sm text-red-900 mb-1">Currently Due</p>
+              <div className="text-3xl font-bold text-red-900">₹{overdueAmount.toFixed(2)}</div>
             </div>
           </div>
           <div className="mt-6">

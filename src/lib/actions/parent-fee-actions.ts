@@ -23,6 +23,13 @@ import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
+import {
+  getActiveFeeDiscount,
+  calculateDiscountAmount,
+  calculateNetPayable,
+  getFeeAmountsForClass,
+  calculateAccruedFeeTotal,
+} from "@/lib/utils/payment-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,43 +88,6 @@ async function verifyFeeStructureOwnership(
     select: { schoolId: true, isActive: true }
   });
   return !!feeStructure && feeStructure.schoolId === schoolId && feeStructure.isActive;
-}
-
-// ─── Batched fee amount lookup ────────────────────────────────────────────────
-
-/**
- * Fetch class-specific amounts for multiple feeTypeIds in one query.
- * Falls back to the feeType default amount when no class-specific row exists.
- */
-async function getFeeAmountsForClass(
-  feeTypeIds: string[],
-  classId: string | undefined,
-  schoolId: string
-): Promise<Map<string, number>> {
-  const [classAmounts, feeTypes] = await Promise.all([
-    classId
-      ? db.feeTypeClassAmount.findMany({
-          where: {
-            schoolId,
-            feeTypeId: { in: feeTypeIds },
-            classId
-          }
-        })
-      : Promise.resolve([]),
-    db.feeType.findMany({
-      where: { id: { in: feeTypeIds } },
-      select: { id: true, amount: true }
-    })
-  ]);
-
-  const classAmountMap = new Map(classAmounts.map(ca => [ca.feeTypeId, ca.amount]));
-  const defaultAmountMap = new Map(feeTypes.map(ft => [ft.id, ft.amount]));
-
-  const result = new Map<string, number>();
-  for (const id of feeTypeIds) {
-    result.set(id, classAmountMap.get(id) ?? defaultAmountMap.get(id) ?? 0);
-  }
-  return result;
 }
 
 // ─── getFeeOverview ───────────────────────────────────────────────────────────
@@ -187,6 +157,8 @@ export async function getFeeOverview(input: FeeOverviewInput) {
             class: currentEnrollment.class.name
           },
           totalFees: 0,
+          grossTotalFees: 0,
+          discountAmount: 0,
           paidAmount: 0,
           pendingAmount: 0,
           overdueAmount: 0,
@@ -213,15 +185,19 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       )
     ]);
 
-    let totalFees = 0;
+    let grossTotalFees = 0;
     for (const item of feeStructure.items) {
-      totalFees += amountMap.get(item.feeTypeId) ?? 0;
+      grossTotalFees += amountMap.get(item.feeTypeId) ?? 0;
     }
+
+    const discount = await getActiveFeeDiscount(validated.childId, feeStructure.id, parent.schoolId);
+    const discountAmount = calculateDiscountAmount(grossTotalFees, discount);
+    const totalFees = calculateNetPayable(grossTotalFees, discount);
 
     const paidAmount = payments
       .filter(p => p.status === PaymentStatus.COMPLETED)
       .reduce((sum, p) => sum + p.paidAmount, 0);
-    const pendingAmount = totalFees - paidAmount;
+    const pendingAmount = Math.max(totalFees - paidAmount, 0);
 
     const now = new Date();
     const feeItems = feeStructure.items.map(item => {
@@ -248,9 +224,21 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       };
     });
 
-    const overdueAmount = feeItems
-      .filter(item => item.status === "OVERDUE")
-      .reduce((sum, item) => sum + item.balance, 0);
+    // How much should have accrued by now (mid-session onboarding / ongoing
+    // Monthly-Quarterly-Semi-Annual fees, plus any items whose explicit due
+    // date has already passed), vs the full totalFees/pendingAmount above.
+    const effectiveStartDate = new Date(
+      Math.max(feeStructure.validFrom.getTime(), currentEnrollment.enrollDate.getTime())
+    );
+    const asOfDate = feeStructure.validTo && feeStructure.validTo < now ? feeStructure.validTo : now;
+    const accrualItems = feeStructure.items.map(item => ({
+      annualizedAmount: amountMap.get(item.feeTypeId) ?? item.feeType.amount,
+      frequency: item.feeType.frequency,
+      dueDate: item.dueDate,
+    }));
+    const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
+    const netAccruedTotal = calculateNetPayable(accruedGrossTotal, discount);
+    const overdueAmount = Math.max(netAccruedTotal - paidAmount, 0);
 
     const nextDueDate = feeStructure.items
       .filter(item => item.dueDate && item.dueDate >= now)
@@ -267,6 +255,8 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         },
         feeStructureId: feeStructure.id,
         totalFees,
+        grossTotalFees,
+        discountAmount,
         paidAmount,
         pendingAmount,
         overdueAmount,

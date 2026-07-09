@@ -113,7 +113,6 @@ export class FeeStructureService {
         // Create class associations
         classes: {
           create: data.classIds.map((classId) => ({
-            classId,
             class: { connect: { id: classId } },
             school: { connect: { id: schoolId! } }, // schoolId is required
           })),
@@ -121,7 +120,6 @@ export class FeeStructureService {
         // Create fee items
         items: {
           create: data.items.map((item) => ({
-            feeTypeId: item.feeTypeId,
             amount: item.amount,
             dueDate: item.dueDate,
             feeType: { connect: { id: item.feeTypeId } },
@@ -210,7 +208,6 @@ export class FeeStructureService {
       // Create new associations
       updateData.classes = {
         create: data.classIds.map((classId) => ({
-          classId,
           class: { connect: { id: classId } },
           school: { connect: { id: schoolId! } }, // schoolId is required
         })),
@@ -230,7 +227,6 @@ export class FeeStructureService {
       // Create new items
       updateData.items = {
         create: data.items.map((item) => ({
-          feeTypeId: item.feeTypeId,
           amount: item.amount,
           dueDate: item.dueDate,
           feeType: { connect: { id: item.feeTypeId } },

@@ -213,6 +213,8 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
         nextDueDate={feeData.nextDueDate}
         hasOverdue={feeData.hasOverdue}
         academicYear={feeData.academicYear}
+        grossTotalFees={feeData.grossTotalFees}
+        discountAmount={feeData.discountAmount}
       />
 
       {/* Warning if no payment methods are enabled */}

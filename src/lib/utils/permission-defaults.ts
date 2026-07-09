@@ -41,6 +41,7 @@ export const RESOURCES = {
     ASSIGNMENT: 'ASSIGNMENT',
     ATTENDANCE: 'ATTENDANCE',
     FEE: 'FEE',
+    FEE_DISCOUNT: 'FEE_DISCOUNT',
     PAYMENT: 'PAYMENT',
     ANNOUNCEMENT: 'ANNOUNCEMENT',
     MESSAGE: 'MESSAGE',
@@ -176,6 +177,9 @@ export const DEFAULT_PERMISSIONS: PermissionDefinition[] = [
     { name: 'READ_FEE', resource: RESOURCES.FEE, action: 'READ', category: PERMISSION_CATEGORIES.FINANCE, description: 'View fee details' },
     { name: 'UPDATE_FEE', resource: RESOURCES.FEE, action: 'UPDATE', category: PERMISSION_CATEGORIES.FINANCE, description: 'Update fee structures' },
     { name: 'DELETE_FEE', resource: RESOURCES.FEE, action: 'DELETE', category: PERMISSION_CATEGORIES.FINANCE, description: 'Delete fee structures' },
+    { name: 'CREATE_FEE_DISCOUNT', resource: RESOURCES.FEE_DISCOUNT, action: 'CREATE', category: PERMISSION_CATEGORIES.FINANCE, description: 'Grant fee discounts to students' },
+    { name: 'READ_FEE_DISCOUNT', resource: RESOURCES.FEE_DISCOUNT, action: 'READ', category: PERMISSION_CATEGORIES.FINANCE, description: 'View student fee discounts' },
+    { name: 'UPDATE_FEE_DISCOUNT', resource: RESOURCES.FEE_DISCOUNT, action: 'UPDATE', category: PERMISSION_CATEGORIES.FINANCE, description: 'Edit or deactivate fee discounts' },
 
     // Payment Management
     { name: 'CREATE_PAYMENT', resource: RESOURCES.PAYMENT, action: 'CREATE', category: PERMISSION_CATEGORIES.FINANCE, description: 'Record payments' },

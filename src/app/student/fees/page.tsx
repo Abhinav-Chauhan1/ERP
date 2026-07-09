@@ -27,8 +27,10 @@ export default async function StudentFeesPage() {
   // Get fee summary for the student
   const {
     totalFees,
+    discountAmount,
     paidAmount,
     balance,
+    overdueAmount,
     paymentPercentage,
     overdueFees,
     className,
@@ -38,8 +40,6 @@ export default async function StudentFeesPage() {
   // Get payment configuration
   const paymentConfigResult = await getPaymentConfig();
   const paymentConfig = paymentConfigResult.success ? paymentConfigResult.data : null;
-
-  const overdueAmount = overdueFees.reduce((sum, fee) => sum + fee.amount, 0);
 
   const feeLinks = [
     {
@@ -144,6 +144,9 @@ export default async function StudentFeesPage() {
             <div className="flex flex-col items-center bg-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm">
               <span className="text-gray-500 text-xs">Total Fees</span>
               <span className="text-lg md:text-2xl font-bold text-gray-800">₹{totalFees.toFixed(2)}</span>
+              {discountAmount > 0 && (
+                <span className="text-xs text-green-600">Discount -₹{discountAmount.toFixed(2)}</span>
+              )}
             </div>
 
             <div className="flex flex-col items-center bg-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm">

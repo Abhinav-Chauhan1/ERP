@@ -43,8 +43,16 @@ import { studentEnrollmentSchema, StudentEnrollmentFormValues } from "@/lib/sche
 import { enrollStudentInClass } from "@/lib/actions/classesActions";
 import { deleteUser } from "@/lib/actions/usersAction";
 import { getFeePayments, getPaymentReceiptHTML, getConsolidatedReceiptHTML } from "@/lib/actions/feePaymentActions";
+import {
+  getStudentFeeDiscountSummary,
+  createFeeDiscount,
+  updateFeeDiscount,
+  deactivateFeeDiscount,
+} from "@/lib/actions/feeDiscountActions";
 import { PaymentsTable } from "@/components/admin/finance-tables";
-import { Download } from "lucide-react";
+import { Download, BadgePercent } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 
 // Add Parent Dialog Component
 function AddParentDialog({
@@ -251,6 +259,288 @@ function AddParentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Fee Summary & Discount Card
+interface FeeDiscountSummary {
+  feeStructureId: string;
+  grossTotal: number;
+  discountAmount: number;
+  netTotal: number;
+  paidAmount: number;
+  netBalance: number;
+  overdueAmount: number;
+  discount: {
+    id: string;
+    discountType: "FLAT_AMOUNT" | "PERCENTAGE";
+    value: number;
+    reason?: string | null;
+  } | null;
+}
+
+function FeeDiscountDialog({
+  studentId,
+  feeStructureId,
+  discountId,
+  currentDiscount,
+  onSuccess,
+}: {
+  studentId: string;
+  feeStructureId: string;
+  discountId?: string;
+  currentDiscount: { discountType: "FLAT_AMOUNT" | "PERCENTAGE"; value: number; reason?: string | null } | null;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [discountType, setDiscountType] = useState<"FLAT_AMOUNT" | "PERCENTAGE">(
+    currentDiscount?.discountType || "FLAT_AMOUNT"
+  );
+  const [value, setValue] = useState<string>(currentDiscount ? String(currentDiscount.value) : "");
+  const [reason, setReason] = useState<string>(currentDiscount?.reason || "");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDiscountType(currentDiscount?.discountType || "FLAT_AMOUNT");
+      setValue(currentDiscount ? String(currentDiscount.value) : "");
+      setReason(currentDiscount?.reason || "");
+    }
+  }, [open, currentDiscount]);
+
+  async function handleSubmit() {
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue) || numericValue <= 0) {
+      toast.error("Enter a valid discount value greater than 0");
+      return;
+    }
+    if (discountType === "PERCENTAGE" && numericValue > 100) {
+      toast.error("Percentage discount cannot exceed 100");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = discountId
+        ? await updateFeeDiscount({ id: discountId, discountType, value: numericValue, reason: reason || null })
+        : await createFeeDiscount({ studentId, feeStructureId, discountType, value: numericValue, reason: reason || null });
+
+      if (result.success) {
+        toast.success(discountId ? "Discount updated" : "Discount granted");
+        setOpen(false);
+        onSuccess();
+      } else {
+        toast.error(result.error || "Failed to save discount");
+      }
+    } catch (error) {
+      console.error("Error saving fee discount:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <BadgePercent className="h-4 w-4 mr-2" />
+          {discountId ? "Edit Discount" : "Add Discount"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{discountId ? "Edit Fee Discount" : "Grant Fee Discount"}</DialogTitle>
+          <DialogDescription>
+            Set a flat amount or percentage discount off this student&apos;s total fees.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Discount Type</label>
+            <RadioGroup
+              value={discountType}
+              onValueChange={(val) => setDiscountType(val as "FLAT_AMOUNT" | "PERCENTAGE")}
+              className="flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="FLAT_AMOUNT" id="flat-amount" />
+                <label htmlFor="flat-amount" className="text-sm">Flat Amount (₹)</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="PERCENTAGE" id="percentage" />
+                <label htmlFor="percentage" className="text-sm">Percentage (%)</label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {discountType === "PERCENTAGE" ? "Percentage" : "Amount (₹)"}
+            </label>
+            <Input
+              type="number"
+              min={0}
+              max={discountType === "PERCENTAGE" ? 100 : undefined}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={discountType === "PERCENTAGE" ? "e.g. 10" : "e.g. 1600"}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Reason (optional)</label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Sibling discount, Staff ward, Merit"
+              maxLength={500}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Save Discount
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FeeSummaryDiscountCard({ studentId }: { studentId: string }) {
+  const [summary, setSummary] = useState<FeeDiscountSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [deactivating, setDeactivating] = useState(false);
+
+  const fetchSummary = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await getStudentFeeDiscountSummary(studentId);
+      if (result.success) {
+        setSummary((result.data as FeeDiscountSummary) || null);
+      } else {
+        toast.error(result.error || "Failed to load fee summary");
+      }
+    } catch (error) {
+      console.error("Error fetching fee discount summary:", error);
+      toast.error("Failed to load fee summary");
+    } finally {
+      setLoading(false);
+    }
+  }, [studentId]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+  async function handleDeactivate(discountId: string) {
+    setDeactivating(true);
+    try {
+      const result = await deactivateFeeDiscount(discountId);
+      if (result.success) {
+        toast.success("Discount deactivated");
+        fetchSummary();
+      } else {
+        toast.error(result.error || "Failed to deactivate discount");
+      }
+    } catch (error) {
+      console.error("Error deactivating fee discount:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setDeactivating(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!summary) {
+    return null;
+  }
+
+  const hasDiscount = summary.discountAmount > 0 && !!summary.discount;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle>Fee Summary &amp; Discount</CardTitle>
+          <CardDescription>Gross fees, applied discount, and net payable balance</CardDescription>
+        </div>
+        <Badge variant={hasDiscount ? "default" : "outline"}>
+          {hasDiscount ? "Discount Active" : "No Discount"}
+        </Badge>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Gross Total</p>
+            <p className="font-semibold">₹{summary.grossTotal.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Discount</p>
+            <p className="font-semibold text-green-700">-₹{summary.discountAmount.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Net Payable</p>
+            <p className="font-semibold">₹{summary.netTotal.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Paid</p>
+            <p className="font-semibold">₹{summary.paidAmount.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Balance</p>
+            <p className="font-semibold">₹{summary.netBalance.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground">Currently Due</p>
+            <p className={`font-semibold ${summary.overdueAmount > 0 ? "text-red-600" : ""}`}>
+              ₹{summary.overdueAmount.toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        {summary.discount?.reason && (
+          <p className="text-sm text-muted-foreground">Reason: {summary.discount.reason}</p>
+        )}
+
+        <div className="flex items-center gap-2">
+          <FeeDiscountDialog
+            studentId={studentId}
+            feeStructureId={summary.feeStructureId}
+            discountId={summary.discount?.id}
+            currentDiscount={summary.discount}
+            onSuccess={fetchSummary}
+          />
+          {hasDiscount && summary.discount && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeactivate(summary.discount!.id)}
+              disabled={deactivating}
+            >
+              {deactivating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Deactivate Discount
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -864,6 +1154,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Fees Tab */}
         <TabsContent value="fees" className="space-y-4">
+          <FeeSummaryDiscountCard studentId={id} />
+
           <Card>
             <CardHeader>
               <CardTitle>Fee Payment History</CardTitle>

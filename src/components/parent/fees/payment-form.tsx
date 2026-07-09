@@ -35,6 +35,7 @@ interface PaymentFormProps {
   };
   feeStructureId: string;
   feeItems: FeeItem[];
+  netPayableAmount: number;
   onSubmit: (data: {
     feeTypeIds: string[];
     amount: number;
@@ -48,6 +49,7 @@ export function PaymentForm({
   student,
   feeStructureId,
   feeItems,
+  netPayableAmount,
   onSubmit,
   isLoading = false,
 }: PaymentFormProps) {
@@ -60,8 +62,12 @@ export function PaymentForm({
     (item) => item.status !== "PAID" && item.balance > 0
   );
 
-  // Calculate total balance for all unpaid items
-  const totalAmount = unpaidFeeItems.reduce((total, item) => total + item.balance, 0);
+  // Gross balance across unpaid items (before any student discount)
+  const grossPendingAmount = unpaidFeeItems.reduce((total, item) => total + item.balance, 0);
+
+  // The actual amount to charge: the discounted net balance, authoritative from getFeeOverview
+  const totalAmount = netPayableAmount;
+  const discountAmount = Math.max(grossPendingAmount - netPayableAmount, 0);
 
   const getStatusBadge = (status: FeeItem["status"]) => {
     switch (status) {
@@ -123,7 +129,7 @@ export function PaymentForm({
           <div className="space-y-3">
             <Label className="text-base">Pending Fees</Label>
 
-            {unpaidFeeItems.length === 0 ? (
+            {totalAmount <= 0 ? (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -212,7 +218,19 @@ export function PaymentForm({
           </div>
 
           {/* Total Amount Display */}
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-blue-50 p-4 rounded-lg space-y-1">
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-blue-800">Gross Amount</span>
+                <span className="text-blue-800">₹{grossPendingAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-green-700">Discount</span>
+                <span className="text-green-700">-₹{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-blue-900">Total Payment Amount</span>
               <span className="text-2xl font-bold text-blue-900">
@@ -226,7 +244,7 @@ export function PaymentForm({
             type="submit"
             className="w-full"
             size="lg"
-            disabled={isLoading || unpaidFeeItems.length === 0}
+            disabled={isLoading || totalAmount <= 0}
           >
             {isLoading ? (
               <>

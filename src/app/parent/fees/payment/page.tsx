@@ -44,6 +44,7 @@ export default function MakePaymentPage() {
   const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [feeStructureId, setFeeStructureId] = useState<string>("");
   const [feeItems, setFeeItems] = useState<FeeItem[]>([]);
+  const [netPayableAmount, setNetPayableAmount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,6 +85,7 @@ export default function MakePaymentPage() {
       if (result.success && result.data) {
         setFeeStructureId(result.data.feeStructureId || "");
         setFeeItems(result.data.feeItems);
+        setNetPayableAmount(result.data.pendingAmount);
       } else {
         toast.error(result.message || "Failed to load fee information");
       }
@@ -241,6 +243,7 @@ export default function MakePaymentPage() {
           }}
           feeStructureId={feeStructureId}
           feeItems={feeItems}
+          netPayableAmount={netPayableAmount}
           onSubmit={handlePaymentSubmit}
           isLoading={isSubmitting}
         />

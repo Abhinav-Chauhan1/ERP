@@ -9,7 +9,12 @@ import { createCashfreeOrder, getSchoolCashfreeInstance } from '@/lib/utils/paym
 import { paymentGatewayOrderSchema } from '@/lib/schemaValidation/parent-fee-schemas';
 import { verifyCsrfToken } from '@/lib/utils/csrf';
 import { rateLimitMiddleware, RateLimitPresets } from '@/lib/utils/rate-limit';
-import { getCurrentParent } from '@/lib/utils/payment-helpers';
+import {
+  getCurrentParent,
+  getActiveFeeDiscount,
+  calculateNetPayable,
+  getFeeAmountsForClass,
+} from '@/lib/utils/payment-helpers';
 import { getSchoolCashfreeCredentials } from '@/lib/actions/paymentConfigActions';
 import { z } from 'zod';
 import { formatFullName } from "@/lib/utils";
@@ -115,13 +120,56 @@ export async function POST(req: NextRequest) {
 
     const student = await db.student.findFirst({
       where: { id: validated.childId, schoolId },
-      include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } }
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        enrollments: {
+          orderBy: { enrollDate: 'desc' },
+          take: 1,
+          select: { classId: true },
+        },
+      }
     });
 
     if (!student) {
       return NextResponse.json(
         { success: false, message: 'Student not found' },
         { status: 404 }
+      );
+    }
+
+    // Recompute the gross total for the selected fee types using class-specific,
+    // frequency-annualized amounts, then validate the client-submitted amount
+    // against the student's discounted net balance, so a tampered/incorrect
+    // amount is rejected.
+    const classId = student.enrollments[0]?.classId;
+    const amountMap = await getFeeAmountsForClass(validated.feeTypeIds, classId, schoolId);
+
+    const grossSelected = validated.feeTypeIds.reduce(
+      (sum, feeTypeId) => sum + (amountMap.get(feeTypeId) ?? 0),
+      0
+    );
+
+    const discount = await getActiveFeeDiscount(validated.childId, validated.feeStructureId, schoolId);
+    const netPayableForSelection = calculateNetPayable(grossSelected, discount);
+
+    const completedPayments = await db.feePayment.aggregate({
+      where: {
+        studentId: validated.childId,
+        feeStructureId: validated.feeStructureId,
+        schoolId,
+        status: 'COMPLETED',
+      },
+      _sum: { paidAmount: true },
+    });
+    const remainingNetBalance = netPayableForSelection - (completedPayments._sum.paidAmount ?? 0);
+
+    if (validated.amount > remainingNetBalance + 0.01) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Payment amount exceeds outstanding balance of ₹${Math.max(remainingNetBalance, 0).toFixed(2)}`,
+        },
+        { status: 400 }
       );
     }
 

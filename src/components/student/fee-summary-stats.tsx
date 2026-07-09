@@ -8,13 +8,17 @@ interface FeeSummaryStatsProps {
   paidAmount: number;
   balance: number;
   paymentPercentage: number;
+  grossTotalFees?: number;
+  discountAmount?: number;
 }
 
 export function FeeSummaryStats({
   totalFees,
   paidAmount,
   balance,
-  paymentPercentage
+  paymentPercentage,
+  grossTotalFees,
+  discountAmount = 0
 }: FeeSummaryStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -27,7 +31,13 @@ export function FeeSummaryStats({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">₹{totalFees.toFixed(2)}</div>
-          <p className="text-sm text-gray-500">Academic year fee structure</p>
+          {discountAmount > 0 && grossTotalFees !== undefined ? (
+            <p className="text-sm text-gray-500">
+              Gross ₹{grossTotalFees.toFixed(2)} · Discount -₹{discountAmount.toFixed(2)}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">Academic year fee structure</p>
+          )}
         </CardContent>
       </Card>
       

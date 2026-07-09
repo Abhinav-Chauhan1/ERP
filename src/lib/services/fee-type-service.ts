@@ -84,7 +84,10 @@ export class FeeTypeService {
         amount: data.amount,
         frequency: data.frequency,
         isOptional: data.isOptional,
-        school: { connect: { id: schoolId } }, // schoolId is required
+        schoolId: schoolId!, // schoolId is required; passed as scalar (not `school: { connect }`)
+        // because the tenant-context Prisma extension in src/lib/db.ts also injects
+        // schoolId on every create for tenant-scoped models — using `connect` there
+        // conflicts with that injection ("Unknown argument schoolId").
         // Create class-specific amounts if provided
         ...(data.classAmounts &&
           data.classAmounts.length > 0 && {

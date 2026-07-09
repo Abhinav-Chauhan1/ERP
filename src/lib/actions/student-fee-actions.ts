@@ -7,6 +7,14 @@ import { UserRole, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import {
+  getActiveFeeDiscount,
+  calculateDiscountAmount,
+  calculateNetPayable,
+  getFeeAmountForClass,
+  getFeeAmountsForClass,
+  calculateAccruedFeeTotal,
+} from "@/lib/utils/payment-helpers";
 
 // Schema for payment
 const paymentSchema = z.object({
@@ -71,88 +79,6 @@ async function getCurrentStudent() {
   });
 
   return student;
-}
-
-/**
- * Get the correct fee amount for a fee type based on class
- * Checks for class-specific amount first, falls back to default amount
- * Requirements: 11.2, 11.3
- */
-async function getFeeAmountForClass(feeTypeId: string, classId: string | undefined): Promise<number> {
-  if (!classId) {
-    // If no class ID, get default amount
-    const feeType = await db.feeType.findUnique({
-      where: { id: feeTypeId }
-    });
-    return feeType?.amount || 0;
-  }
-
-  // Check for class-specific amount
-  const classAmount = await db.feeTypeClassAmount.findUnique({
-    where: {
-      feeTypeId_classId: {
-        feeTypeId,
-        classId
-      }
-    }
-  });
-
-  if (classAmount) {
-    return classAmount.amount;
-  }
-
-  // Fall back to default amount
-  const feeType = await db.feeType.findUnique({
-    where: { id: feeTypeId }
-  });
-
-  return feeType?.amount || 0;
-}
-
-/**
- * Bulk get correct fee amounts for fee types based on class
- * Checks for class-specific amount first, falls back to default amount
- */
-async function getFeeAmountsForClass(feeTypeIds: string[], classId: string | undefined): Promise<Map<string, number>> {
-  const result = new Map<string, number>();
-  const uniqueFeeTypeIds = Array.from(new Set(feeTypeIds));
-
-  if (uniqueFeeTypeIds.length === 0) {
-    return result;
-  }
-
-  if (!classId) {
-    // If no class ID, get all default amounts
-    const feeTypes = await db.feeType.findMany({
-      where: { id: { in: uniqueFeeTypeIds } }
-    });
-    feeTypes.forEach(ft => result.set(ft.id, ft.amount));
-    return result;
-  }
-
-  // Check for class-specific amounts
-  const classAmounts = await db.feeTypeClassAmount.findMany({
-    where: {
-      feeTypeId: { in: uniqueFeeTypeIds },
-      classId
-    }
-  });
-
-  // Map class amounts
-  classAmounts.forEach(ca => result.set(ca.feeTypeId, ca.amount));
-
-  // Identify missing feeTypes (those that didn't have a class-specific amount)
-  const missingFeeTypeIds = uniqueFeeTypeIds.filter(id => !result.has(id));
-
-  if (missingFeeTypeIds.length > 0) {
-    // Fall back to default amounts for missing ones
-    const feeTypes = await db.feeType.findMany({
-      where: { id: { in: missingFeeTypeIds } }
-    });
-    feeTypes.forEach(ft => result.set(ft.id, ft.amount));
-  }
-
-  return result;
 }
 
 /**
@@ -230,13 +156,14 @@ export async function getStudentFeeDetails() {
   // Calculate total fees using class-specific amounts
   // Requirements: 11.2, 11.3
   let totalFees = 0;
+  let classAmountMap: Map<string, number> | null = null;
   if (feeStructure && classId) {
     // Optimized batch calculation to avoid sequential N+1 queries
     const feeTypeIds = feeStructure.items.map(item => item.feeTypeId);
-    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId);
+    classAmountMap = await getFeeAmountsForClass(feeTypeIds, classId, student.schoolId);
 
     for (const item of feeStructure.items) {
-      const correctAmount = amountMap.get(item.feeTypeId) || item.feeType.amount;
+      const correctAmount = classAmountMap.get(item.feeTypeId) || item.feeType.amount;
       totalFees += correctAmount;
     }
   } else if (feeStructure) {
@@ -244,9 +171,38 @@ export async function getStudentFeeDetails() {
     totalFees = feeStructure.items.reduce((sum, item) => sum + item.amount, 0);
   }
 
+  const discount = feeStructure
+    ? await getActiveFeeDiscount(student.id, feeStructure.id, student.schoolId)
+    : null;
+  const discountAmount = calculateDiscountAmount(totalFees, discount);
+  const grossTotalFees = totalFees;
+  totalFees = calculateNetPayable(grossTotalFees, discount);
+
   const paidAmount = feePayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
-  const balance = totalFees - paidAmount;
+  const balance = Math.max(totalFees - paidAmount, 0);
   const paymentPercentage = totalFees > 0 ? (paidAmount / totalFees) * 100 : 0;
+
+  // How much of the fee structure should have accrued by now (mid-session onboarding /
+  // ongoing Monthly-Quarterly-Semi-Annual fees), vs the full annual balance above.
+  let overdueAmount = 0;
+  if (feeStructure && classAmountMap && currentEnrollment) {
+    const effectiveStartDate = new Date(
+      Math.max(feeStructure.validFrom.getTime(), currentEnrollment.enrollDate.getTime())
+    );
+    const now = new Date();
+    const asOfDate = feeStructure.validTo && feeStructure.validTo < now ? feeStructure.validTo : now;
+
+    const accrualItems = feeStructure.items.map(item => ({
+      annualizedAmount: classAmountMap!.get(item.feeTypeId) ?? item.feeType.amount,
+      frequency: item.feeType.frequency,
+      dueDate: item.dueDate,
+    }));
+
+    const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
+    const netRatio = grossTotalFees > 0 ? totalFees / grossTotalFees : 1;
+    const accruedNetTotal = accruedGrossTotal * netRatio;
+    overdueAmount = Math.max(accruedNetTotal - paidAmount, 0);
+  }
 
   // Get upcoming fees with class-specific amounts
   const now = new Date();
@@ -257,7 +213,7 @@ export async function getStudentFeeDetails() {
 
   // Enrich with class-specific amounts (optimized to avoid N+1 queries)
   const upcomingFeeTypeIds = upcomingFeesRaw.map(item => item.feeTypeId);
-  const upcomingAmountMap = await getFeeAmountsForClass(upcomingFeeTypeIds, classId);
+  const upcomingAmountMap = await getFeeAmountsForClass(upcomingFeeTypeIds, classId, student.schoolId);
 
   const upcomingFees = upcomingFeesRaw.map(item => {
     // Use class-specific amount if available, otherwise use the fee type default amount
@@ -280,7 +236,7 @@ export async function getStudentFeeDetails() {
 
   // Enrich with class-specific amounts (optimized to avoid N+1 queries)
   const overdueFeeTypeIds = overdueFeesRaw.map(item => item.feeTypeId);
-  const overdueAmountMap = await getFeeAmountsForClass(overdueFeeTypeIds, classId);
+  const overdueAmountMap = await getFeeAmountsForClass(overdueFeeTypeIds, classId, student.schoolId);
 
   const overdueFees = overdueFeesRaw.map(item => {
     const correctAmount = overdueAmountMap.get(item.feeTypeId) || item.feeType.amount;
@@ -295,8 +251,11 @@ export async function getStudentFeeDetails() {
     feeStructure,
     feePayments,
     totalFees,
+    grossTotalFees,
+    discountAmount,
     paidAmount,
     balance,
+    overdueAmount,
     paymentPercentage,
     upcomingFees,
     overdueFees,
@@ -434,7 +393,7 @@ export async function getDuePayments() {
 
   // Enrich with class-specific amounts (optimized to avoid N+1 queries)
   const feeTypeIds = dueItemsRaw.map(item => item.feeTypeId);
-  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId);
+  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, student.schoolId);
 
   const dueItems = dueItemsRaw.map(item => {
     const correctAmount = amountMap.get(item.feeTypeId) || item.feeType.amount;
@@ -445,13 +404,42 @@ export async function getDuePayments() {
   });
 
   // Calculate total due amount using class-specific amounts
-  const totalDue = dueItems.reduce((sum, item) => sum + item.amount, 0);
+  const grossTotalDue = dueItems.reduce((sum, item) => sum + item.amount, 0);
+
+  // Apply the student's discount (if any) once against the total due
+  const discount = await getActiveFeeDiscount(student.id, feeStructure.id, student.schoolId);
+  const totalDue = Math.max(calculateNetPayable(grossTotalDue, discount), 0);
+
+  // How much should have accrued by now (mid-session onboarding / ongoing
+  // Monthly-Quarterly-Semi-Annual fees), as opposed to the full totalDue above.
+  let overdueAmount = 0;
+  if (currentEnrollment) {
+    const allFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
+    const allAmountMap = await getFeeAmountsForClass(allFeeTypeIds, classId, student.schoolId);
+
+    const effectiveStartDate = new Date(
+      Math.max(feeStructure.validFrom.getTime(), currentEnrollment.enrollDate.getTime())
+    );
+    const asOfDate = feeStructure.validTo && feeStructure.validTo < now ? feeStructure.validTo : now;
+
+    const accrualItems = feeStructure.items.map(item => ({
+      annualizedAmount: allAmountMap.get(item.feeTypeId) ?? item.feeType.amount,
+      frequency: item.feeType.frequency,
+      dueDate: item.dueDate,
+    }));
+
+    const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
+    const totalPaid = feePayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
+    const netAccruedTotal = calculateNetPayable(accruedGrossTotal, discount);
+    overdueAmount = Math.max(netAccruedTotal - totalPaid, 0);
+  }
 
   return {
     student,
     duePayments: dueItems,
     feeStructure,
-    totalDue
+    totalDue,
+    overdueAmount
   };
 }
 
@@ -504,7 +492,7 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
     // Requirements: 11.2, 11.3
     const currentEnrollment = student.enrollments[0];
     const classId = currentEnrollment?.class?.id;
-    const correctAmount = await getFeeAmountForClass(feeItem.feeTypeId, classId);
+    const correctAmount = await getFeeAmountForClass(feeItem.feeTypeId, classId, student.schoolId);
 
     // Verify fee item belongs to the student's school
     if (feeItem.schoolId !== student.schoolId) {

@@ -31,6 +31,8 @@ interface FeeBreakdownCardProps {
   nextDueDate: Date | null;
   hasOverdue: boolean;
   academicYear: string;
+  grossTotalFees?: number;
+  discountAmount?: number;
 }
 
 export function FeeBreakdownCard({
@@ -43,6 +45,8 @@ export function FeeBreakdownCard({
   nextDueDate,
   hasOverdue,
   academicYear,
+  grossTotalFees,
+  discountAmount = 0,
 }: FeeBreakdownCardProps) {
   const paymentPercentage = totalFees > 0 ? (paidAmount / totalFees) * 100 : 0;
 
@@ -113,7 +117,17 @@ export function FeeBreakdownCard({
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">Total Fees</p>
             <p className="text-lg font-bold">₹{totalFees.toFixed(2)}</p>
+            {discountAmount > 0 && grossTotalFees !== undefined && (
+              <p className="text-xs text-gray-500">Gross ₹{grossTotalFees.toFixed(2)}</p>
+            )}
           </div>
+
+          {discountAmount > 0 && (
+            <div className="bg-emerald-50 p-3 rounded-lg">
+              <p className="text-xs text-emerald-600 mb-1">Discount</p>
+              <p className="text-lg font-bold text-emerald-700">-₹{discountAmount.toFixed(2)}</p>
+            </div>
+          )}
 
           <div className="bg-green-50 p-3 rounded-lg">
             <p className="text-xs text-green-600 mb-1">Paid Amount</p>

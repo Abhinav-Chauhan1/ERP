@@ -99,6 +99,21 @@ const frequencyOptions = [
   { value: "ANNUAL", label: "Annual" },
 ];
 
+// Number of billing occurrences per academic year for a fee type's frequency,
+// mirrors getFeeFrequencyMultiplier in src/lib/utils/payment-helpers.ts
+function getFrequencyMultiplier(frequency: string): number {
+  switch (frequency) {
+    case "MONTHLY":
+      return 12;
+    case "QUARTERLY":
+      return 4;
+    case "SEMI_ANNUAL":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
 export default function FeeStructurePage() {
   // State management
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
@@ -218,9 +233,10 @@ export default function FeeStructurePage() {
 
   // Handle create fee structure
   function handleCreateStructure() {
+    const currentAcademicYear = academicYears.find((year: any) => year.isCurrent);
     form.reset({
       name: "",
-      academicYearId: "",
+      academicYearId: currentAcademicYear?.id || "",
       classIds: [],
       applicableClasses: "",
       description: "",
@@ -712,7 +728,7 @@ export default function FeeStructurePage() {
                             <span className="font-medium">
                               ₹
                               {structure.items
-                                ?.reduce((sum: number, item: any) => sum + item.amount, 0)
+                                ?.reduce((sum: number, item: any) => sum + item.amount * getFrequencyMultiplier(item.feeType?.frequency), 0)
                                 .toLocaleString()}
                             </span>
                           </div>
@@ -887,7 +903,9 @@ export default function FeeStructurePage() {
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Select one or more classes for this fee structure
+                      {form.watch("academicYearId")
+                        ? "Select one or more classes for this fee structure"
+                        : "Select an academic year above to choose classes"}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1052,20 +1070,38 @@ export default function FeeStructurePage() {
                             </Button>
                           </div>
                         ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            field.onChange([
-                              ...field.value,
-                              { feeTypeId: "", amount: 0, dueDate: undefined }
-                            ]);
-                          }}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Fee Item
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              field.onChange([
+                                ...field.value,
+                                { feeTypeId: "", amount: 0, dueDate: undefined }
+                              ]);
+                            }}
+                          >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Fee Item
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={feeTypes.every((ft) => field.value.some((item) => item.feeTypeId === ft.id))}
+                            onClick={() => {
+                              const existingFeeTypeIds = new Set(field.value.map((item) => item.feeTypeId));
+                              const newItems = feeTypes
+                                .filter((ft) => !existingFeeTypeIds.has(ft.id))
+                                .map((ft) => ({ feeTypeId: ft.id, amount: ft.amount, dueDate: undefined }));
+                              field.onChange([...field.value, ...newItems]);
+                            }}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Add All Fee Types
+                          </Button>
+                        </div>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -1148,7 +1184,7 @@ export default function FeeStructurePage() {
                         type="number"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1295,7 +1331,7 @@ export default function FeeStructurePage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>
-                  <p>
+                  <div>
                     <Badge variant={selectedStructure.isActive ? "default" : "secondary"}>
                       {selectedStructure.isActive ? "Active" : "Inactive"}
                     </Badge>
@@ -1304,7 +1340,7 @@ export default function FeeStructurePage() {
                         Template
                       </Badge>
                     )}
-                  </p>
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Applicable Classes:</span>
@@ -1324,7 +1360,7 @@ export default function FeeStructurePage() {
                   <span className="text-muted-foreground">Total Amount:</span>
                   <p className="font-medium">
                     ₹{selectedStructure.items
-                      ?.reduce((sum: number, item: any) => sum + item.amount, 0)
+                      ?.reduce((sum: number, item: any) => sum + item.amount * getFrequencyMultiplier(item.feeType?.frequency), 0)
                       .toLocaleString()}
                   </p>
                 </div>
@@ -1344,7 +1380,14 @@ export default function FeeStructurePage() {
                       {selectedStructure.items.map((item: any, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{item.feeType?.name || "—"}</TableCell>
-                          <TableCell>₹{item.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            ₹{item.amount.toLocaleString()}
+                            {item.feeType?.frequency && item.feeType.frequency !== "ONE_TIME" && (
+                              <span className="text-muted-foreground">
+                                {" "}/ {frequencyOptions.find((f) => f.value === item.feeType.frequency)?.label}
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "—"}
                           </TableCell>
@@ -1405,13 +1448,13 @@ export default function FeeStructurePage() {
                   </div>
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">Type</span>
-                    <p>
+                    <div>
                       {selectedFeeType.isOptional ? (
                         <Badge variant="secondary">Optional</Badge>
                       ) : (
                         <Badge>Required</Badge>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">Custom Amounts</span>
