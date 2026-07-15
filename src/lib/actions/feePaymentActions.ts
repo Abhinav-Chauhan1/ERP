@@ -35,6 +35,7 @@ export async function getFeePayments(filters?: {
   status?: PaymentStatus;
   dateFrom?: Date;
   dateTo?: Date;
+  academicYearId?: string;
   limit?: number;
   offset?: number;
 }) {
@@ -62,6 +63,10 @@ export async function getFeePayments(filters?: {
       if (filters.dateTo) {
         where.paymentDate.lte = filters.dateTo;
       }
+    }
+
+    if (filters?.academicYearId) {
+      where.feeStructure = { academicYearId: filters.academicYearId };
     }
 
     const payments = await db.feePayment.findMany({
@@ -343,6 +348,7 @@ export async function deletePayment(id: string) {
 export async function getPendingFees(filters?: {
   studentId?: string;
   classId?: string;
+  academicYearId?: string;
   limit?: number;
   offset?: number;
 }) {
@@ -360,6 +366,7 @@ export async function getPendingFees(filters?: {
         schoolId,
         dueAmount: { gt: 0 },
         ...(filters?.studentId ? { studentId: filters.studentId } : {}),
+        ...(filters?.academicYearId ? { feeStructure: { academicYearId: filters.academicYearId } } : {}),
       },
       orderBy: { dueAmount: "desc" },
       take: PAGE_SIZE,
@@ -438,6 +445,15 @@ export async function getPaymentStats(filters?: {
       }
     }
 
+    if (filters?.academicYearId) {
+      where.feeStructure = { academicYearId: filters.academicYearId };
+    }
+
+    const invoiceWhere: any = { schoolId };
+    if (filters?.academicYearId) {
+      invoiceWhere.feeStructure = { academicYearId: filters.academicYearId };
+    }
+
     // totalAmount/totalBalance/collectionRate come from FeeInvoiceSummary (what
     // students actually owe, kept in sync by fee-invoice-service.ts) rather than
     // FeePayment — FeePayment rows only exist once someone has paid, so summing
@@ -457,7 +473,7 @@ export async function getPaymentStats(filters?: {
       db.feePayment.count({ where: { ...where, status: "PENDING" } }),
       db.feePayment.count({ where: { ...where, status: "PARTIAL" } }),
       db.feePayment.aggregate({ where, _sum: { paidAmount: true } }),
-      db.feeInvoiceSummary.aggregate({ where: { schoolId }, _sum: { netTotal: true, dueAmount: true } }),
+      db.feeInvoiceSummary.aggregate({ where: invoiceWhere, _sum: { netTotal: true, dueAmount: true } }),
     ]);
 
     const totalAmount = invoiceTotals._sum.netTotal || 0;

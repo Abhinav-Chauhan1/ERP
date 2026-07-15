@@ -64,6 +64,7 @@ import {
   getPaymentReceiptHTML,
   getConsolidatedReceiptHTML,
 } from "@/lib/actions/feePaymentActions";
+import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 
 // Import validation schema
 import {
@@ -102,6 +103,8 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("payments");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -128,10 +131,31 @@ export default function PaymentsPage() {
     },
   });
 
-  // Fetch all data on component mount
+  // Load academic years and students once on mount, defaulting the year
+  // filter to the current session so this page doesn't fetch data twice.
   useEffect(() => {
-    fetchAllData();
+    (async () => {
+      const [yearsResult, studentsResult] = await Promise.all([
+        getAcademicYears(),
+        getStudentsForPayment(),
+      ]);
+      if (yearsResult.success) {
+        const years = yearsResult.data || [];
+        setAcademicYears(years);
+        const currentYear = years.find((y: any) => y.isCurrent);
+        setAcademicYearFilter(currentYear?.id ?? "all");
+      } else {
+        setAcademicYearFilter("all");
+      }
+      if (studentsResult.success) setStudents(studentsResult.data || []);
+    })();
   }, []);
+
+  // Fetch payments/pending fees/stats whenever the session filter changes
+  useEffect(() => {
+    if (!academicYearFilter) return; // not yet resolved from mount effect
+    fetchFinanceData(academicYearFilter);
+  }, [academicYearFilter]);
 
   // Fetch fee structures when student is selected
   useEffect(() => {
@@ -140,20 +164,19 @@ export default function PaymentsPage() {
     }
   }, [selectedStudentId]);
 
-  async function fetchAllData() {
+  async function fetchFinanceData(academicYearId: string) {
     setLoading(true);
     try {
-      const [paymentsResult, pendingResult, studentsResult, statsResult] =
+      const yearFilter = academicYearId === "all" ? undefined : academicYearId;
+      const [paymentsResult, pendingResult, statsResult] =
         await Promise.all([
-          getFeePayments({ limit: 100 }),
-          getPendingFees({ limit: 50 }),
-          getStudentsForPayment(),
-          getPaymentStats(),
+          getFeePayments({ limit: 100, academicYearId: yearFilter }),
+          getPendingFees({ limit: 50, academicYearId: yearFilter }),
+          getPaymentStats({ academicYearId: yearFilter }),
         ]);
 
       if (paymentsResult.success) setPayments(paymentsResult.data || []);
       if (pendingResult.success) setPendingFees(pendingResult.data || []);
-      if (studentsResult.success) setStudents(studentsResult.data || []);
       if (statsResult.success) setStats(statsResult.data);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -161,6 +184,11 @@ export default function PaymentsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Re-fetch everything after a payment is created/updated/deleted
+  async function fetchAllData() {
+    await fetchFinanceData(academicYearFilter || "all");
   }
 
   async function fetchFeeStructuresForStudent(studentId: string) {
@@ -380,7 +408,7 @@ export default function PaymentsPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -402,10 +430,26 @@ export default function PaymentsPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Payment Management</h1>
         </div>
-        <Button onClick={handleCreatePayment} className="w-full sm:w-auto">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Record Payment
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Session" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sessions</SelectItem>
+              {academicYears.map((year) => (
+                <SelectItem key={year.id} value={year.id}>
+                  {year.name}
+                  {year.isCurrent ? " (Current)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleCreatePayment} className="w-full sm:w-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Record Payment
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
