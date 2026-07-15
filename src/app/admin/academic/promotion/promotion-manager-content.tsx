@@ -40,6 +40,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [targetSections, setTargetSections] = useState<any[]>([]);
 
   // Students data
   const [students, setStudents] = useState<StudentForPromotion[]>([]);
@@ -415,6 +416,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
                                 targetSectionId: undefined,
                                 targetSectionName: undefined,
                               });
+                              setTargetSections(selectedClass?.sections || []);
                             }}
                           >
                             <SelectTrigger>
@@ -429,10 +431,41 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Target Section - required, ClassEnrollment.sectionId is mandatory */}
+                        {targetSections.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Target Section</Label>
+                            <Select
+                              value={data.targetSectionId}
+                              onValueChange={(value) => {
+                                const selectedSection = targetSections.find((s) => s.id === value);
+                                updateData({
+                                  targetSectionId: value,
+                                  targetSectionName: selectedSection?.name,
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select target section" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {targetSections.map((section) => (
+                                  <SelectItem key={section.id} value={section.id}>
+                                    {section.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
 
                       {/* Load Students Button */}
-                      {data.sourceClassId && data.targetAcademicYearId && data.targetClassId && (
+                      {data.sourceClassId &&
+                        data.targetAcademicYearId &&
+                        data.targetClassId &&
+                        (targetSections.length === 0 || data.targetSectionId) && (
                         <Button
                           onClick={() => loadStudents(data.sourceClassId, data.sourceSectionId)}
                           disabled={loadingStudents}

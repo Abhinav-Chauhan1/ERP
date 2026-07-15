@@ -14,18 +14,11 @@ export const getFeeCollectionReport = withSchoolAuthAction(async (
   }
 ) => {
   try {
-    const where: any = { schoolId };
-
-    if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
-    if (filters?.status) where.status = filters.status;
-    if (filters?.startDate || filters?.endDate) {
-      where.dueDate = {};
-      if (filters.startDate) where.dueDate.gte = filters.startDate;
-      if (filters.endDate) where.dueDate.lte = filters.endDate;
-    }
+    const paymentWhere: any = { schoolId };
+    if (filters?.status) paymentWhere.status = filters.status;
 
     const payments = await db.feePayment.findMany({
-      where,
+      where: paymentWhere,
       include: {
         student: {
           include: {
@@ -51,13 +44,22 @@ export const getFeeCollectionReport = withSchoolAuthAction(async (
       },
     });
 
-    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
     const paidAmount = payments
       .filter(p => p.status === "COMPLETED")
       .reduce((sum, p) => sum + p.paidAmount, 0);
-    const pendingAmount = payments
-      .filter(p => p.status === "PENDING")
-      .reduce((sum, p) => sum + (p.amount - p.paidAmount), 0);
+
+    // totalAmount/pendingAmount come from FeeInvoiceSummary (what students
+    // actually owe, kept in sync by fee-invoice-service.ts) rather than
+    // FeePayment, which only has rows once someone has paid.
+    const invoiceWhere: any = { schoolId };
+    if (filters?.academicYearId) invoiceWhere.feeStructure = { academicYearId: filters.academicYearId };
+
+    const invoiceTotals = await db.feeInvoiceSummary.aggregate({
+      where: invoiceWhere,
+      _sum: { netTotal: true, dueAmount: true },
+    });
+    const totalAmount = invoiceTotals._sum.netTotal || 0;
+    const pendingAmount = invoiceTotals._sum.dueAmount || 0;
 
     return {
       success: true,
@@ -157,14 +159,17 @@ export const getOutstandingPayments = withSchoolAuthAction(async (
   }
 ) => {
   try {
+    // FeeInvoiceSummary.dueAmount is what a student currently owes (kept in
+    // sync by fee-invoice-service.ts) — FeePayment rows only exist once someone
+    // has paid, so they can't be aggregated to find what's outstanding.
     const where: any = {
       schoolId,
-      status: "PENDING",
+      dueAmount: { gt: 0 },
     };
 
-    if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
+    if (filters?.academicYearId) where.feeStructure = { academicYearId: filters.academicYearId };
 
-    const outstandingPayments = await db.feePayment.findMany({
+    const outstandingInvoices = await db.feeInvoiceSummary.findMany({
       where,
       include: {
         student: {
@@ -188,30 +193,29 @@ export const getOutstandingPayments = withSchoolAuthAction(async (
         feeStructure: true,
       },
       orderBy: {
-        paymentDate: "asc",
+        dueAmount: "desc",
       },
     });
 
-    const totalOutstanding = outstandingPayments.reduce(
-      (sum, p) => sum + (p.amount - p.paidAmount),
-      0
-    );
+    const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.dueAmount, 0);
 
-    // Calculate overdue
+    // "Overdue" here means the fee structure's own due window has passed
+    // (validTo elapsed) while a balance remains — everything else is merely
+    // accrued-but-still-within-term.
     const now = new Date();
-    const overduePayments = outstandingPayments.filter(
-      p => p.paymentDate && new Date(p.paymentDate) < now
+    const overdueInvoices = outstandingInvoices.filter(
+      inv => inv.feeStructure.validTo && new Date(inv.feeStructure.validTo) < now
     );
 
     return {
       success: true,
       data: {
-        payments: outstandingPayments,
+        payments: outstandingInvoices,
         summary: {
           totalOutstanding,
-          totalCount: outstandingPayments.length,
-          overdueCount: overduePayments.length,
-          overdueAmount: overduePayments.reduce((sum, p) => sum + (p.amount - p.paidAmount), 0),
+          totalCount: outstandingInvoices.length,
+          overdueCount: overdueInvoices.length,
+          overdueAmount: overdueInvoices.reduce((sum, inv) => sum + inv.dueAmount, 0),
         },
       },
     };

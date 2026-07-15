@@ -15,6 +15,7 @@ import {
   getFeeAmountsForClass,
   calculateAccruedFeeTotal,
 } from "@/lib/utils/payment-helpers";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 // Schema for payment
 const paymentSchema = z.object({
@@ -542,6 +543,8 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
         schoolId: student.schoolId, // Add required schoolId
       }
     });
+
+    await syncFeeInvoiceSummary(student.id);
 
     revalidatePath("/student/fees");
     return {

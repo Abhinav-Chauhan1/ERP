@@ -225,8 +225,8 @@ export function FinanceOverviewClient({
                       <tr className="bg-accent border-b">
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Payment Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount Due</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Last Updated</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>

@@ -155,16 +155,19 @@ async function FinanceDataSection({ schoolId }: { schoolId: string }) {
     budgetStats,
     budgetExpensesAgg,
     recentPayments,
-    pendingPayments,
+    pendingInvoices,
     monthlyPayments,
     monthlyExpenses,
     monthlyPayroll,
   ] = await Promise.all([
     // Aggregations — used for summary cards + rates
     db.feePayment.aggregate({ where: { schoolId, status: "COMPLETED" }, _sum: { paidAmount: true } }),
-    db.feePayment.aggregate({
-      where: { schoolId, status: { in: ["PENDING", "PARTIAL"] } },
-      _sum: { balance: true },
+    // FeeInvoiceSummary.dueAmount reflects what students currently owe (kept in
+    // sync by fee-invoice-service.ts) — FeePayment rows alone only exist once
+    // someone has paid, so they can't be aggregated to find what's outstanding.
+    db.feeInvoiceSummary.aggregate({
+      where: { schoolId, dueAmount: { gt: 0 } },
+      _sum: { dueAmount: true },
     }),
     db.expense.aggregate({ where: { schoolId }, _sum: { amount: true } }),
     db.payroll.aggregate({
@@ -176,7 +179,7 @@ async function FinanceDataSection({ schoolId }: { schoolId: string }) {
       _sum: { amount: true },
       _count: true,
     }),
-    db.feePayment.aggregate({ where: { schoolId }, _sum: { amount: true } }),
+    db.feeInvoiceSummary.aggregate({ where: { schoolId }, _sum: { netTotal: true } }),
     db.budget.aggregate({ where: { schoolId }, _sum: { allocatedAmount: true } }),
     db.expense.aggregate({ where: { schoolId }, _sum: { amount: true } }),
     // Lists — used for tables and charts
@@ -201,15 +204,15 @@ async function FinanceDataSection({ schoolId }: { schoolId: string }) {
         },
       },
     }),
-    db.feePayment.findMany({
-      where: { schoolId, status: { in: ["PENDING", "PARTIAL"] } },
-      orderBy: { paymentDate: "desc" },
+    db.feeInvoiceSummary.findMany({
+      where: { schoolId, dueAmount: { gt: 0 } },
+      orderBy: { dueAmount: "desc" },
       take: 10,
       select: {
         id: true,
-        balance: true,
+        dueAmount: true,
         status: true,
-        paymentDate: true,
+        lastCalculatedAt: true,
         student: {
           select: {
             user: { select: { firstName: true, lastName: true } },
@@ -242,10 +245,17 @@ async function FinanceDataSection({ schoolId }: { schoolId: string }) {
   const totalIncome = feePaymentStats._sum.paidAmount ?? 0;
   const totalExpenses = (expenseStats._sum.amount ?? 0) + (payrollStats._sum.netSalary ?? 0);
   const netBalance = totalIncome - totalExpenses;
-  const pendingAmount = pendingFeeStats._sum.balance ?? 0;
-  const collectionRate = totalFeeAmountAgg._sum.amount
-    ? (totalIncome / totalFeeAmountAgg._sum.amount) * 100
+  const pendingAmount = pendingFeeStats._sum.dueAmount ?? 0;
+  const collectionRate = totalFeeAmountAgg._sum.netTotal
+    ? (totalIncome / totalFeeAmountAgg._sum.netTotal) * 100
     : 0;
+  const pendingPayments = pendingInvoices.map((invoice) => ({
+    id: invoice.id,
+    balance: invoice.dueAmount,
+    status: invoice.status,
+    paymentDate: invoice.lastCalculatedAt,
+    student: invoice.student,
+  }));
   const totalAllocated = budgetStats._sum.allocatedAmount ?? 0;
   const utilizationRate = totalAllocated > 0
     ? ((budgetExpensesAgg._sum.amount ?? 0) / totalAllocated) * 100

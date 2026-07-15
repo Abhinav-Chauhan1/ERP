@@ -13,6 +13,7 @@ import {
   getFeeAmountsForClass,
   calculateAccruedFeeTotal,
 } from "@/lib/utils/payment-helpers";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   feeDiscountSchema,
   updateFeeDiscountSchema,
@@ -71,6 +72,8 @@ export const createFeeDiscount = withSchoolAuthAction(
         },
       });
 
+      await syncFeeInvoiceSummary(validated.studentId);
+
       revalidatePath(`/admin/users/students/${validated.studentId}`);
       return { success: true, data: discount };
     } catch (error) {
@@ -107,6 +110,8 @@ export const updateFeeDiscount = withSchoolAuthAction(
         },
       });
 
+      await syncFeeInvoiceSummary(existing.studentId);
+
       revalidatePath(`/admin/users/students/${existing.studentId}`);
       return { success: true, data: discount };
     } catch (error) {
@@ -128,6 +133,8 @@ export const deactivateFeeDiscount = withSchoolAuthAction(
       }
 
       await db.feeDiscount.update({ where: { id }, data: { isActive: false } });
+
+      await syncFeeInvoiceSummary(existing.studentId);
 
       revalidatePath(`/admin/users/students/${existing.studentId}`);
       return { success: true };

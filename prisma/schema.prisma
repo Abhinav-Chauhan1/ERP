@@ -118,6 +118,7 @@ model School {
   Expense                 Expense[]
   FeeDiscount             FeeDiscount[]
   FeePayment              FeePayment[]
+  FeeInvoiceSummary       FeeInvoiceSummary[]
   FeeStructure            FeeStructure[]
   FeeStructureClass       FeeStructureClass[]
   FeeStructureItem        FeeStructureItem[]
@@ -574,6 +575,7 @@ model Student {
   examResults           ExamResult[]
   feeDiscounts          FeeDiscount[]
   feePayments           FeePayment[]
+  feeInvoiceSummaries   FeeInvoiceSummary[]
   reportCards           ReportCard[]
   scholarships          ScholarshipRecipient[]
   school                School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1609,6 +1611,7 @@ model FeeStructure {
   updatedAt         DateTime            @updatedAt
   schoolId          String
   payments          FeePayment[]
+  invoiceSummaries  FeeInvoiceSummary[]
   academicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
   school            School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes           FeeStructureClass[]
@@ -1701,6 +1704,36 @@ model FeePayment {
   @@index([schoolId])
   @@index([schoolId, studentId])
   @@index([schoolId, status, paymentDate])
+}
+
+// Materialized snapshot of what a student owes against a fee structure, kept in
+// sync by fee-invoice-service.ts (recalculated on payments, discounts, enrollment
+// changes, fee structure changes, and nightly via cron for pure time-based accrual).
+// This is the source of truth for school-wide "pending fees" reporting — FeePayment
+// rows alone are transaction records and don't exist until someone actually pays,
+// so they can't be aggregated to find what's currently owed.
+model FeeInvoiceSummary {
+  id               String        @id @default(cuid())
+  studentId        String
+  feeStructureId   String
+  grossTotal       Float         @default(0)
+  discountAmount   Float         @default(0)
+  netTotal         Float         @default(0)
+  paidAmount       Float         @default(0)
+  balance          Float         @default(0)
+  dueAmount        Float         @default(0)
+  status           PaymentStatus @default(PENDING)
+  lastCalculatedAt DateTime      @updatedAt
+  createdAt        DateTime      @default(now())
+  schoolId         String
+  student          Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure     FeeStructure  @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  school           School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, feeStructureId])
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([schoolId, dueAmount])
 }
 
 enum DiscountType {

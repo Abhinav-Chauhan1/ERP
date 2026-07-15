@@ -94,17 +94,17 @@ export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, us
 
 export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const pendingPayments = await db.feePayment.aggregate({
+    // FeeInvoiceSummary.dueAmount is what a student currently owes (accrued
+    // fees minus paid), kept in sync by fee-invoice-service.ts. FeePayment rows
+    // only exist once someone actually pays, so aggregating FeePayment alone
+    // under-reports pending fees for students who haven't paid anything yet.
+    const pendingInvoices = await db.feeInvoiceSummary.aggregate({
       where: {
         schoolId,
-
-        status: {
-          in: ["PENDING", "PARTIAL"],
-
-        },
+        dueAmount: { gt: 0 },
       },
       _sum: {
-        balance: true,
+        dueAmount: true,
       },
       _count: {
         id: true,
@@ -114,8 +114,8 @@ export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: strin
     return {
       success: true,
       data: {
-        totalAmount: pendingPayments._sum.balance || 0,
-        count: pendingPayments._count.id || 0,
+        totalAmount: pendingInvoices._sum.dueAmount || 0,
+        count: pendingInvoices._count.id || 0,
       },
     };
   } catch (error) {
@@ -575,18 +575,13 @@ export const getNotifications = withSchoolAuthAction(async (schoolId: string, us
       },
     });
 
-    // Get pending fee payments
-    const pendingPayments = await db.feePayment.count({
+    // Get pending fee payments — FeeInvoiceSummary.dueAmount reflects what a
+    // student currently owes (kept in sync by fee-invoice-service.ts), unlike
+    // FeePayment which only has rows once someone has actually paid.
+    const pendingPayments = await db.feeInvoiceSummary.count({
       where: {
-        student: {
-          schoolId
-        },
-
-        status: 'PENDING',
-        paymentDate: {
-          lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Due within 7 days
-
-        },
+        schoolId,
+        dueAmount: { gt: 0 },
       },
     });
 
@@ -624,7 +619,7 @@ export const getNotifications = withSchoolAuthAction(async (schoolId: string, us
       notifications.push({
         type: 'warning',
         title: 'Fee Payment Reminder',
-        message: `${pendingPayments} students have pending fee payments due this week.`,
+        message: `${pendingPayments} student(s) have pending fee payments.`,
       });
     }
 

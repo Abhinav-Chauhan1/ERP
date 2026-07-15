@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withSchoolAuth } from "@/lib/auth/security-wrapper";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 // POST /api/students/enroll - Enroll a student into a class/section
 export const POST = withSchoolAuth(async (request: NextRequest, context) => {
@@ -72,6 +73,8 @@ export const POST = withSchoolAuth(async (request: NextRequest, context) => {
         section: true,
       },
     });
+
+    await syncFeeInvoiceSummary(studentId);
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error: any) {

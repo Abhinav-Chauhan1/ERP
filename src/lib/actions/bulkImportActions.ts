@@ -9,6 +9,7 @@ import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 import { revalidatePath } from "next/cache";
 import { formatFullName } from "@/lib/utils";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 const BATCH_SIZE = 10;
 
@@ -416,17 +417,27 @@ async function processStudentRow(
     }).catch((err) => console.error("Failed to send student welcome email:", err));
   }
 
+  // Bulk-imported students are typically already enrolled in real life — the
+  // import just brings existing records into the system — so fees should
+  // accrue from the academic year's start, not from today's import date.
+  const importClass = await db.class.findUnique({
+    where: { id: classId },
+    select: { academicYear: { select: { startDate: true } } },
+  });
+
   await db.classEnrollment.create({
     data: {
       studentId: newStudent.id,
       classId,
       sectionId,
       rollNumber: validated.rollNumber || undefined,
-      enrollDate: new Date(),
+      enrollDate: importClass?.academicYear.startDate ?? new Date(),
       status: "ACTIVE",
       schoolId,
     },
   });
+
+  await syncFeeInvoiceSummary(newStudent.id);
 
   return { status: "created" };
 }

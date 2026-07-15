@@ -10,6 +10,7 @@ import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { format } from "date-fns";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -235,6 +236,8 @@ export async function recordPayment(data: any) {
       }
     }
 
+    await syncFeeInvoiceSummary(data.studentId);
+
     revalidatePath("/admin/finance/payments");
     return { success: true, data: payment };
   } catch (error) {
@@ -289,6 +292,8 @@ export async function updatePayment(id: string, data: any) {
       },
     });
 
+    await syncFeeInvoiceSummary(existingPayment.studentId);
+
     revalidatePath("/admin/finance/payments");
     return { success: true, data: payment };
   } catch (error) {
@@ -324,6 +329,8 @@ export async function deletePayment(id: string) {
       where: { id },
     });
 
+    await syncFeeInvoiceSummary(existingPayment.studentId);
+
     revalidatePath("/admin/finance/payments");
     return { success: true };
   } catch (error) {
@@ -345,23 +352,24 @@ export async function getPendingFees(filters?: {
 
     const PAGE_SIZE = filters?.limit ?? 20;
 
-    // Single query: fetch payments with PENDING/PARTIAL status scoped to school
-    const pendingPayments = await db.feePayment.findMany({
+    // FeeInvoiceSummary.dueAmount reflects what a student currently owes (kept in
+    // sync by fee-invoice-service.ts), unlike FeePayment which only has rows once
+    // someone has actually paid something.
+    const pendingInvoices = await db.feeInvoiceSummary.findMany({
       where: {
         schoolId,
-        status: { in: ["PENDING", "PARTIAL"] },
-        balance: { gt: 0 },
+        dueAmount: { gt: 0 },
         ...(filters?.studentId ? { studentId: filters.studentId } : {}),
       },
-      orderBy: { paymentDate: "desc" },
+      orderBy: { dueAmount: "desc" },
       take: PAGE_SIZE,
       skip: filters?.offset ?? 0,
       select: {
         id: true,
-        amount: true,
+        netTotal: true,
         paidAmount: true,
-        balance: true,
-        paymentDate: true,
+        dueAmount: true,
+        lastCalculatedAt: true,
         status: true,
         feeStructureId: true,
         feeStructure: { select: { id: true, name: true } },
@@ -383,18 +391,18 @@ export async function getPendingFees(filters?: {
       },
     });
 
-    const pendingFees = pendingPayments.map((payment) => ({
-      studentId: payment.student.id,
-      studentName: `${formatFullName(payment.student.user.firstName, payment.student.user.lastName)}`,
-      admissionId: payment.student.admissionId,
-      class: payment.student.enrollments[0]?.class.name ?? "N/A",
-      section: payment.student.enrollments[0]?.section.name ?? "N/A",
-      totalAmount: payment.amount,
-      totalPaid: payment.paidAmount,
-      balance: payment.balance,
-      paymentDate: payment.paymentDate,
-      feeStructureId: payment.feeStructureId,
-      feeStructureName: payment.feeStructure?.name ?? "N/A",
+    const pendingFees = pendingInvoices.map((invoice) => ({
+      studentId: invoice.student.id,
+      studentName: `${formatFullName(invoice.student.user.firstName, invoice.student.user.lastName)}`,
+      admissionId: invoice.student.admissionId,
+      class: invoice.student.enrollments[0]?.class.name ?? "N/A",
+      section: invoice.student.enrollments[0]?.section.name ?? "N/A",
+      totalAmount: invoice.netTotal,
+      totalPaid: invoice.paidAmount,
+      balance: invoice.dueAmount,
+      paymentDate: invoice.lastCalculatedAt,
+      feeStructureId: invoice.feeStructureId,
+      feeStructureName: invoice.feeStructure?.name ?? "N/A",
     }));
 
     return { success: true, data: pendingFees };
@@ -430,23 +438,29 @@ export async function getPaymentStats(filters?: {
       }
     }
 
+    // totalAmount/totalBalance/collectionRate come from FeeInvoiceSummary (what
+    // students actually owe, kept in sync by fee-invoice-service.ts) rather than
+    // FeePayment — FeePayment rows only exist once someone has paid, so summing
+    // them alone under-reports outstanding balances for students who haven't
+    // paid anything yet. The *count* fields below are legitimately about
+    // transaction records, so they stay on FeePayment.
     const [
       totalPayments,
       completedPayments,
       pendingPayments,
       partialPayments,
-      totalAmount,
       totalPaid,
-      totalBalance,
+      invoiceTotals,
     ] = await Promise.all([
       db.feePayment.count({ where }),
       db.feePayment.count({ where: { ...where, status: "COMPLETED" } }),
       db.feePayment.count({ where: { ...where, status: "PENDING" } }),
       db.feePayment.count({ where: { ...where, status: "PARTIAL" } }),
-      db.feePayment.aggregate({ where, _sum: { amount: true } }),
       db.feePayment.aggregate({ where, _sum: { paidAmount: true } }),
-      db.feePayment.aggregate({ where, _sum: { balance: true } }),
+      db.feeInvoiceSummary.aggregate({ where: { schoolId }, _sum: { netTotal: true, dueAmount: true } }),
     ]);
+
+    const totalAmount = invoiceTotals._sum.netTotal || 0;
 
     return {
       success: true,
@@ -455,13 +469,10 @@ export async function getPaymentStats(filters?: {
         completedPayments,
         pendingPayments,
         partialPayments,
-        totalAmount: totalAmount._sum.amount || 0,
+        totalAmount,
         totalPaid: totalPaid._sum.paidAmount || 0,
-        totalBalance: totalBalance._sum.balance || 0,
-        collectionRate:
-          totalAmount._sum.amount && totalAmount._sum.amount > 0
-            ? ((totalPaid._sum.paidAmount || 0) / totalAmount._sum.amount) * 100
-            : 0,
+        totalBalance: invoiceTotals._sum.dueAmount || 0,
+        collectionRate: totalAmount > 0 ? ((totalPaid._sum.paidAmount || 0) / totalAmount) * 100 : 0,
       },
     };
   } catch (error) {

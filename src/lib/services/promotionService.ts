@@ -499,6 +499,15 @@ export class PromotionService {
     const promoted: string[] = [];
     const failed: Array<{ studentId: string; reason: string }> = [];
 
+    // Promotion happens at the start of the new academic year in practice (even
+    // if the admin runs it a few days late), so new enrollments should accrue
+    // fees from the target year's start date, not whichever day promotion ran.
+    const targetClass = await tx.class.findUnique({
+      where: { id: data.targetClassId },
+      select: { academicYear: { select: { startDate: true } } },
+    });
+    const targetEnrollDate = targetClass?.academicYear.startDate ?? new Date();
+
     // Create promotion history record
     const promotionHistory = await tx.promotionHistory.create({
       data: {
@@ -541,7 +550,7 @@ export class PromotionService {
             sectionId: data.targetSectionId!,
             rollNumber,
             status: EnrollmentStatus.ACTIVE,
-            enrollDate: new Date(),
+            enrollDate: targetEnrollDate,
           },
         });
 

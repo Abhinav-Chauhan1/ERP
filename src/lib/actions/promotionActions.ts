@@ -17,6 +17,7 @@ import { PromotionService } from "@/lib/services/promotionService";
 import { logAudit } from "@/lib/utils/audit-log";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   getStudentsForPromotionSchema,
   promotionPreviewSchema,
@@ -520,6 +521,10 @@ export async function executeBulkPromotion(
 
       return promotionResult;
     });
+
+    // Resync fee invoices for promoted students now that their new-year
+    // enrollment (and its enrollDate-driven accrual) is committed.
+    await Promise.all(result.promoted.map((studentId) => syncFeeInvoiceSummary(studentId)));
 
     // Send notifications (non-blocking)
     if (sendNotifications && result.promoted.length > 0) {

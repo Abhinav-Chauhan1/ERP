@@ -8,6 +8,7 @@ import { hashPassword } from "@/lib/password";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { z } from "zod";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 const applicationIdSchema = z.string().cuid("Invalid application ID");
 const applicationIdsSchema = z.array(z.string().cuid("Invalid application ID")).min(1, "At least one application ID required").max(100, "Cannot convert more than 100 applications at once");
@@ -246,6 +247,10 @@ export async function convertAdmissionToStudent(
 
       return { user, student, temporaryPassword };
     });
+
+    if (options?.sectionId) {
+      await syncFeeInvoiceSummary(result.student.id);
+    }
 
     // Always send welcome email with credentials
     sendStudentWelcomeEmail({

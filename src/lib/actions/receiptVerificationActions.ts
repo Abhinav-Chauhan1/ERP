@@ -14,6 +14,7 @@ import {
   logBulkVerification,
   logBulkRejection,
 } from "@/lib/services/receipt-audit-service";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 
 /**
  * Get pending receipts for admin verification with pagination and sorting
@@ -384,6 +385,8 @@ export async function verifyReceipt(receiptId: string) {
         remainingBalance,
       };
     });
+
+    await syncFeeInvoiceSummary(result.receipt.studentId);
 
     // Revalidate relevant paths
     revalidatePath("/admin/finance/receipt-verification");
@@ -993,6 +996,7 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
         });
 
         results.successful.push(receiptId);
+        await syncFeeInvoiceSummary(receipt.studentId);
       } catch (error) {
         results.failed.push({
           id: receiptId,

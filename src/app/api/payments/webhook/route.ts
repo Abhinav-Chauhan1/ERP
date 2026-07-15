@@ -9,6 +9,7 @@ import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { verifyCashfreeWebhook } from '@/lib/utils/payment-gateway';
 import { decryptCredential } from '@/lib/utils/encrypt-credentials';
 import { revalidatePath } from 'next/cache';
+import { syncFeeInvoiceSummary } from '@/lib/services/fee-invoice-service';
 
 interface CashfreeWebhookPayload {
   type: string;
@@ -197,6 +198,12 @@ async function handlePaymentSuccess(
         remarks: `Payment captured via webhook. Order: ${orderId}`,
       }
     });
+
+    await syncFeeInvoiceSummary(studentId);
+  }
+
+  if (existingPayment) {
+    await syncFeeInvoiceSummary(existingPayment.studentId);
   }
 
   revalidatePath('/parent/fees');
@@ -223,6 +230,8 @@ async function handlePaymentFailure(
         remarks: `Payment failed: ${errorDescription}. Order: ${order.order_id}`,
       }
     });
+
+    await syncFeeInvoiceSummary(existingPayment.studentId);
   }
 
   revalidatePath('/parent/fees');
@@ -249,6 +258,8 @@ async function handleRefund(
         remarks: `Payment refunded: ₹${refundedAmount}`,
       }
     });
+
+    await syncFeeInvoiceSummary(existingPayment.studentId);
   }
 
   revalidatePath('/parent/fees');

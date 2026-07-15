@@ -14,6 +14,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { withSchoolAuthAction, createSecureQuery } from "@/lib/auth/security-wrapper";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName, sortByClassNameWithinGroups } from "@/lib/utils";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   ClassFormValues,
   ClassUpdateFormValues,
@@ -1199,6 +1200,8 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
         schoolId,
       }
     });
+
+    await syncFeeInvoiceSummary(data.studentId);
 
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: enrollment };

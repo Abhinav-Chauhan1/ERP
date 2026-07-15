@@ -23,6 +23,7 @@ import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
+import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   getActiveFeeDiscount,
   calculateDiscountAmount,
@@ -408,6 +409,8 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
       }
     });
 
+    await syncFeeInvoiceSummary(validated.childId);
+
     revalidatePath("/parent/fees");
 
     return {
@@ -502,6 +505,8 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         schoolId: parent.schoolId
       }
     });
+
+    await syncFeeInvoiceSummary(validated.childId);
 
     revalidatePath("/parent/fees");
 

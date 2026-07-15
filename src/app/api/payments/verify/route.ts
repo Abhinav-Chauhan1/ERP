@@ -14,6 +14,7 @@ import { getCurrentParent } from '@/lib/utils/payment-helpers';
 import { getSchoolCashfreeCredentials } from '@/lib/actions/paymentConfigActions';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { syncFeeInvoiceSummary } from '@/lib/services/fee-invoice-service';
 
 async function verifyParentChildRelationship(
   parentId: string,
@@ -159,6 +160,8 @@ export async function POST(req: NextRequest) {
         }
       });
     }
+
+    await syncFeeInvoiceSummary(validated.childId);
 
     revalidatePath('/parent/fees');
     revalidatePath('/parent/fees/overview');
