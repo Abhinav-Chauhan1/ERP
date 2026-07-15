@@ -204,6 +204,7 @@ model School {
   MessageHistory          MessageHistory[]
   MessageLog              MessageLog[]
   MessageTemplate         MessageTemplate[]
+  MiscFeePayment          MiscFeePayment[]
   mindMaps                MindMap[]
   OnlineExam              OnlineExam[]
   paymentMethods          PaymentMethodRecord[]
@@ -576,6 +577,7 @@ model Student {
   feeDiscounts          FeeDiscount[]
   feePayments           FeePayment[]
   feeInvoiceSummaries   FeeInvoiceSummary[]
+  miscFeePayments       MiscFeePayment[]
   reportCards           ReportCard[]
   scholarships          ScholarshipRecipient[]
   school                School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -710,21 +712,22 @@ model StudentParent {
 }
 
 model AcademicYear {
-  id            String         @id @default(cuid())
-  name          String
-  startDate     DateTime
-  endDate       DateTime
-  isCurrent     Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  schoolId      String
-  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  budgets       Budget[]
-  classes       Class[]
-  feeStructures FeeStructure[]
-  reportCards   ReportCard[]
-  syllabi       Syllabus[]
-  terms         Term[]
+  id              String           @id @default(cuid())
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  isCurrent       Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  schoolId        String
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  budgets         Budget[]
+  classes         Class[]
+  feeStructures   FeeStructure[]
+  miscFeePayments MiscFeePayment[]
+  reportCards     ReportCard[]
+  syllabi         Syllabus[]
+  terms           Term[]
 
   @@index([schoolId])
 }
@@ -1763,6 +1766,46 @@ model FeeDiscount {
   @@index([feeStructureId])
   @@index([schoolId])
   @@index([schoolId, studentId])
+}
+
+// Standalone annual fee module for Books Fee and Transport Fee — deliberately not
+// folded into FeeStructure/FeeType (mirrors the HostelFeePayment precedent). One
+// row per (student, academicYear, category); amount is entered manually per student.
+enum MiscFeeCategory {
+  BOOKS
+  TRANSPORT
+}
+
+model MiscFeePayment {
+  id             String          @id @default(cuid())
+  studentId      String
+  academicYearId String
+  category       MiscFeeCategory
+  amount         Float           @default(0)
+  discountType   DiscountType?
+  discountValue  Float?
+  discountAmount Float           @default(0)
+  netAmount      Float           @default(0)
+  paidAmount     Float           @default(0)
+  balance        Float           @default(0)
+  status         PaymentStatus   @default(PENDING)
+  dueDate        DateTime?
+  paymentDate    DateTime?
+  paymentMethod  PaymentMethod?
+  transactionId  String?
+  receiptNumber  String?
+  remarks        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  schoolId       String
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, academicYearId, category])
+  @@index([schoolId, category])
+  @@index([schoolId, status])
+  @@index([academicYearId])
 }
 
 model PaymentReceipt {

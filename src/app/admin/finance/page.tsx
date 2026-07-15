@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PlusCircle, DollarSign, CreditCard, Receipt, Wallet, BadgeDollarSign, Building, TrendingUp, TrendingDown } from "lucide-react";
+import { PlusCircle, DollarSign, CreditCard, Receipt, Wallet, BadgeDollarSign, BadgePercent, Building, TrendingUp, TrendingDown } from "lucide-react";
 import { FinanceOverviewClient } from "@/components/admin/finance/finance-overview-client";
 
 // ---------------------------------------------------------------------------
@@ -66,6 +66,14 @@ async function FinanceCategorySection({ schoolId }: { schoolId: string }) {
       href: "/admin/finance/receipt-verification",
       count: pendingReceiptCount,
       badge: pendingReceiptCount > 0 ? "pending" : null,
+    },
+    {
+      title: "Class Discounts",
+      icon: <BadgePercent className="h-5 w-5" />,
+      description: "Bulk-set Normal, Books & Transport fee discounts by class/section",
+      href: "/admin/finance/discounts",
+      count: "—",
+      badge: null,
     },
     {
       title: "Scholarships",

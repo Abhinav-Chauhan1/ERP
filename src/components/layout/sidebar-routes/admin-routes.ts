@@ -49,6 +49,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Receipt Verification", href: "/admin/finance/receipt-verification", permissions: [PERMISSIONS.APPROVE_PAYMENT] },
             { label: "Expenses", href: "/admin/finance/expenses", permissions: [PERMISSIONS.READ_EXPENSE] },
             { label: "Scholarships", href: "/admin/finance/scholarships", permissions: [PERMISSIONS.READ_SCHOLARSHIP] },
+            { label: "Class Discounts", href: "/admin/finance/discounts", permissions: [PERMISSIONS.READ_FEE_DISCOUNT] },
             // GROWTH+
             { label: "Payroll", href: "/admin/finance/payroll", permissions: [PERMISSIONS.READ_PAYROLL], requiredFeature: "payroll" },
             { label: "Budget", href: "/admin/finance/budget", permissions: [PERMISSIONS.READ_BUDGET], requiredFeature: "budget" },

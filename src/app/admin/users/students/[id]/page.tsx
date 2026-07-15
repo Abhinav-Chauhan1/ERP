@@ -50,6 +50,7 @@ import {
   deactivateFeeDiscount,
 } from "@/lib/actions/feeDiscountActions";
 import { PaymentsTable } from "@/components/admin/finance-tables";
+import { MiscFeeCard } from "@/components/admin/finance/misc-fee-card";
 import { Download, BadgePercent } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
@@ -1155,6 +1156,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         {/* Fees Tab */}
         <TabsContent value="fees" className="space-y-4">
           <FeeSummaryDiscountCard studentId={id} />
+          <MiscFeeCard studentId={id} category="BOOKS" title="Books Fee" />
+          <MiscFeeCard studentId={id} category="TRANSPORT" title="Transport Fee" />
 
           <Card>
             <CardHeader>
