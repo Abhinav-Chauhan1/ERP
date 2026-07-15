@@ -230,45 +230,39 @@ export interface BulkDiscountFeeRow {
   studentId: string;
   rollNumber: string | null;
   name: string;
+  sectionName: string | null;
   normalFee: {
     feeStructureId: string | null;
     feeStructureName: string | null;
     grossTotal: number;
-    discountType: DiscountType | null;
     value: number | null;
   };
   booksFee: {
     amount: number;
-    discountType: DiscountType | null;
     discountValue: number | null;
   };
   transportFee: {
     amount: number;
-    discountType: DiscountType | null;
     discountValue: number | null;
   };
 }
 
-// Roster for one class+section, merged with each student's current Normal Fee
-// discount and Books/Transport fee rows — feeds the bulk discount grid.
+// Roster for a whole class (every section), merged with each student's current
+// Normal Fee discount and Books/Transport fee rows — feeds the bulk discount grid.
 export const getStudentsForBulkDiscount = withSchoolAuthAction(
-  async (
-    schoolId: string,
-    userId: string,
-    userRole: string,
-    academicYearId: string,
-    classId: string,
-    sectionId: string
-  ) => {
+  async (schoolId: string, userId: string, userRole: string, academicYearId: string, classId: string) => {
     try {
       await checkPermission("FEE_DISCOUNT", "READ", "You do not have permission to view fee discounts");
 
       const [academicClass, enrollments] = await Promise.all([
         db.class.findFirst({ where: { id: classId, schoolId, academicYearId } }),
         db.classEnrollment.findMany({
-          where: { schoolId, classId, sectionId, status: "ACTIVE" },
-          include: { student: { include: { user: { select: { firstName: true, lastName: true } } } } },
-          orderBy: { rollNumber: "asc" },
+          where: { schoolId, classId, status: "ACTIVE" },
+          include: {
+            student: { include: { user: { select: { firstName: true, lastName: true } } } },
+            section: { select: { name: true } },
+          },
+          orderBy: [{ section: { name: "asc" } }, { rollNumber: "asc" }],
         }),
       ]);
 
@@ -327,21 +321,19 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
           studentId: e.studentId,
           rollNumber: e.rollNumber,
           name: formatFullName(e.student.user.firstName, e.student.user.lastName),
+          sectionName: e.section?.name ?? null,
           normalFee: {
             feeStructureId: feeStructure?.id ?? null,
             feeStructureName: feeStructure?.name ?? null,
             grossTotal,
-            discountType: discount?.discountType ?? null,
             value: discount?.value ?? null,
           },
           booksFee: {
             amount: misc.BOOKS?.amount ?? 0,
-            discountType: misc.BOOKS?.discountType ?? null,
             discountValue: misc.BOOKS?.discountValue ?? null,
           },
           transportFee: {
             amount: misc.TRANSPORT?.amount ?? 0,
-            discountType: misc.TRANSPORT?.discountType ?? null,
             discountValue: misc.TRANSPORT?.discountValue ?? null,
           },
         };
@@ -363,15 +355,16 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
 
 export interface BulkDiscountSaveRow {
   studentId: string;
-  normalFee: { discountType: DiscountType | null; value: number | null };
-  booksFee: { amount: number; discountType: DiscountType | null; discountValue: number | null };
-  transportFee: { amount: number; discountType: DiscountType | null; discountValue: number | null };
+  normalFee: { value: number | null };
+  booksFee: { amount: number; discountValue: number | null };
+  transportFee: { amount: number; discountValue: number | null };
 }
 
-// Bulk-saves Normal Fee discounts + Books/Transport fees for every row in one go.
-// Each student's writes are grouped in their own transaction so one bad row
-// doesn't roll back the rest of the class — mirrors bulkImportActions.ts's
-// per-row-isolated, whole-batch-reported result shape.
+// Bulk-saves Normal Fee discounts + Books/Transport fees for every row in one go,
+// applying a single discount type (flat/percentage) across the whole class rather
+// than per student/fee-type. Each student's writes are grouped in their own
+// transaction so one bad row doesn't roll back the rest of the class — mirrors
+// bulkImportActions.ts's per-row-isolated, whole-batch-reported result shape.
 export const bulkSaveClassDiscounts = withSchoolAuthAction(
   async (
     schoolId: string,
@@ -379,7 +372,7 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
     userRole: string,
     academicYearId: string,
     classId: string,
-    sectionId: string,
+    discountType: DiscountType,
     rows: BulkDiscountSaveRow[]
   ) => {
     try {
@@ -407,7 +400,7 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
       const validStudentIds = new Set(
         (
           await db.classEnrollment.findMany({
-            where: { schoolId, classId, sectionId, status: "ACTIVE", studentId: { in: rows.map((r) => r.studentId) } },
+            where: { schoolId, classId, status: "ACTIVE", studentId: { in: rows.map((r) => r.studentId) } },
             select: { studentId: true },
           })
         ).map((e) => e.studentId)
@@ -418,12 +411,12 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
       for (const row of rows) {
         try {
           if (!validStudentIds.has(row.studentId)) {
-            throw new Error("Student is not enrolled in the selected class/section");
+            throw new Error("Student is not enrolled in the selected class");
           }
 
           await db.$transaction(async (tx) => {
             if (feeStructure) {
-              if (row.normalFee.discountType && row.normalFee.value) {
+              if (row.normalFee.value) {
                 await tx.feeDiscount.upsert({
                   where: {
                     studentId_feeStructureId: { studentId: row.studentId, feeStructureId: feeStructure.id },
@@ -431,7 +424,7 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
                   create: {
                     studentId: row.studentId,
                     feeStructureId: feeStructure.id,
-                    discountType: row.normalFee.discountType,
+                    discountType,
                     value: row.normalFee.value,
                     isActive: true,
                     grantedBy: userId,
@@ -439,7 +432,7 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
                     schoolId,
                   },
                   update: {
-                    discountType: row.normalFee.discountType,
+                    discountType,
                     value: row.normalFee.value,
                     isActive: true,
                     grantedBy: userId,
@@ -465,10 +458,14 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
                   studentId_academicYearId_category: { studentId: row.studentId, academicYearId, category },
                 },
               });
-              const computed = computeMiscFeeAmounts(feeInput.amount, feeInput, existing?.paidAmount ?? 0);
+              const computed = computeMiscFeeAmounts(
+                feeInput.amount,
+                { discountType, discountValue: feeInput.discountValue },
+                existing?.paidAmount ?? 0
+              );
               const data = {
                 amount: computed.amount,
-                discountType: feeInput.discountType ?? null,
+                discountType: feeInput.discountValue ? discountType : null,
                 discountValue: feeInput.discountValue ?? null,
                 discountAmount: computed.discountAmount,
                 netAmount: computed.netAmount,

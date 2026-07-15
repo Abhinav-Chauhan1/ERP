@@ -17,7 +17,7 @@ import { AlertCircle } from "lucide-react";
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 import { getClasses } from "@/lib/actions/classesActions";
 import { getStudentsForBulkDiscount } from "@/lib/actions/miscFeeActions";
-import { ClassSectionDiscountGrid } from "./class-section-discount-grid";
+import { ClassDiscountGrid } from "./class-discount-grid";
 import { useToast } from "@/hooks/use-toast";
 
 interface AcademicYear {
@@ -26,27 +26,20 @@ interface AcademicYear {
   isCurrent: boolean;
 }
 
-interface Section {
-  id: string;
-  name: string;
-}
-
 interface ClassOption {
   id: string;
   name: string;
-  sections: Section[];
 }
 
 type StudentsData = Awaited<ReturnType<typeof getStudentsForBulkDiscount>>;
 
-export function ClassSectionDiscountSelector() {
+export function ClassDiscountSelector() {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
   const [academicYearId, setAcademicYearId] = useState("");
   const [classId, setClassId] = useState("");
-  const [sectionId, setSectionId] = useState("");
 
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentsData, setStudentsData] = useState<StudentsData | null>(null);
@@ -83,7 +76,6 @@ export function ClassSectionDiscountSelector() {
 
   useEffect(() => {
     setClassId("");
-    setSectionId("");
     setClasses([]);
     setStudentsData(null);
     if (!academicYearId) return;
@@ -110,20 +102,17 @@ export function ClassSectionDiscountSelector() {
   }, [academicYearId]);
 
   useEffect(() => {
-    setSectionId("");
     setStudentsData(null);
   }, [classId]);
 
-  const selectedClass = classes.find((c) => c.id === classId);
-
   const handleLoadStudents = async () => {
-    if (!academicYearId || !classId || !sectionId) return;
+    if (!academicYearId || !classId) return;
 
     setIsLoadingStudents(true);
     setError(null);
     setStudentsData(null);
 
-    const result = await getStudentsForBulkDiscount(academicYearId, classId, sectionId);
+    const result = await getStudentsForBulkDiscount(academicYearId, classId);
     setIsLoadingStudents(false);
 
     if (!result.success || !result.data) {
@@ -132,7 +121,7 @@ export function ClassSectionDiscountSelector() {
     }
 
     if (result.data.rows.length === 0) {
-      setError("No students found for the selected class and section");
+      setError("No students found for the selected class");
       return;
     }
 
@@ -148,7 +137,7 @@ export function ClassSectionDiscountSelector() {
     <div className="space-y-6">
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Academic Year</Label>
               <Select value={academicYearId} onValueChange={setAcademicYearId} disabled={loadingOptions}>
@@ -180,33 +169,10 @@ export function ClassSectionDiscountSelector() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Section</Label>
-              <Select
-                value={sectionId}
-                onValueChange={setSectionId}
-                disabled={!classId || (selectedClass?.sections.length ?? 0) === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={classId ? "Select section" : "Select class first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedClass?.sections.map((section) => (
-                    <SelectItem key={section.id} value={section.id}>
-                      {section.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="flex justify-end">
-            <Button
-              onClick={handleLoadStudents}
-              disabled={!academicYearId || !classId || !sectionId || isLoadingStudents}
-            >
+            <Button onClick={handleLoadStudents} disabled={!academicYearId || !classId || isLoadingStudents}>
               {isLoadingStudents ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -228,10 +194,9 @@ export function ClassSectionDiscountSelector() {
       )}
 
       {studentsData?.success && studentsData.data && studentsData.data.rows.length > 0 && (
-        <ClassSectionDiscountGrid
+        <ClassDiscountGrid
           academicYearId={academicYearId}
           classId={classId}
-          sectionId={sectionId}
           feeStructure={studentsData.data.feeStructure}
           initialRows={studentsData.data.rows}
           onSaved={handleSaved}

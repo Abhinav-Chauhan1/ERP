@@ -70,7 +70,7 @@ async function FinanceCategorySection({ schoolId }: { schoolId: string }) {
     {
       title: "Class Discounts",
       icon: <BadgePercent className="h-5 w-5" />,
-      description: "Bulk-set Normal, Books & Transport fee discounts by class/section",
+      description: "Bulk-set Normal, Books & Transport fee discounts by class",
       href: "/admin/finance/discounts",
       count: "—",
       badge: null,

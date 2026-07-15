@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ClassSectionDiscountSelector } from "@/components/admin/finance/class-section-discount-selector";
+import { ClassDiscountSelector } from "@/components/admin/finance/class-discount-selector";
 
 export default function ClassDiscountsPage() {
   return (
@@ -16,12 +16,12 @@ export default function ClassDiscountsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Class Discounts</h1>
           <p className="text-sm text-muted-foreground">
-            Set Normal Fee, Books Fee, and Transport Fee discounts for an entire class/section at once.
+            Set Normal Fee, Books Fee, and Transport Fee discounts for an entire class at once.
           </p>
         </div>
       </div>
 
-      <ClassSectionDiscountSelector />
+      <ClassDiscountSelector />
     </div>
   );
 }

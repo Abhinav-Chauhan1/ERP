@@ -5,6 +5,7 @@ import type { DiscountType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -17,10 +18,9 @@ import { AlertCircle, CheckCircle2, Save } from "lucide-react";
 import { bulkSaveClassDiscounts, type BulkDiscountFeeRow, type BulkDiscountSaveRow } from "@/lib/actions/miscFeeActions";
 import { useToast } from "@/hooks/use-toast";
 
-interface ClassSectionDiscountGridProps {
+interface ClassDiscountGridProps {
   academicYearId: string;
   classId: string;
-  sectionId: string;
   feeStructure: { id: string; name: string } | null;
   initialRows: BulkDiscountFeeRow[];
   onSaved: () => void;
@@ -30,14 +30,12 @@ interface EditableRow {
   studentId: string;
   rollNumber: string | null;
   name: string;
+  sectionName: string | null;
   normalGrossTotal: number;
-  normalDiscountType: DiscountType | null;
   normalDiscountValue: number | null;
   booksAmount: number;
-  booksDiscountType: DiscountType | null;
   booksDiscountValue: number | null;
   transportAmount: number;
-  transportDiscountType: DiscountType | null;
   transportDiscountValue: number | null;
 }
 
@@ -52,14 +50,12 @@ function toEditableRow(row: BulkDiscountFeeRow): EditableRow {
     studentId: row.studentId,
     rollNumber: row.rollNumber,
     name: row.name,
+    sectionName: row.sectionName,
     normalGrossTotal: row.normalFee.grossTotal,
-    normalDiscountType: row.normalFee.discountType,
     normalDiscountValue: row.normalFee.value,
     booksAmount: row.booksFee.amount,
-    booksDiscountType: row.booksFee.discountType,
     booksDiscountValue: row.booksFee.discountValue,
     transportAmount: row.transportFee.amount,
-    transportDiscountType: row.transportFee.discountType,
     transportDiscountValue: row.transportFee.discountValue,
   };
 }
@@ -68,25 +64,25 @@ function toEditableRow(row: BulkDiscountFeeRow): EditableRow {
 // duplicated here (client-side, for instant preview) since that file imports
 // the Prisma db client and can't be bundled into a client component. The
 // server recomputes these authoritatively on save.
-function calcDiscountAmount(gross: number, type: DiscountType | null, value: number | null): number {
-  if (!type || !value || gross <= 0) return 0;
+function calcDiscountAmount(gross: number, type: DiscountType, value: number | null): number {
+  if (!value || gross <= 0) return 0;
   const raw = type === "PERCENTAGE" ? (gross * value) / 100 : value;
   return Math.min(Math.max(raw, 0), gross);
 }
 
-function calcNet(gross: number, type: DiscountType | null, value: number | null): number {
+function calcNet(gross: number, type: DiscountType, value: number | null): number {
   return gross - calcDiscountAmount(gross, type, value);
 }
 
-export function ClassSectionDiscountGrid({
+export function ClassDiscountGrid({
   academicYearId,
   classId,
-  sectionId,
   feeStructure,
   initialRows,
   onSaved,
-}: ClassSectionDiscountGridProps) {
+}: ClassDiscountGridProps) {
   const [rows, setRows] = useState<EditableRow[]>(initialRows.map(toEditableRow));
+  const [discountType, setDiscountType] = useState<DiscountType>("FLAT_AMOUNT");
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [rowErrors, setRowErrors] = useState<Map<string, string>>(new Map());
@@ -98,16 +94,11 @@ export function ClassSectionDiscountGrid({
     setRowErrors(new Map());
   }, [initialRows]);
 
-  const validateDiscount = (
-    studentId: string,
-    field: string,
-    type: DiscountType | null,
-    value: number | null
-  ) => {
+  const validateDiscount = (studentId: string, field: string, value: number | null) => {
     let message: string | null = null;
-    if (type && value !== null) {
+    if (value !== null) {
       if (value < 0) message = "Must be non-negative";
-      else if (type === "PERCENTAGE" && value > 100) message = "Percentage cannot exceed 100";
+      else if (discountType === "PERCENTAGE" && value > 100) message = "Percentage cannot exceed 100";
     }
     setValidationErrors((prev) => {
       const filtered = prev.filter((e) => !(e.studentId === studentId && e.field === field));
@@ -130,6 +121,29 @@ export function ClassSectionDiscountGrid({
   const getFieldError = (studentId: string, field: string) =>
     validationErrors.find((e) => e.studentId === studentId && e.field === field)?.message || null;
 
+  // Discount type changed globally — re-validate every existing discount value
+  // (e.g. a leftover value > 100 becomes invalid once switched to Percentage).
+  const handleDiscountTypeChange = (next: DiscountType) => {
+    setDiscountType(next);
+    setValidationErrors((prev) =>
+      prev.filter((e) => {
+        if (next !== "PERCENTAGE") return true;
+        const row = rows.find((r) => r.studentId === e.studentId);
+        if (!row) return true;
+        const value =
+          e.field === "normalDiscount" ? row.normalDiscountValue :
+          e.field === "booksDiscount" ? row.booksDiscountValue :
+          e.field === "transportDiscount" ? row.transportDiscountValue : null;
+        return !(value !== null && value >= 0 && value <= 100);
+      })
+    );
+    rows.forEach((row) => {
+      validateDiscount(row.studentId, "normalDiscount", row.normalDiscountValue);
+      validateDiscount(row.studentId, "booksDiscount", row.booksDiscountValue);
+      validateDiscount(row.studentId, "transportDiscount", row.transportDiscountValue);
+    });
+  };
+
   const hasErrors = validationErrors.length > 0;
 
   const handleSave = async () => {
@@ -147,20 +161,12 @@ export function ClassSectionDiscountGrid({
 
     const saveRows: BulkDiscountSaveRow[] = rows.map((r) => ({
       studentId: r.studentId,
-      normalFee: { discountType: r.normalDiscountType, value: r.normalDiscountValue },
-      booksFee: {
-        amount: r.booksAmount,
-        discountType: r.booksDiscountType,
-        discountValue: r.booksDiscountValue,
-      },
-      transportFee: {
-        amount: r.transportAmount,
-        discountType: r.transportDiscountType,
-        discountValue: r.transportDiscountValue,
-      },
+      normalFee: { value: r.normalDiscountValue },
+      booksFee: { amount: r.booksAmount, discountValue: r.booksDiscountValue },
+      transportFee: { amount: r.transportAmount, discountValue: r.transportDiscountValue },
     }));
 
-    const result = await bulkSaveClassDiscounts(academicYearId, classId, sectionId, saveRows);
+    const result = await bulkSaveClassDiscounts(academicYearId, classId, discountType, saveRows);
     setIsSaving(false);
 
     if (!result.success || !result.data) {
@@ -192,15 +198,29 @@ export function ClassSectionDiscountGrid({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div className="text-sm text-muted-foreground">
           {rows.length} students &middot;{" "}
           {feeStructure ? `Normal Fee: ${feeStructure.name}` : "No Normal Fee structure assigned to this class"}
         </div>
-        <Button onClick={handleSave} disabled={isSaving || hasErrors}>
-          <Save className="mr-2 h-4 w-4" />
-          {isSaving ? "Saving..." : "Save All"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Discount Type</Label>
+            <Select value={discountType} onValueChange={(v) => handleDiscountTypeChange(v as DiscountType)}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="FLAT_AMOUNT">Flat (₹)</SelectItem>
+                <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleSave} disabled={isSaving || hasErrors}>
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? "Saving..." : "Save All"}
+          </Button>
+        </div>
       </div>
 
       {hasErrors && (
@@ -220,6 +240,7 @@ export function ClassSectionDiscountGrid({
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground sticky left-0 bg-accent z-10">
                   Student
                 </th>
+                <th className="py-3 px-4 text-center font-medium text-muted-foreground">Section</th>
                 <th className="py-3 px-4 text-center font-medium text-muted-foreground">Roll No.</th>
                 <th className="py-3 px-4 text-center font-medium text-muted-foreground" colSpan={3}>
                   Normal Fee
@@ -233,6 +254,7 @@ export function ClassSectionDiscountGrid({
               </tr>
               <tr className="bg-accent/50 border-b text-xs">
                 <th className="py-2 px-4 sticky left-0 bg-accent/50 z-10" />
+                <th className="py-2 px-4" />
                 <th className="py-2 px-4" />
                 <th className="py-2 px-2 font-normal text-muted-foreground">Gross</th>
                 <th className="py-2 px-2 font-normal text-muted-foreground">Discount</th>
@@ -255,6 +277,9 @@ export function ClassSectionDiscountGrid({
                       {rowError && <div className="text-xs text-red-500 mt-1">{rowError}</div>}
                     </td>
                     <td className="py-3 px-4 text-center">
+                      <Badge variant="secondary">{row.sectionName || "-"}</Badge>
+                    </td>
+                    <td className="py-3 px-4 text-center">
                       <Badge variant="outline">{row.rollNumber || "-"}</Badge>
                     </td>
 
@@ -263,20 +288,19 @@ export function ClassSectionDiscountGrid({
                       {feeStructure ? row.normalGrossTotal.toFixed(0) : "-"}
                     </td>
                     <td className="py-3 px-2">
-                      <DiscountCell
+                      <DiscountValueCell
                         disabled={!feeStructure}
-                        type={row.normalDiscountType}
                         value={row.normalDiscountValue}
                         error={getFieldError(row.studentId, "normalDiscount")}
-                        onChange={(type, value) => {
-                          updateRow(row.studentId, { normalDiscountType: type, normalDiscountValue: value });
-                          validateDiscount(row.studentId, "normalDiscount", type, value);
+                        onChange={(value) => {
+                          updateRow(row.studentId, { normalDiscountValue: value });
+                          validateDiscount(row.studentId, "normalDiscount", value);
                         }}
                       />
                     </td>
                     <td className="py-3 px-2 text-center whitespace-nowrap">
                       {feeStructure
-                        ? calcNet(row.normalGrossTotal, row.normalDiscountType, row.normalDiscountValue).toFixed(0)
+                        ? calcNet(row.normalGrossTotal, discountType, row.normalDiscountValue).toFixed(0)
                         : "-"}
                     </td>
 
@@ -296,18 +320,17 @@ export function ClassSectionDiscountGrid({
                       />
                     </td>
                     <td className="py-3 px-2">
-                      <DiscountCell
-                        type={row.booksDiscountType}
+                      <DiscountValueCell
                         value={row.booksDiscountValue}
                         error={getFieldError(row.studentId, "booksDiscount")}
-                        onChange={(type, value) => {
-                          updateRow(row.studentId, { booksDiscountType: type, booksDiscountValue: value });
-                          validateDiscount(row.studentId, "booksDiscount", type, value);
+                        onChange={(value) => {
+                          updateRow(row.studentId, { booksDiscountValue: value });
+                          validateDiscount(row.studentId, "booksDiscount", value);
                         }}
                       />
                     </td>
                     <td className="py-3 px-2 text-center whitespace-nowrap">
-                      {calcNet(row.booksAmount, row.booksDiscountType, row.booksDiscountValue).toFixed(0)}
+                      {calcNet(row.booksAmount, discountType, row.booksDiscountValue).toFixed(0)}
                     </td>
 
                     {/* Transport Fee */}
@@ -326,18 +349,17 @@ export function ClassSectionDiscountGrid({
                       />
                     </td>
                     <td className="py-3 px-2">
-                      <DiscountCell
-                        type={row.transportDiscountType}
+                      <DiscountValueCell
                         value={row.transportDiscountValue}
                         error={getFieldError(row.studentId, "transportDiscount")}
-                        onChange={(type, value) => {
-                          updateRow(row.studentId, { transportDiscountType: type, transportDiscountValue: value });
-                          validateDiscount(row.studentId, "transportDiscount", type, value);
+                        onChange={(value) => {
+                          updateRow(row.studentId, { transportDiscountValue: value });
+                          validateDiscount(row.studentId, "transportDiscount", value);
                         }}
                       />
                     </td>
                     <td className="py-3 px-2 text-center whitespace-nowrap">
-                      {calcNet(row.transportAmount, row.transportDiscountType, row.transportDiscountValue).toFixed(0)}
+                      {calcNet(row.transportAmount, discountType, row.transportDiscountValue).toFixed(0)}
                     </td>
                   </tr>
                 );
@@ -357,49 +379,28 @@ export function ClassSectionDiscountGrid({
   );
 }
 
-function DiscountCell({
-  type,
+function DiscountValueCell({
   value,
   disabled,
   error,
   onChange,
 }: {
-  type: DiscountType | null;
   value: number | null;
   disabled?: boolean;
   error: string | null;
-  onChange: (type: DiscountType | null, value: number | null) => void;
+  onChange: (value: number | null) => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1">
-        <Select
-          value={type ?? "NONE"}
-          onValueChange={(next) => {
-            const nextType = next === "NONE" ? null : (next as DiscountType);
-            onChange(nextType, nextType ? value ?? 0 : null);
-          }}
-          disabled={disabled}
-        >
-          <SelectTrigger className="w-16 text-xs px-2">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="NONE">None</SelectItem>
-            <SelectItem value="FLAT_AMOUNT">Flat</SelectItem>
-            <SelectItem value="PERCENTAGE">%</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          type="number"
-          min="0"
-          step="1"
-          value={value ?? ""}
-          disabled={disabled || !type}
-          onChange={(e) => onChange(type, e.target.value ? parseFloat(e.target.value) : 0)}
-          className={`w-20 text-center ${error ? "border-red-500" : ""}`}
-        />
-      </div>
+      <Input
+        type="number"
+        min="0"
+        step="1"
+        value={value ?? ""}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value ? parseFloat(e.target.value) : null)}
+        className={`w-20 text-center ${error ? "border-red-500" : ""}`}
+      />
       {error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   );
