@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateStudent, updateUserPassword } from "@/lib/actions/usersAction";
 import { getStudentWithDetails } from "@/lib/actions/studentActions";
+import { enrollStudentInClass, updateStudentEnrollment, removeStudentFromClass } from "@/lib/actions/classesActions";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
 
@@ -104,6 +105,18 @@ export default function EditStudentPage() {
   const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
   const [studentName, setStudentName] = useState<string>("");
 
+  // Class and Section state
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingSections, setLoadingSections] = useState(false);
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [originalClassId, setOriginalClassId] = useState<string>("");
+  const [originalSectionId, setOriginalSectionId] = useState<string>("");
+  const hydratingSectionRef = useRef<string | null>(null);
+
   const handlePasswordUpdate = async () => {
     try {
       if (!newPassword) return;
@@ -178,6 +191,55 @@ export default function EditStudentPage() {
     },
   });
 
+  // Fetch classes on mount
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const response = await fetch('/api/classes');
+        if (response.ok) {
+          const data = await response.json();
+          setClasses(data);
+        }
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch sections whenever the selected class changes
+  useEffect(() => {
+    if (selectedClassId) {
+      const fetchSections = async () => {
+        try {
+          setLoadingSections(true);
+          const response = await fetch(`/api/classes/${selectedClassId}/sections`);
+          if (response.ok) {
+            const data = await response.json();
+            setSections(data);
+            if (hydratingSectionRef.current) {
+              setSelectedSectionId(hydratingSectionRef.current);
+              hydratingSectionRef.current = null;
+            } else {
+              setSelectedSectionId("");
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching sections:', error);
+        } finally {
+          setLoadingSections(false);
+        }
+      };
+      fetchSections();
+    } else {
+      setSections([]);
+      setSelectedSectionId("");
+    }
+  }, [selectedClassId]);
+
   useEffect(() => {
     const fetchStudent = async () => {
       try {
@@ -196,6 +258,15 @@ export default function EditStudentPage() {
         setUserId(student.userId);
         setStudentAvatar(student.user.avatar || null);
         setStudentName(`${student.user.firstName || ''} ${student.user.lastName || ''}`);
+
+        const activeEnrollment = student.enrollments?.[0];
+        if (activeEnrollment) {
+          setEnrollmentId(activeEnrollment.id);
+          setOriginalClassId(activeEnrollment.classId);
+          setOriginalSectionId(activeEnrollment.sectionId);
+          hydratingSectionRef.current = activeEnrollment.sectionId;
+          setSelectedClassId(activeEnrollment.classId);
+        }
 
         form.reset({
           firstName: student.user.firstName || "",
@@ -264,6 +335,49 @@ export default function EditStudentPage() {
       setIsSubmitting(true);
       setError(null);
       await updateStudent(id, data);
+
+      // Sync class/section enrollment if it was changed
+      if (selectedClassId && selectedSectionId) {
+        if (!enrollmentId) {
+          const result = await enrollStudentInClass({
+            studentId: id,
+            classId: selectedClassId,
+            sectionId: selectedSectionId,
+            status: "ACTIVE",
+          });
+          if (!result.success) {
+            toast.error(`Student updated but enrollment failed: ${result.error}`);
+          }
+        } else if (selectedClassId === originalClassId) {
+          if (selectedSectionId !== originalSectionId) {
+            const result = await updateStudentEnrollment({
+              id: enrollmentId,
+              studentId: id,
+              classId: selectedClassId,
+              sectionId: selectedSectionId,
+              status: "ACTIVE",
+            });
+            if (!result.success) {
+              toast.error(`Student updated but section change failed: ${result.error}`);
+            }
+          }
+        } else {
+          // Moving to a different class: retire the old enrollment and create a new one
+          await removeStudentFromClass(enrollmentId);
+          const result = await enrollStudentInClass({
+            studentId: id,
+            classId: selectedClassId,
+            sectionId: selectedSectionId,
+            status: "ACTIVE",
+          });
+          if (!result.success) {
+            toast.error(`Student updated but class change failed: ${result.error}`);
+          }
+        }
+      } else if (enrollmentId && (!selectedClassId || !selectedSectionId)) {
+        await removeStudentFromClass(enrollmentId);
+      }
+
       toast.success("Student updated successfully");
       router.push(`/admin/users/students/${id}`);
     } catch (error: any) {
@@ -382,6 +496,60 @@ export default function EditStudentPage() {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Class Selector */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Class</label>
+                    <Select
+                      value={selectedClassId}
+                      onValueChange={setSelectedClassId}
+                      disabled={loadingClasses}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={loadingClasses ? "Loading classes..." : "Select class"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((classItem) => (
+                          <SelectItem key={classItem.id} value={classItem.id}>
+                            {classItem.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Section Selector */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Section</label>
+                    <Select
+                      value={selectedSectionId}
+                      onValueChange={setSelectedSectionId}
+                      disabled={!selectedClassId || loadingSections || sections.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            !selectedClassId
+                              ? "Select class first"
+                              : loadingSections
+                                ? "Loading sections..."
+                                : sections.length === 0
+                                  ? "No sections available"
+                                  : "Select section"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections.map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <FormField
