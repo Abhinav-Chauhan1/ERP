@@ -44,6 +44,7 @@ export function StudentsWithFilters({
       placeholder: "All Classes",
       options: [
         { value: "all", label: "All Classes" },
+        { value: "not_enrolled", label: "Not Enrolled" },
         ...classes.map((c) => ({ value: c.id, label: c.name })),
       ],
     },
@@ -52,7 +53,7 @@ export function StudentsWithFilters({
       label: "Section",
       type: "select",
       placeholder: filters.classId && filters.classId !== "all" ? "All Sections" : "Select class first",
-      disabled: !filters.classId || filters.classId === "all",
+      disabled: !filters.classId || filters.classId === "all" || filters.classId === "not_enrolled",
       options: [
         { value: "all", label: "All Sections" },
         ...filteredSections.map((s) => ({ value: s.id, label: s.name })),
@@ -100,15 +101,17 @@ export function StudentsWithFilters({
     const applyFilters = async () => {
       startTransition(async () => {
         const dateRange = filters.admissionDate as DateRange | undefined;
-        
+        const notEnrolled = filters.classId === "not_enrolled";
+
         const result = await getFilteredStudents({
-          classId: filters.classId as string,
+          classId: notEnrolled ? undefined : (filters.classId as string),
           sectionId: filters.sectionId as string,
           gender: filters.gender as string,
           enrollmentStatus: filters.enrollmentStatus as string,
           admissionDateFrom: dateRange?.from,
           admissionDateTo: dateRange?.to,
           search: filters.search as string,
+          notEnrolled,
         });
 
         if (result.success) {

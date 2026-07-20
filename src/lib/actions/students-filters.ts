@@ -12,6 +12,7 @@ export interface StudentFilters {
   admissionDateFrom?: Date;
   admissionDateTo?: Date;
   search?: string;
+  notEnrolled?: boolean;
 }
 
 export async function getFilteredStudents(filters: StudentFilters) {
@@ -82,12 +83,19 @@ export async function getFilteredStudents(filters: StudentFilters) {
       }
     }
 
-    // Enrollment filters (class, section, status)
-    if (
+    // Not-enrolled filter (students with no active class enrollment)
+    if (filters.notEnrolled) {
+      where.enrollments = {
+        none: {
+          status: "ACTIVE",
+        },
+      };
+    } else if (
       filters.classId ||
       filters.sectionId ||
       (filters.enrollmentStatus && filters.enrollmentStatus !== "all")
     ) {
+      // Enrollment filters (class, section, status)
       where.enrollments = {
         some: {
           ...(filters.classId && filters.classId !== "all"
