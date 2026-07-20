@@ -735,11 +735,23 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
 
       revalidatePath('/admin/users');
       revalidatePath('/super-admin/schools');
-      return { success: true };
+      return { success: true, error: undefined as string | undefined };
     });
   } catch (error) {
     console.error('Error updating student:', error);
-    throw new Error('Failed to update student');
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002' &&
+      (error.meta?.target as string[] | undefined)?.includes('admissionId')
+    ) {
+      return {
+        success: false,
+        error: `Admission ID "${data.admissionId}" is already in use by another student.`,
+      };
+    }
+
+    return { success: false, error: 'Failed to update student' };
   }
 }
 

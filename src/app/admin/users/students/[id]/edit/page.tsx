@@ -334,7 +334,10 @@ export default function EditStudentPage() {
     try {
       setIsSubmitting(true);
       setError(null);
-      await updateStudent(id, data);
+      const updateResult = await updateStudent(id, data);
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || "Failed to update student");
+      }
 
       // Sync class/section enrollment if it was changed
       if (selectedClassId && selectedSectionId) {

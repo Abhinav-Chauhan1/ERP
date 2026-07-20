@@ -88,7 +88,10 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
         if (!student) return;
         try {
             setIsSubmitting(true);
-            await updateStudent(student.id, data);
+            const result = await updateStudent(student.id, data);
+            if (!result.success) {
+                throw new Error(result.error || "Failed to update student");
+            }
             toast.success("Student updated successfully");
             onOpenChange(false);
             router.refresh();
