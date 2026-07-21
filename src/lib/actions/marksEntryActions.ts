@@ -84,7 +84,9 @@ export const getEnrolledStudentsForMarks = withSchoolAuthAction(
             teacherId: teacher.id,
             subjectId: exam.subjectId,
             classId,
-            sectionId,
+            // sectionId: null means the teacher is assigned to the whole class,
+            // which grants access to every section of it
+            OR: [{ sectionId }, { sectionId: null }],
           },
         });
 

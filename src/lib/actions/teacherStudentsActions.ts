@@ -55,34 +55,11 @@ export async function getTeacherStudents(options?: {
       }
     });
 
-    const classIds = teacherClasses.map(tc => tc.classId);
-
-    // Build where clause based on filters
-    const whereClause: any = {
-      enrollments: {
-        some: {
-          classId: options?.classId ? options.classId : { in: classIds },
-          ...(options?.sectionId ? { sectionId: options.sectionId } : {})
-        }
-      }
-    };
-
-    // Add search functionality
-    if (options?.search) {
-      whereClause.OR = [
-        {
-          user: {
-            OR: [
-              { firstName: { contains: options.search, mode: 'insensitive' } },
-              { lastName: { contains: options.search, mode: 'insensitive' } },
-              { email: { contains: options.search, mode: 'insensitive' } }
-            ]
-          }
-        },
-        { rollNumber: { contains: options.search, mode: 'insensitive' } },
-        { admissionId: { contains: options.search, mode: 'insensitive' } }
-      ];
-    }
+    // A ClassTeacher row with sectionId === null grants access to the whole class;
+    // a row with a sectionId grants access only to that section (e.g. a section-scoped class head)
+    const allowedEnrollmentConditions: any[] = teacherClasses.map(tc =>
+      tc.sectionId ? { classId: tc.classId, sectionId: tc.sectionId } : { classId: tc.classId }
+    );
 
     // Build query for students
     let orderBy: any = {};
@@ -124,9 +101,8 @@ export async function getTeacherStudents(options?: {
       where: {
         enrollments: {
           some: {
-            classId: {
-              in: classIds,
-            },
+            OR: allowedEnrollmentConditions,
+            ...(options?.classId ? { classId: options.classId } : {}),
             ...(options?.sectionId ? { sectionId: options.sectionId } : {}),
           },
         },
@@ -150,7 +126,8 @@ export async function getTeacherStudents(options?: {
         },
         enrollments: {
           where: {
-            classId: options?.classId ? options.classId : { in: classIds },
+            OR: allowedEnrollmentConditions,
+            ...(options?.classId ? { classId: options.classId } : {}),
             ...(options?.sectionId ? { sectionId: options.sectionId } : {})
           },
           include: {
@@ -244,13 +221,15 @@ export async function getTeacherStudents(options?: {
     });
 
     // Get the list of classes and sections for filtering
+    // A section-scoped ClassTeacher row only offers its own section, not the whole class's sections
     const classes = teacherClasses.map(tc => ({
       id: tc.class.id,
       name: tc.class.name,
-      sections: tc.class.sections.map(section => ({
-        id: section.id,
-        name: section.name
-      }))
+      sections: (tc.sectionId ? tc.class.sections.filter(s => s.id === tc.sectionId) : tc.class.sections)
+        .map(section => ({
+          id: section.id,
+          name: section.name
+        }))
     }));
 
     return {
@@ -306,19 +285,22 @@ export async function getStudentDetails(studentId: string) {
         teacherId: teacher.id
       },
       select: {
-        classId: true
+        classId: true,
+        sectionId: true
       }
     });
 
-    const classIds = teacherClasses.map(tc => tc.classId);
+    // A ClassTeacher row with sectionId === null grants access to the whole class;
+    // a row with a sectionId grants access only to that section
+    const allowedEnrollmentConditions: any[] = teacherClasses.map(tc =>
+      tc.sectionId ? { classId: tc.classId, sectionId: tc.sectionId } : { classId: tc.classId }
+    );
 
     // Verify this student belongs to one of the teacher's classes
     const studentEnrollment = await db.classEnrollment.findFirst({
       where: {
         studentId: studentId,
-        classId: {
-          in: classIds
-        }
+        OR: allowedEnrollmentConditions,
       }
     });
 
@@ -781,7 +763,11 @@ export async function getTeacherStudentsPerformance() {
       }
     });
 
-    const classIds = teacherClasses.map(tc => tc.classId);
+    // A ClassTeacher row with sectionId === null grants access to the whole class;
+    // a row with a sectionId grants access only to that section
+    const allowedEnrollmentConditions: any[] = teacherClasses.map(tc =>
+      tc.sectionId ? { classId: tc.classId, sectionId: tc.sectionId } : { classId: tc.classId }
+    );
 
     // Get all students in these classes with school isolation
     const students = await db.student.findMany({
@@ -789,9 +775,7 @@ export async function getTeacherStudentsPerformance() {
         schoolId, // Add school isolation
         enrollments: {
           some: {
-            classId: {
-              in: classIds
-            }
+            OR: allowedEnrollmentConditions,
           }
         }
       },
@@ -804,9 +788,7 @@ export async function getTeacherStudentsPerformance() {
         },
         enrollments: {
           where: {
-            classId: {
-              in: classIds
-            }
+            OR: allowedEnrollmentConditions,
           },
           include: {
             class: true,

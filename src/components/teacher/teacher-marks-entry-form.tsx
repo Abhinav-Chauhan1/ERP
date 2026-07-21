@@ -161,8 +161,13 @@ export function TeacherMarksEntryForm() {
 
     const isGloballyAssigned = globalSubjectIds.includes(filterSubjectId);
 
-    if (isGloballyAssigned) {
-      // If globally assigned to this subject, teacher has access to all sections
+    // A whole-class assignment (sectionId === null) grants access to every section of the class
+    const hasWholeClassAssignment = assignments.some(
+      (a) => a.classId === filterClassId && a.subjectId === filterSubjectId && a.sectionId === null
+    );
+
+    if (isGloballyAssigned || hasWholeClassAssignment) {
+      // Globally assigned, or assigned to the whole class: teacher has access to all sections
       setSections(selectedClass.sections || []);
     } else {
       // Show only section assignments matching this class and subject

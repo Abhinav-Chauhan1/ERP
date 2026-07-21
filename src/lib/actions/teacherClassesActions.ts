@@ -21,6 +21,26 @@ async function resolveTeacher(userId: string, schoolId: string) {
   return teacher.id;
 }
 
+/**
+ * A ClassTeacher/SubjectClass row with sectionId === null grants access to the whole
+ * class; a row with a sectionId grants access only to that section (e.g. a
+ * section-scoped class head or subject teacher). This resolves what a teacher is
+ * actually allowed to see within a class.
+ */
+async function getClassAccessScope(teacherId: string, classId: string, schoolId: string) {
+  const [classTeacherRows, subjectClassRows] = await Promise.all([
+    db.classTeacher.findMany({ where: { teacherId, classId, schoolId }, select: { sectionId: true } }),
+    db.subjectClass.findMany({ where: { teacherId, classId, schoolId }, select: { sectionId: true } }),
+  ]);
+  const combined = [...classTeacherRows, ...subjectClassRows];
+  const hasWholeClassAccess = combined.some((r) => r.sectionId === null);
+  const allowedSectionIds = Array.from(
+    new Set(combined.filter((r) => r.sectionId !== null).map((r) => r.sectionId as string))
+  );
+  const hasAccess = hasWholeClassAccess || allowedSectionIds.length > 0;
+  return { hasAccess, hasWholeClassAccess, allowedSectionIds };
+}
+
 // ─── getTeacherClasses ───────────────────────────────────────────────────────
 /**
  * Returns every class+section combination where the teacher is responsible
@@ -215,24 +235,27 @@ export async function getClassDetails(classId: string, sectionId?: string) {
   const schoolId = await getRequiredSchoolId();
   const teacherId = await resolveTeacher(userId, schoolId);
 
-  // Auth check: teacher must teach in this class
-  const hasAccess = await db.subjectClass.findFirst({
-    where: {
-      teacherId,
-      classId,
-      schoolId,
-      ...(sectionId ? { sectionId } : {}),
-    },
-    select: { id: true },
-  });
+  // Auth check: teacher must teach in this class, and if a specific section is
+  // requested (or the teacher only has section-scoped access), it must be theirs
+  const { hasAccess, hasWholeClassAccess, allowedSectionIds } = await getClassAccessScope(
+    teacherId,
+    classId,
+    schoolId
+  );
 
-  // Also allow class head teachers without SubjectClass rows
-  const isClassHead = await db.classTeacher.findFirst({
-    where: { teacherId, classId, schoolId },
-    select: { id: true },
-  });
+  if (!hasAccess) throw new Error("Access denied");
+  if (sectionId && !hasWholeClassAccess && !allowedSectionIds.includes(sectionId)) {
+    throw new Error("Access denied");
+  }
 
-  if (!hasAccess && !isClassHead) throw new Error("Access denied");
+  // Scope applied to every query below: an explicit sectionId always wins; otherwise
+  // a whole-class assignment sees everything, and a section-only assignment is
+  // restricted to just the section(s) the teacher actually has
+  const sectionScope = sectionId
+    ? { sectionId }
+    : hasWholeClassAccess
+      ? {}
+      : { sectionId: { in: allowedSectionIds } };
 
   // Full class data
   const [classData, enrollments, timetableSlots] = await Promise.all([
@@ -248,7 +271,7 @@ export async function getClassDetails(classId: string, sectionId?: string) {
         classId,
         schoolId,
         status: "ACTIVE",
-        ...(sectionId ? { sectionId } : {}),
+        ...sectionScope,
       },
       include: {
         student: { include: { user: { select: { firstName: true, lastName: true, avatar: true } } } },
@@ -262,7 +285,7 @@ export async function getClassDetails(classId: string, sectionId?: string) {
         schoolId,
         subjectTeacher: { teacherId, schoolId },
         timetable: { isActive: true },
-        ...(sectionId ? { sectionId } : {}),
+        ...sectionScope,
       },
       include: {
         room: { select: { name: true } },
@@ -284,7 +307,7 @@ export async function getClassDetails(classId: string, sectionId?: string) {
       teacherId,
       classId,
       schoolId,
-      ...(sectionId ? { sectionId } : {}),
+      ...sectionScope,
     },
     include: { subject: { select: { id: true, name: true, code: true } } },
     orderBy: { order: "asc" },
@@ -327,7 +350,9 @@ export async function getClassDetails(classId: string, sectionId?: string) {
     id: classData.id,
     name: classData.name,
     academicYear: classData.academicYear.name,
-    sections: classData.sections,
+    sections: hasWholeClassAccess
+      ? classData.sections
+      : classData.sections.filter((s) => allowedSectionIds.includes(s.id)),
     subjects: subjectsInScope.map((r) => r.subject),
     students,
     schedule,
@@ -406,22 +431,29 @@ export async function getClassStudents(classId: string, sectionId?: string) {
   const schoolId = await getRequiredSchoolId();
   const teacherId = await resolveTeacher(userId, schoolId);
 
-  const hasAccess = await db.subjectClass.findFirst({
-    where: { teacherId, classId, schoolId },
-    select: { id: true },
-  });
-  const isClassHead = await db.classTeacher.findFirst({
-    where: { teacherId, classId, schoolId },
-    select: { id: true },
-  });
-  if (!hasAccess && !isClassHead) throw new Error("Access denied");
+  const { hasAccess, hasWholeClassAccess, allowedSectionIds } = await getClassAccessScope(
+    teacherId,
+    classId,
+    schoolId
+  );
+
+  if (!hasAccess) throw new Error("Access denied");
+  if (sectionId && !hasWholeClassAccess && !allowedSectionIds.includes(sectionId)) {
+    throw new Error("Access denied");
+  }
+
+  const sectionScope = sectionId
+    ? { sectionId }
+    : hasWholeClassAccess
+      ? {}
+      : { sectionId: { in: allowedSectionIds } };
 
   const enrollments = await db.classEnrollment.findMany({
     where: {
       classId,
       status: "ACTIVE",
       schoolId,
-      ...(sectionId ? { sectionId } : {}),
+      ...sectionScope,
     },
     include: {
       student: { include: { user: { select: { firstName: true, lastName: true } } } },

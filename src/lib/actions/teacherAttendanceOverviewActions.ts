@@ -207,6 +207,12 @@ export async function getTeacherAttendanceOverview() {
     // Get class-wise attendance summary
     const classAttendanceSummary = await Promise.all(
       teacherClasses.map(async (tc) => {
+        // A ClassTeacher row with sectionId === null covers the whole class;
+        // a row with a sectionId covers only that section (e.g. a section-scoped class head)
+        const relevantSections = tc.sectionId
+          ? tc.class.sections.filter((s) => s.id === tc.sectionId)
+          : tc.class.sections;
+
         const classAttendance = await db.studentAttendance.findMany({
           where: {
             date: {
@@ -216,14 +222,13 @@ export async function getTeacherAttendanceOverview() {
             student: {
               schoolId, // CRITICAL: Filter through student relation
             },
-            section: {
-              classId: tc.classId,
-              schoolId, // CRITICAL: Filter by school
-            },
+            section: tc.sectionId
+              ? { id: tc.sectionId, schoolId }
+              : { classId: tc.classId, schoolId }, // CRITICAL: Filter by school
           },
         });
 
-        const totalStudents = tc.class.sections.reduce(
+        const totalStudents = relevantSections.reduce(
           (sum, section) => sum + section.enrollments.length,
           0
         );
@@ -260,15 +265,18 @@ export async function getTeacherAttendanceOverview() {
     );
 
     // Get students with low attendance (below 75%)
-    const allStudents = teacherClasses.flatMap((tc) =>
-      tc.class.sections.flatMap((section) =>
+    const allStudents = teacherClasses.flatMap((tc) => {
+      const relevantSections = tc.sectionId
+        ? tc.class.sections.filter((s) => s.id === tc.sectionId)
+        : tc.class.sections;
+      return relevantSections.flatMap((section) =>
         section.enrollments.map((enrollment) => ({
           studentId: enrollment.studentId,
           classId: tc.classId,
           className: tc.class.name,
         }))
-      )
-    );
+      );
+    });
 
     const studentsWithLowAttendance = await Promise.all(
       allStudents.slice(0, 5).map(async (student) => {

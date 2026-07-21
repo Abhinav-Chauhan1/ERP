@@ -362,7 +362,10 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-primary"></div>
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{classTeacher.class.name}</span>
+                                                <span className="font-medium">
+                                                    {classTeacher.class.name}
+                                                    {classTeacher.section?.name ? ` - ${classTeacher.section.name}` : ""}
+                                                </span>
                                                 {classTeacher.isClassHead && (
                                                     <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100 w-fit mt-1">
                                                         Class Head
