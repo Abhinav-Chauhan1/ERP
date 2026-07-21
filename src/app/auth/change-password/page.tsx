@@ -66,8 +66,9 @@ export default function ChangePasswordPage() {
       setError(result.error ?? "Something went wrong");
       return;
     }
-    // Refresh the session so mustChangePassword is cleared in the token
-    const updatedSession = await update();
+    // Pass a defined payload so next-auth issues a POST (not GET) to /api/auth/session,
+    // which is required for trigger:"update" to reach the jwt() callback and refresh mustChangePassword
+    const updatedSession = await update({ mustChangePassword: false });
     const role = updatedSession?.user?.role || session?.user?.role;
     
     if (role) {
