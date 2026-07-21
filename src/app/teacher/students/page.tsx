@@ -377,7 +377,7 @@ function TeacherStudentsContent() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filteredStudents.length > 0 ? (
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
