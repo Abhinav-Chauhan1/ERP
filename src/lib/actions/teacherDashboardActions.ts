@@ -44,6 +44,29 @@ export async function getTeacherDashboardData() {
     const endOfThisWeek = endOfWeek(today, { weekStartsOn: 1 });
     const nextWeek = addDays(today, 7);
 
+    // A SubjectClass/ClassTeacher row with sectionId === null grants access to the whole
+    // class; a row with a sectionId grants access only to that section (e.g. a
+    // section-scoped class head). Resolve both scopes up front, in parallel.
+    const [
+      subjectClassSectionIds,
+      subjectClassWholeClassIds,
+      classTeacherWholeClassIds,
+      classTeacherSectionIds,
+    ] = await Promise.all([
+      db.subjectClass
+        .findMany({ where: { teacherId, schoolId, sectionId: { not: null } }, select: { sectionId: true } })
+        .then((rows) => rows.map((r) => r.sectionId as string)),
+      db.subjectClass
+        .findMany({ where: { teacherId, schoolId, sectionId: null }, select: { classId: true } })
+        .then((rows) => rows.map((r) => r.classId)),
+      db.classTeacher
+        .findMany({ where: { teacherId, schoolId, sectionId: null }, select: { classId: true } })
+        .then((rows) => rows.map((r) => r.classId)),
+      db.classTeacher
+        .findMany({ where: { teacherId, schoolId, sectionId: { not: null } }, select: { sectionId: true } })
+        .then((rows) => rows.map((r) => r.sectionId as string)),
+    ]);
+
     // -----------------------------------------------------------------------
     // Wave 1 — all independent queries fire together
     // -----------------------------------------------------------------------
@@ -82,26 +105,17 @@ export async function getTeacherDashboardData() {
       }),
 
       // Total active students across teacher's classes/sections
-      // Use SubjectClass.teacherId (precise) + ClassTeacher as fallback
+      // Use SubjectClass.teacherId (precise) + ClassTeacher as fallback,
+      // each split into whole-class vs section-scoped so a class head/subject
+      // teacher assigned to only one section isn't counted across the whole class
       db.classEnrollment.count({
         where: {
           schoolId,
           OR: [
-            // Students in sections/classes where teacher is assigned via SubjectClass
-            {
-              sectionId: {
-                in: await db.subjectClass
-                  .findMany({
-                    where: { teacherId, schoolId, sectionId: { not: null } },
-                    select: { sectionId: true },
-                  })
-                  .then((rows) => rows.map((r) => r.sectionId as string)),
-              },
-            },
-            // Students in classes via ClassTeacher (class head etc.)
-            {
-              class: { teachers: { some: { teacherId } } },
-            },
+            { sectionId: { in: subjectClassSectionIds } },
+            { classId: { in: subjectClassWholeClassIds } },
+            { classId: { in: classTeacherWholeClassIds } },
+            { sectionId: { in: classTeacherSectionIds } },
           ],
           status: "ACTIVE",
         },
@@ -176,13 +190,19 @@ export async function getTeacherDashboardData() {
       }),
 
       // Weekly attendance — single fetch, used for BOTH percentage stat AND chart
+      // Scoped the same way as studentCount above: whole-class assignments cover every
+      // section, section-scoped assignments (e.g. a section-only class head) cover only
+      // their own section
       db.studentAttendance.findMany({
         where: {
           schoolId,
           date: { gte: startOfThisWeek, lte: endOfThisWeek },
           section: {
             schoolId,
-            class: { schoolId, teachers: { some: { teacherId } } },
+            OR: [
+              { id: { in: [...subjectClassSectionIds, ...classTeacherSectionIds] } },
+              { classId: { in: [...subjectClassWholeClassIds, ...classTeacherWholeClassIds] } },
+            ],
           },
         },
         include: { section: { select: { classId: true } } },
