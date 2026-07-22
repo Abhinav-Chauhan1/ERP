@@ -71,8 +71,14 @@ import {
   deleteExam,
   getExamStatistics,
   autoGenerateCBSEExams,
+  getClassesMissingSubjects,
 } from "@/lib/actions/examsActions";
 import type { AutoGenerateExamsInput } from "@/lib/constants/cbse-exam-schedules";
+import {
+  CBSE_PRIMARY_SCHEDULE,
+  CBSE_SECONDARY_SCHEDULE,
+  CBSE_SENIOR_SCHEDULE,
+} from "@/lib/constants/cbse-exam-schedules";
 import { ExamTypesPanel } from "@/components/admin/assessment/exam-types-panel";
 import { AssessmentRulesPanel } from "@/components/admin/assessment/assessment-rules-panel";
 import { applyPTPatternForCurrentSchool } from "@/lib/actions/ptPatternActions";
@@ -128,6 +134,16 @@ export default function ExamsPage() {
   const [passingMarks, setPassingMarks] = useState<number>(3.3);
   const [patternName, setPatternName] = useState<string>("Standard PT Pattern");
 
+  // Optional per-component (MA/Portfolio/Half Yearly/Annual) marks overrides
+  const [showComponentOverrides, setShowComponentOverrides] = useState(false);
+  const [componentOverrides, setComponentOverrides] = useState<
+    Record<string, { totalMarks: number; passingMarks: number; durationMinutes: number }>
+  >({});
+
+  // Classes selected in Step 1 with zero subjects mapped — surfaced as a warning in Step 3
+  const [classesMissingSubjects, setClassesMissingSubjects] = useState<{ id: string; name: string }[]>([]);
+  const [checkingClassSubjects, setCheckingClassSubjects] = useState(false);
+
   // Step 2 — Per-term PT pattern
   interface TermPatternState {
     termId: string;
@@ -145,6 +161,28 @@ export default function ExamsPage() {
       .filter((t): t is any => Boolean(t))
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   }, [autoGenTermIds, allTerms]);
+
+  // Non-PT schedule components (MA/Portfolio/Half Yearly/Annual) available for the current
+  // CBSE level — PT is excluded since its marks are already configurable via perMarks/passingMarks.
+  // Half Yearly is shown as the representative row; the server remaps it to Annual for Term 2.
+  const componentOverrideEntries = useMemo(() => {
+    const schedule =
+      autoGenLevel === "CBSE_SENIOR"
+        ? CBSE_SENIOR_SCHEDULE
+        : autoGenLevel === "CBSE_SECONDARY"
+        ? CBSE_SECONDARY_SCHEDULE
+        : CBSE_PRIMARY_SCHEDULE;
+    return schedule.filter((s) => s.cbseComponent !== "PT");
+  }, [autoGenLevel]);
+
+  // Fetch classes with zero subjects mapped once the admin reaches the review step
+  useEffect(() => {
+    if (autoGenStep !== 3) return;
+    setCheckingClassSubjects(true);
+    getClassesMissingSubjects(autoGenClassIds)
+      .then((res) => setClassesMissingSubjects(res.success ? res.data ?? [] : []))
+      .finally(() => setCheckingClassSubjects(false));
+  }, [autoGenStep, autoGenClassIds]);
 
   // Keep termPatterns aligned with autoGenTermIds (preserve user edits, drop removed terms)
   useEffect(() => {
@@ -555,6 +593,7 @@ export default function ExamsPage() {
           classIds: autoGenClassIds,
           cbseLevel: autoGenLevel,
           termNumber: getTermNumber(termId),
+          componentOverrides: Object.keys(componentOverrides).length > 0 ? componentOverrides : undefined,
         });
         if (!result.success) {
           const t = allTerms.find((x: any) => x.id === termId);
@@ -591,6 +630,9 @@ export default function ExamsPage() {
   function closeAutoGen() {
     setAutoGenOpen(false);
     setAutoGenStep(1);
+    setShowComponentOverrides(false);
+    setComponentOverrides({});
+    setClassesMissingSubjects([]);
   }
 
   async function confirmDelete() {
@@ -1343,6 +1385,96 @@ export default function ExamsPage() {
                   <Label>Pattern name (for your reference)</Label>
                   <Input value={patternName} onChange={(e) => setPatternName(e.target.value)} />
                 </div>
+
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setShowComponentOverrides((v) => !v)}
+                  >
+                    <Settings2 className="h-3.5 w-3.5 mr-1" />
+                    {showComponentOverrides ? "Hide" : "Customize"} marks for MA / Portfolio / Half Yearly / Annual
+                  </Button>
+
+                  {showComponentOverrides && (
+                    <div className="space-y-3 border rounded-md p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to use the default for each. Half Yearly's values also apply to Annual Exam
+                        (used automatically for Term 2).
+                      </p>
+                      {componentOverrideEntries.map((entry) => {
+                        const override = componentOverrides[entry.cbseComponent];
+                        return (
+                          <div key={entry.cbseComponent} className="grid grid-cols-4 gap-2 items-end">
+                            <div className="col-span-1 text-xs font-medium">{entry.examTypeName}</div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Total marks</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder={String(entry.totalMarks)}
+                                value={override?.totalMarks ?? ""}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value);
+                                  setComponentOverrides((prev) => ({
+                                    ...prev,
+                                    [entry.cbseComponent]: {
+                                      totalMarks: e.target.value === "" ? entry.totalMarks : value,
+                                      passingMarks: prev[entry.cbseComponent]?.passingMarks ?? entry.passingMarks,
+                                      durationMinutes: prev[entry.cbseComponent]?.durationMinutes ?? entry.durationMinutes,
+                                    },
+                                  }));
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Passing marks</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                placeholder={String(entry.passingMarks)}
+                                value={override?.passingMarks ?? ""}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value);
+                                  setComponentOverrides((prev) => ({
+                                    ...prev,
+                                    [entry.cbseComponent]: {
+                                      totalMarks: prev[entry.cbseComponent]?.totalMarks ?? entry.totalMarks,
+                                      passingMarks: e.target.value === "" ? entry.passingMarks : value,
+                                      durationMinutes: prev[entry.cbseComponent]?.durationMinutes ?? entry.durationMinutes,
+                                    },
+                                  }));
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Duration (min)</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder={String(entry.durationMinutes)}
+                                value={override?.durationMinutes ?? ""}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value);
+                                  setComponentOverrides((prev) => ({
+                                    ...prev,
+                                    [entry.cbseComponent]: {
+                                      totalMarks: prev[entry.cbseComponent]?.totalMarks ?? entry.totalMarks,
+                                      passingMarks: prev[entry.cbseComponent]?.passingMarks ?? entry.passingMarks,
+                                      durationMinutes: e.target.value === "" ? entry.durationMinutes : value,
+                                    },
+                                  }));
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1559,7 +1691,30 @@ export default function ExamsPage() {
                   <div className="text-xs text-muted-foreground">
                     {autoGenLevel.replace("CBSE_", "").toLowerCase().replace(/^./, c => c.toUpperCase())} · {perMarks} marks per PT · pass at {passingMarks} · {autoGenClassIds.length} class{autoGenClassIds.length !== 1 ? "es" : ""}
                   </div>
+                  {Object.keys(componentOverrides).length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Custom marks: {Object.entries(componentOverrides).map(([component, o]) => {
+                        const entry = componentOverrideEntries.find((e) => e.cbseComponent === component);
+                        return `${entry?.examTypeName ?? component} (${o.totalMarks ?? entry?.totalMarks}/${o.passingMarks ?? entry?.passingMarks}, ${o.durationMinutes ?? entry?.durationMinutes}min)`;
+                      }).join(", ")}
+                    </div>
+                  )}
                 </div>
+
+                {!checkingClassSubjects && classesMissingSubjects.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>
+                      No subjects mapped for {classesMissingSubjects.length} class{classesMissingSubjects.length !== 1 ? "es" : ""}
+                    </AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {classesMissingSubjects.map((c) => c.name).join(", ")} — no subjects are assigned to{" "}
+                      {classesMissingSubjects.length !== 1 ? "these classes" : "this class"} yet, so{" "}
+                      {classesMissingSubjects.length !== 1 ? "they" : "it"} will get 0 exams. Map subjects first
+                      (Classes settings), or unselect {classesMissingSubjects.length !== 1 ? "them" : "it"} in Step 1.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="space-y-2">
                   {sortedSelectedTerms.map((term, idx) => {
@@ -1589,7 +1744,11 @@ export default function ExamsPage() {
                   <Settings2 className="h-4 w-4" />
                   <AlertTitle>What happens on Apply</AlertTitle>
                   <AlertDescription className="text-xs">
-                    One PT pattern is saved per term. PT ExamTypes are created/reused sequentially across the year, exam rows are generated per class per subject, and per-term AssessmentRules are upserted. MA, Portfolio, Half Yearly/Annual exams are also created.
+                    One PT pattern is saved per term. Any missing exam types (Periodic Test, MA, Portfolio,
+                    Half Yearly/Annual) are created automatically — no separate setup needed. Exam rows are
+                    generated per class per subject, and per-term AssessmentRules are upserted. Re-running with
+                    different marks won&apos;t update exams already created for the same class/subject/type —
+                    only new combinations are affected.
                   </AlertDescription>
                 </Alert>
               </div>

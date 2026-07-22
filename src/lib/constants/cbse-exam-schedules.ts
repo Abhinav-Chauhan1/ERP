@@ -14,6 +14,12 @@ export interface CBSEExamScheduleEntry {
   durationMinutes: number;
 }
 
+export interface ScheduleComponentOverride {
+  totalMarks?: number;
+  passingMarks?: number;
+  durationMinutes?: number;
+}
+
 export interface AutoGenerateExamsInput {
   termId: string;
   classIds: string[];
@@ -22,6 +28,13 @@ export interface AutoGenerateExamsInput {
   cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR";
   /** Term 1 uses PT/MA/Portfolio/HY; Term 2 uses PT/MA/Portfolio/Annual */
   termNumber?: 1 | 2;
+  /**
+   * Per-component overrides for marks/passing marks/duration, keyed by cbseComponent
+   * (e.g. "MA", "PORTFOLIO", "HALF_YEARLY", "ANNUAL"). Any omitted field falls back to
+   * the schedule constant's default. PT is intentionally excluded — its marks are already
+   * configurable via the existing perMarks/passingMarks + PT-pattern flow.
+   */
+  componentOverrides?: Record<string, ScheduleComponentOverride>;
 }
 
 export const CBSE_PRIMARY_SCHEDULE: CBSEExamScheduleEntry[] = [

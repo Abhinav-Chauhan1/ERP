@@ -16,6 +16,7 @@ import {
 } from "../services/exam-calendar-integration";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { getActivePTPattern, generatePTExamsAndRule } from "./ptPatternActions";
+import { autoGenerateCBSEExamTypes } from "./examTypesActions";
 import { sortByClassName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -677,22 +678,63 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
       );
     }
 
+    // Apply admin-supplied marks/passing-marks/duration overrides per component
+    // (keyed on the final cbseComponent, i.e. after the Term-2 Half-Yearly->Annual remap)
+    if (input.componentOverrides) {
+      for (const [component, override] of Object.entries(input.componentOverrides)) {
+        const totalMarks = override.totalMarks ?? schedule.find((s) => s.cbseComponent === component)?.totalMarks;
+        const passingMarks = override.passingMarks ?? schedule.find((s) => s.cbseComponent === component)?.passingMarks;
+        if (totalMarks !== undefined && passingMarks !== undefined && passingMarks > totalMarks) {
+          return {
+            success: false,
+            error: `Invalid marks for ${component}: passing marks (${passingMarks}) exceed total marks (${totalMarks}).`,
+          };
+        }
+      }
+
+      schedule = schedule.map((entry) => {
+        const override = input.componentOverrides?.[entry.cbseComponent];
+        if (!override) return entry;
+        return {
+          ...entry,
+          totalMarks: override.totalMarks ?? entry.totalMarks,
+          passingMarks: override.passingMarks ?? entry.passingMarks,
+          durationMinutes: override.durationMinutes ?? entry.durationMinutes,
+        };
+      });
+    }
+
     const examTypeNames = [...new Set(schedule.map((s) => s.examTypeName))];
-    const examTypes =
+    let examTypes =
       examTypeNames.length === 0
         ? []
         : await db.examType.findMany({
             where: { schoolId, name: { in: examTypeNames } },
             select: { id: true, name: true },
           });
-    const examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
+    let examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
 
-    const missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
+    let missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
     if (missingTypes.length > 0) {
-      return {
-        success: false,
-        error: `Missing exam types: ${missingTypes.join(", ")}. Run "Auto Generate Exam Types" first.`,
-      };
+      // Auto-create the missing exam types instead of forcing a separate manual step
+      const seedResult = await autoGenerateCBSEExamTypes(missingTypes);
+      if (!seedResult.success && seedResult.error !== "All selected CBSE exam types already exist") {
+        return { success: false, error: `Could not auto-create exam types: ${seedResult.error}` };
+      }
+
+      examTypes = await db.examType.findMany({
+        where: { schoolId, name: { in: examTypeNames } },
+        select: { id: true, name: true },
+      });
+      examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
+
+      missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
+      if (missingTypes.length > 0) {
+        return {
+          success: false,
+          error: `Missing exam types: ${missingTypes.join(", ")} — auto-create failed unexpectedly.`,
+        };
+      }
     }
 
     // Pre-fetch existing exams to avoid per-combination queries
@@ -779,5 +821,36 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
   } catch (error) {
     console.error("Error auto-generating CBSE exams:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to auto-generate exams" };
+  }
+}
+
+/**
+ * Given a set of class IDs, returns the ones with zero subjects mapped via SubjectClass.
+ * Auto-generation silently skips these (no SubjectClass rows = nothing to create exams for),
+ * so this lets the UI warn the admin before they apply.
+ */
+export async function getClassesMissingSubjects(classIds: string[]) {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    if (classIds.length === 0) return { success: true, data: [] };
+
+    const subjectClasses = await db.subjectClass.findMany({
+      where: { classId: { in: classIds }, schoolId },
+      select: { classId: true },
+    });
+    const mappedClassIds = new Set(subjectClasses.map((sc) => sc.classId));
+    const missingClassIds = classIds.filter((id) => !mappedClassIds.has(id));
+
+    if (missingClassIds.length === 0) return { success: true, data: [] };
+
+    const classes = await db.class.findMany({
+      where: { id: { in: missingClassIds }, schoolId },
+      select: { id: true, name: true },
+    });
+    return { success: true, data: classes };
+  } catch (error) {
+    console.error("Error checking classes missing subjects:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to check class subjects" };
   }
 }
