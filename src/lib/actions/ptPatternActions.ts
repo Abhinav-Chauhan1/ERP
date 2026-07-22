@@ -205,7 +205,9 @@ export async function generatePTExamsAndRule(
 
   const examsToCreate: Prisma.ExamCreateManyInput[] = [];
   for (const clsId of classIds) {
-    const classSubjectIds = classSubjectMap.get(clsId) ?? [];
+    // Dedupe: a subject can appear more than once per class (e.g. assigned separately
+    // per section via SubjectClass), but a class should only get one exam per subject.
+    const classSubjectIds = [...new Set(classSubjectMap.get(clsId) ?? [])];
     if (classSubjectIds.length === 0) continue;
 
     for (let n = 1; n <= pattern.ptCount; n++) {
