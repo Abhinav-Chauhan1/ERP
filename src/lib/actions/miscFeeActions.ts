@@ -356,7 +356,10 @@ export interface BulkDiscountSaveRow {
 // Rows are processed this many at a time — each row does several sequential DB
 // round-trips (fee discount + misc fee upserts + invoice resync), so running the
 // whole class strictly one-by-one made a 76-student save take over a minute.
-const SAVE_CONCURRENCY = 10;
+// Kept at/below DATABASE_URL's connection_limit: each row holds a dedicated
+// pooled connection for its db.$transaction(), so a higher value here starves
+// the pool and rows fail with "Unable to start a transaction in the given time".
+const SAVE_CONCURRENCY = 5;
 
 async function processInBatches<T, R>(items: T[], batchSize: number, worker: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
