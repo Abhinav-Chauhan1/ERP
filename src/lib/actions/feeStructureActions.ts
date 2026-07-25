@@ -15,6 +15,7 @@ import {
   type CreateFromTemplateInput,
 } from "@/lib/services/fee-structure-service";
 import { feeTypeService } from "@/lib/services/fee-type-service";
+import { syncFeeInvoiceSummariesForClasses } from "@/lib/services/fee-invoice-service";
 import {
   feeStructureAnalyticsService,
   type AnalyticsFilters,
@@ -79,6 +80,7 @@ export const createFeeStructure = withSchoolAuthAction(async (schoolId: string, 
     await checkPermission('FEE', 'CREATE', 'You do not have permission to create fee structures');
 
     const feeStructure = await feeStructureService.createFeeStructure(data, schoolId);
+    await syncFeeInvoiceSummariesForClasses(data.classIds, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
   } catch (error) {
@@ -94,6 +96,10 @@ export const updateFeeStructure = withSchoolAuthAction(async (schoolId: string, 
     await checkPermission('FEE', 'UPDATE', 'You do not have permission to update fee structures');
 
     const feeStructure = await feeStructureService.updateFeeStructure(id, data, schoolId);
+    await syncFeeInvoiceSummariesForClasses(
+      feeStructure.classes.map((c) => c.classId),
+      schoolId
+    );
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
   } catch (error) {

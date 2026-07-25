@@ -142,13 +142,41 @@ export async function syncFeeInvoiceSummary(studentId: string): Promise<void> {
 }
 
 /**
+ * Resyncs FeeInvoiceSummary for every actively-enrolled student across a set
+ * of classes. Used after a fee structure or class-level fee amount changes,
+ * so the affected students' summaries reflect it immediately rather than
+ * waiting for the nightly cron.
+ */
+export async function syncFeeInvoiceSummariesForClasses(
+  classIds: string[],
+  schoolId: string,
+  batchSize = 5 // kept at/below DATABASE_URL's connection_limit to avoid pool-timeout errors
+): Promise<{ studentsProcessed: number }> {
+  if (classIds.length === 0) return { studentsProcessed: 0 };
+
+  const students = await runWithTenantContext({ schoolId, isSuperAdmin: false }, async () =>
+    await db.student.findMany({
+      where: { schoolId, enrollments: { some: { status: "ACTIVE", classId: { in: classIds } } } },
+      select: { id: true },
+    })
+  );
+
+  for (let i = 0; i < students.length; i += batchSize) {
+    const batch = students.slice(i, i + batchSize);
+    await Promise.all(batch.map((s) => syncFeeInvoiceSummary(s.id)));
+  }
+
+  return { studentsProcessed: students.length };
+}
+
+/**
  * Sweeps every actively-enrolled student in a school, resyncing their
  * FeeInvoiceSummary. Used for the initial backfill and the nightly cron.
  * Runs in small concurrent batches to avoid saturating the DB connection pool.
  */
 export async function syncFeeInvoiceSummariesForSchool(
   schoolId: string,
-  batchSize = 20
+  batchSize = 5 // kept at/below DATABASE_URL's connection_limit to avoid pool-timeout errors
 ): Promise<{ studentsProcessed: number }> {
   const students = await runWithTenantContext({ schoolId, isSuperAdmin: false }, async () =>
     await db.student.findMany({

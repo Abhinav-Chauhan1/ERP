@@ -68,6 +68,31 @@ export interface CreateFromTemplateInput {
 
 export class FeeStructureService {
   /**
+   * Projects each item's amount onto FeeTypeClassAmount for every class the
+   * structure applies to. Billing calculations (getFeeAmountsForClass) read
+   * FeeTypeClassAmount/FeeType.amount, never FeeStructureItem.amount directly,
+   * so without this an edit here would silently not affect what students are
+   * charged.
+   */
+  private async syncClassFeeAmounts(
+    items: { feeTypeId: string; amount: number }[],
+    classIds: string[],
+    schoolId: string
+  ) {
+    await Promise.all(
+      items.flatMap((item) =>
+        classIds.map((classId) =>
+          db.feeTypeClassAmount.upsert({
+            where: { feeTypeId_classId: { feeTypeId: item.feeTypeId, classId } },
+            create: { feeTypeId: item.feeTypeId, classId, amount: item.amount, schoolId },
+            update: { amount: item.amount },
+          })
+        )
+      )
+    );
+  }
+
+  /**
    * Create a new fee structure with class associations
    * 
    * @param data - Fee structure creation data
@@ -141,6 +166,12 @@ export class FeeStructureService {
         },
       },
     });
+
+    await this.syncClassFeeAmounts(
+      feeStructure.items.map((i) => ({ feeTypeId: i.feeTypeId, amount: i.amount })),
+      data.classIds,
+      feeStructure.schoolId
+    );
 
     return feeStructure;
   }
@@ -253,6 +284,12 @@ export class FeeStructureService {
         },
       },
     });
+
+    await this.syncClassFeeAmounts(
+      feeStructure.items.map((i) => ({ feeTypeId: i.feeTypeId, amount: i.amount })),
+      feeStructure.classes.map((c) => c.classId),
+      feeStructure.schoolId
+    );
 
     return feeStructure;
   }

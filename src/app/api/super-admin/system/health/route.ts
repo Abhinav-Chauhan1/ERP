@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { cacheService } from '@/lib/services/cache-service';
@@ -189,7 +190,6 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
   
   try {
     // Check if backup directory is accessible
-    const fs = require('fs').promises;
     const backupPath = process.env.BACKUP_STORAGE_PATH || '/tmp/backups';
     
     await fs.access(backupPath);
