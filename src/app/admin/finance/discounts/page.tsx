@@ -16,7 +16,7 @@ export default function ClassDiscountsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Class Discounts</h1>
           <p className="text-sm text-muted-foreground">
-            Set Normal Fee, Books Fee, and Transport Fee discounts for an entire class at once.
+            Set Normal Fee and Books Fee discounts for an entire class at once.
           </p>
         </div>
       </div>

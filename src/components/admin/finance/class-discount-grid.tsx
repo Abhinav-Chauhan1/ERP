@@ -35,8 +35,6 @@ interface EditableRow {
   normalDiscountValue: number | null;
   booksAmount: number;
   booksDiscountValue: number | null;
-  transportAmount: number;
-  transportDiscountValue: number | null;
 }
 
 interface ValidationError {
@@ -55,8 +53,6 @@ function toEditableRow(row: BulkDiscountFeeRow): EditableRow {
     normalDiscountValue: row.normalFee.value,
     booksAmount: row.booksFee.amount,
     booksDiscountValue: row.booksFee.discountValue,
-    transportAmount: row.transportFee.amount,
-    transportDiscountValue: row.transportFee.discountValue,
   };
 }
 
@@ -86,12 +82,15 @@ export function ClassDiscountGrid({
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [rowErrors, setRowErrors] = useState<Map<string, string>>(new Map());
+  const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
+  const [bulkBooksAmount, setBulkBooksAmount] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     setRows(initialRows.map(toEditableRow));
     setValidationErrors([]);
     setRowErrors(new Map());
+    setDirtyRows(new Set());
   }, [initialRows]);
 
   const validateDiscount = (studentId: string, field: string, value: number | null) => {
@@ -116,6 +115,21 @@ export function ClassDiscountGrid({
 
   const updateRow = (studentId: string, patch: Partial<EditableRow>) => {
     setRows((prev) => prev.map((r) => (r.studentId === studentId ? { ...r, ...patch } : r)));
+    setDirtyRows((prev) => new Set(prev).add(studentId));
+  };
+
+  // Sets Books Fee amount for every row at once so the admin only has to fill in
+  // per-student discounts afterward, instead of typing the same amount 76 times.
+  const applyBulkBooksAmount = () => {
+    const value = bulkBooksAmount ? parseFloat(bulkBooksAmount) : 0;
+    if (value < 0) return;
+    setRows((prev) => prev.map((r) => ({ ...r, booksAmount: value })));
+    setDirtyRows((prev) => {
+      const next = new Set(prev);
+      rows.forEach((r) => next.add(r.studentId));
+      return next;
+    });
+    rows.forEach((r) => validateAmount(r.studentId, "booksAmount", value));
   };
 
   const getFieldError = (studentId: string, field: string) =>
@@ -132,15 +146,13 @@ export function ClassDiscountGrid({
         if (!row) return true;
         const value =
           e.field === "normalDiscount" ? row.normalDiscountValue :
-          e.field === "booksDiscount" ? row.booksDiscountValue :
-          e.field === "transportDiscount" ? row.transportDiscountValue : null;
+          e.field === "booksDiscount" ? row.booksDiscountValue : null;
         return !(value !== null && value >= 0 && value <= 100);
       })
     );
     rows.forEach((row) => {
       validateDiscount(row.studentId, "normalDiscount", row.normalDiscountValue);
       validateDiscount(row.studentId, "booksDiscount", row.booksDiscountValue);
-      validateDiscount(row.studentId, "transportDiscount", row.transportDiscountValue);
     });
   };
 
@@ -156,43 +168,59 @@ export function ClassDiscountGrid({
       return;
     }
 
-    setIsSaving(true);
-    setRowErrors(new Map());
-
-    const saveRows: BulkDiscountSaveRow[] = rows.map((r) => ({
-      studentId: r.studentId,
-      normalFee: { value: r.normalDiscountValue },
-      booksFee: { amount: r.booksAmount, discountValue: r.booksDiscountValue },
-      transportFee: { amount: r.transportAmount, discountValue: r.transportDiscountValue },
-    }));
-
-    const result = await bulkSaveClassDiscounts(academicYearId, classId, discountType, saveRows);
-    setIsSaving(false);
-
-    if (!result.success || !result.data) {
-      toast({
-        title: "Error",
-        description: !result.success ? result.error || "Failed to save discounts" : "Failed to save discounts",
-        variant: "destructive",
-      });
+    // Only send rows the admin actually touched — saving the whole class on every
+    // edit is what made a single-student change take minutes on a large class.
+    const changedRows = rows.filter((r) => dirtyRows.has(r.studentId));
+    if (changedRows.length === 0) {
+      toast({ title: "Nothing to save", description: "Edit a discount or amount first." });
       return;
     }
 
-    const { summary, results } = result.data;
-    const failedMap = new Map<string, string>(
-      results.filter((r) => !r.success).map((r) => [r.studentId, r.error || "Failed to save"])
-    );
-    setRowErrors(failedMap);
+    setIsSaving(true);
+    setRowErrors(new Map());
 
-    if (summary.failed === 0) {
-      toast({ title: "Discounts Saved", description: `Successfully saved discounts for ${summary.succeeded} students.` });
-      onSaved();
-    } else {
+    try {
+      const saveRows: BulkDiscountSaveRow[] = changedRows.map((r) => ({
+        studentId: r.studentId,
+        normalFee: { value: r.normalDiscountValue },
+        booksFee: { amount: r.booksAmount, discountValue: r.booksDiscountValue },
+      }));
+
+      const result = await bulkSaveClassDiscounts(academicYearId, classId, discountType, saveRows);
+
+      if (!result.success || !result.data) {
+        toast({
+          title: "Error",
+          description: !result.success ? result.error || "Failed to save discounts" : "Failed to save discounts",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { summary, results } = result.data;
+      const failedMap = new Map<string, string>(
+        results.filter((r) => !r.success).map((r) => [r.studentId, r.error || "Failed to save"])
+      );
+      setRowErrors(failedMap);
+
+      if (summary.failed === 0) {
+        toast({ title: "Discounts Saved", description: `Successfully saved discounts for ${summary.succeeded} students.` });
+        onSaved();
+      } else {
+        toast({
+          title: "Partially Saved",
+          description: `${summary.succeeded} saved, ${summary.failed} failed. See row errors below.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Partially Saved",
-        description: `${summary.succeeded} saved, ${summary.failed} failed. See row errors below.`,
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save discounts",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -204,6 +232,21 @@ export function ClassDiscountGrid({
           {feeStructure ? `Normal Fee: ${feeStructure.name}` : "No Normal Fee structure assigned to this class"}
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Books Fee (whole class)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Amount"
+              value={bulkBooksAmount}
+              onChange={(e) => setBulkBooksAmount(e.target.value)}
+              className="w-28"
+            />
+            <Button variant="outline" onClick={applyBulkBooksAmount}>
+              Apply to All
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Discount Type</Label>
             <Select value={discountType} onValueChange={(v) => handleDiscountTypeChange(v as DiscountType)}>
@@ -248,18 +291,12 @@ export function ClassDiscountGrid({
                 <th className="py-3 px-4 text-center font-medium text-muted-foreground" colSpan={3}>
                   Books Fee
                 </th>
-                <th className="py-3 px-4 text-center font-medium text-muted-foreground" colSpan={3}>
-                  Transport Fee
-                </th>
               </tr>
               <tr className="bg-accent/50 border-b text-xs">
                 <th className="py-2 px-4 sticky left-0 bg-accent/50 z-10" />
                 <th className="py-2 px-4" />
                 <th className="py-2 px-4" />
                 <th className="py-2 px-2 font-normal text-muted-foreground">Gross</th>
-                <th className="py-2 px-2 font-normal text-muted-foreground">Discount</th>
-                <th className="py-2 px-2 font-normal text-muted-foreground">Net</th>
-                <th className="py-2 px-2 font-normal text-muted-foreground">Amount</th>
                 <th className="py-2 px-2 font-normal text-muted-foreground">Discount</th>
                 <th className="py-2 px-2 font-normal text-muted-foreground">Net</th>
                 <th className="py-2 px-2 font-normal text-muted-foreground">Amount</th>
@@ -331,35 +368,6 @@ export function ClassDiscountGrid({
                     </td>
                     <td className="py-3 px-2 text-center whitespace-nowrap">
                       {calcNet(row.booksAmount, discountType, row.booksDiscountValue).toFixed(0)}
-                    </td>
-
-                    {/* Transport Fee */}
-                    <td className="py-3 px-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={row.transportAmount || ""}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseFloat(e.target.value) : 0;
-                          updateRow(row.studentId, { transportAmount: value });
-                          validateAmount(row.studentId, "transportAmount", value);
-                        }}
-                        className={`w-24 text-center ${getFieldError(row.studentId, "transportAmount") ? "border-red-500" : ""}`}
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <DiscountValueCell
-                        value={row.transportDiscountValue}
-                        error={getFieldError(row.studentId, "transportDiscount")}
-                        onChange={(value) => {
-                          updateRow(row.studentId, { transportDiscountValue: value });
-                          validateDiscount(row.studentId, "transportDiscount", value);
-                        }}
-                      />
-                    </td>
-                    <td className="py-3 px-2 text-center whitespace-nowrap">
-                      {calcNet(row.transportAmount, discountType, row.transportDiscountValue).toFixed(0)}
                     </td>
                   </tr>
                 );

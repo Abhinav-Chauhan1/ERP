@@ -242,14 +242,10 @@ export interface BulkDiscountFeeRow {
     amount: number;
     discountValue: number | null;
   };
-  transportFee: {
-    amount: number;
-    discountValue: number | null;
-  };
 }
 
 // Roster for a whole class (every section), merged with each student's current
-// Normal Fee discount and Books/Transport fee rows — feeds the bulk discount grid.
+// Normal Fee discount and Books fee rows — feeds the bulk discount grid.
 export const getStudentsForBulkDiscount = withSchoolAuthAction(
   async (schoolId: string, userId: string, userRole: string, academicYearId: string, classId: string) => {
     try {
@@ -304,7 +300,7 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
               where: { studentId: { in: studentIds }, feeStructureId: feeStructure.id, isActive: true },
             })
           : Promise.resolve([]),
-        db.miscFeePayment.findMany({ where: { studentId: { in: studentIds }, academicYearId } }),
+        db.miscFeePayment.findMany({ where: { studentId: { in: studentIds }, academicYearId, category: "BOOKS" } }),
       ]);
 
       const discountMap = new Map(discounts.map((d) => [d.studentId, d]));
@@ -334,10 +330,6 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
             amount: misc.BOOKS?.amount ?? 0,
             discountValue: misc.BOOKS?.discountValue ?? null,
           },
-          transportFee: {
-            amount: misc.TRANSPORT?.amount ?? 0,
-            discountValue: misc.TRANSPORT?.discountValue ?? null,
-          },
         };
       });
 
@@ -359,13 +351,26 @@ export interface BulkDiscountSaveRow {
   studentId: string;
   normalFee: { value: number | null };
   booksFee: { amount: number; discountValue: number | null };
-  transportFee: { amount: number; discountValue: number | null };
 }
 
-// Bulk-saves Normal Fee discounts + Books/Transport fees for every row in one go,
-// applying a single discount type (flat/percentage) across the whole class rather
-// than per student/fee-type. Each student's writes are grouped in their own
-// transaction so one bad row doesn't roll back the rest of the class — mirrors
+// Rows are processed this many at a time — each row does several sequential DB
+// round-trips (fee discount + misc fee upserts + invoice resync), so running the
+// whole class strictly one-by-one made a 76-student save take over a minute.
+const SAVE_CONCURRENCY = 10;
+
+async function processInBatches<T, R>(items: T[], batchSize: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    results.push(...(await Promise.all(batch.map(worker))));
+  }
+  return results;
+}
+
+// Bulk-saves Normal Fee discounts + Books fees for every row in one go, applying
+// a single discount type (flat/percentage) across the whole class rather than
+// per student/fee-type. Each student's writes are isolated (own transaction +
+// try/catch) so one bad row doesn't fail the rest of the class — mirrors
 // bulkImportActions.ts's per-row-isolated, whole-batch-reported result shape.
 export const bulkSaveClassDiscounts = withSchoolAuthAction(
   async (
@@ -408,9 +413,7 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
         ).map((e) => e.studentId)
       );
 
-      const results: { studentId: string; success: boolean; error?: string }[] = [];
-
-      for (const row of rows) {
+      const results = await processInBatches(rows, SAVE_CONCURRENCY, async (row) => {
         try {
           if (!validStudentIds.has(row.studentId)) {
             throw new Error("Student is not enrolled in the selected class");
@@ -449,40 +452,33 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
               }
             }
 
-            const miscFeeInputs: [MiscFeeCategory, BulkDiscountSaveRow["booksFee"]][] = [
-              ["BOOKS", row.booksFee],
-              ["TRANSPORT", row.transportFee],
-            ];
+            const existing = await tx.miscFeePayment.findUnique({
+              where: {
+                studentId_academicYearId_category: { studentId: row.studentId, academicYearId, category: "BOOKS" },
+              },
+            });
+            const computed = computeMiscFeeAmounts(
+              row.booksFee.amount,
+              { discountType, discountValue: row.booksFee.discountValue },
+              existing?.paidAmount ?? 0
+            );
+            const data = {
+              amount: computed.amount,
+              discountType: row.booksFee.discountValue ? discountType : null,
+              discountValue: row.booksFee.discountValue ?? null,
+              discountAmount: computed.discountAmount,
+              netAmount: computed.netAmount,
+              balance: computed.balance,
+              status: computed.status,
+            };
 
-            for (const [category, feeInput] of miscFeeInputs) {
-              const existing = await tx.miscFeePayment.findUnique({
-                where: {
-                  studentId_academicYearId_category: { studentId: row.studentId, academicYearId, category },
-                },
-              });
-              const computed = computeMiscFeeAmounts(
-                feeInput.amount,
-                { discountType, discountValue: feeInput.discountValue },
-                existing?.paidAmount ?? 0
-              );
-              const data = {
-                amount: computed.amount,
-                discountType: feeInput.discountValue ? discountType : null,
-                discountValue: feeInput.discountValue ?? null,
-                discountAmount: computed.discountAmount,
-                netAmount: computed.netAmount,
-                balance: computed.balance,
-                status: computed.status,
-              };
-
-              await tx.miscFeePayment.upsert({
-                where: {
-                  studentId_academicYearId_category: { studentId: row.studentId, academicYearId, category },
-                },
-                create: { studentId: row.studentId, academicYearId, category, schoolId, ...data },
-                update: data,
-              });
-            }
+            await tx.miscFeePayment.upsert({
+              where: {
+                studentId_academicYearId_category: { studentId: row.studentId, academicYearId, category: "BOOKS" },
+              },
+              create: { studentId: row.studentId, academicYearId, category: "BOOKS", schoolId, ...data },
+              update: data,
+            });
           });
 
           if (feeStructure) {
@@ -490,15 +486,15 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
           }
 
           revalidatePath(`/admin/users/students/${row.studentId}`);
-          results.push({ studentId: row.studentId, success: true });
+          return { studentId: row.studentId, success: true };
         } catch (rowError) {
-          results.push({
+          return {
             studentId: row.studentId,
             success: false,
             error: rowError instanceof Error ? rowError.message : "Failed to save",
-          });
+          };
         }
-      }
+      });
 
       revalidatePath(`/admin/finance/discounts`);
 
