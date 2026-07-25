@@ -230,6 +230,7 @@ export interface BulkDiscountFeeRow {
   studentId: string;
   rollNumber: string | null;
   name: string;
+  fatherName: string | null;
   sectionName: string | null;
   normalFee: {
     feeStructureId: string | null;
@@ -259,7 +260,7 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
         db.classEnrollment.findMany({
           where: { schoolId, classId, status: "ACTIVE" },
           include: {
-            student: { include: { user: { select: { firstName: true, lastName: true } } } },
+            student: { select: { fatherName: true, user: { select: { firstName: true, lastName: true } } } },
             section: { select: { name: true } },
           },
           orderBy: [{ section: { name: "asc" } }, { rollNumber: "asc" }],
@@ -321,6 +322,7 @@ export const getStudentsForBulkDiscount = withSchoolAuthAction(
           studentId: e.studentId,
           rollNumber: e.rollNumber,
           name: formatFullName(e.student.user.firstName, e.student.user.lastName),
+          fatherName: e.student.fatherName,
           sectionName: e.section?.name ?? null,
           normalFee: {
             feeStructureId: feeStructure?.id ?? null,

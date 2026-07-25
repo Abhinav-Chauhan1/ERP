@@ -28,7 +28,7 @@ interface ClassDiscountGridProps {
 
 interface EditableRow {
   studentId: string;
-  rollNumber: string | null;
+  fatherName: string | null;
   name: string;
   sectionName: string | null;
   normalGrossTotal: number;
@@ -48,7 +48,7 @@ interface ValidationError {
 function toEditableRow(row: BulkDiscountFeeRow): EditableRow {
   return {
     studentId: row.studentId,
-    rollNumber: row.rollNumber,
+    fatherName: row.fatherName,
     name: row.name,
     sectionName: row.sectionName,
     normalGrossTotal: row.normalFee.grossTotal,
@@ -241,7 +241,7 @@ export function ClassDiscountGrid({
                   Student
                 </th>
                 <th className="py-3 px-4 text-center font-medium text-muted-foreground">Section</th>
-                <th className="py-3 px-4 text-center font-medium text-muted-foreground">Roll No.</th>
+                <th className="py-3 px-4 text-center font-medium text-muted-foreground">Father Name</th>
                 <th className="py-3 px-4 text-center font-medium text-muted-foreground" colSpan={3}>
                   Normal Fee
                 </th>
@@ -280,7 +280,7 @@ export function ClassDiscountGrid({
                       <Badge variant="secondary">{row.sectionName || "-"}</Badge>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <Badge variant="outline">{row.rollNumber || "-"}</Badge>
+                      <Badge variant="outline">{row.fatherName || "-"}</Badge>
                     </td>
 
                     {/* Normal Fee */}
