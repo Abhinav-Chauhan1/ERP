@@ -89,6 +89,7 @@ import { MultiClassSelector } from "@/components/fees/multi-class-selector";
 import { FeeTypeClassAmountConfig } from "@/components/fees/fee-type-class-amount-config";
 import { QuickCreateFeeStructures } from "@/components/fees/quick-create-fee-structures";
 import { FeeTypesTable } from "@/components/admin/fee-types-table";
+import { getFeeFrequencyMultiplier } from "@/lib/utils/fee-frequency";
 
 // Fee frequency options
 const frequencyOptions = [
@@ -98,21 +99,6 @@ const frequencyOptions = [
   { value: "SEMI_ANNUAL", label: "Semi-Annual" },
   { value: "ANNUAL", label: "Annual" },
 ];
-
-// Number of billing occurrences per academic year for a fee type's frequency,
-// mirrors getFeeFrequencyMultiplier in src/lib/utils/payment-helpers.ts
-function getFrequencyMultiplier(frequency: string): number {
-  switch (frequency) {
-    case "MONTHLY":
-      return 12;
-    case "QUARTERLY":
-      return 4;
-    case "SEMI_ANNUAL":
-      return 2;
-    default:
-      return 1;
-  }
-}
 
 export default function FeeStructurePage() {
   // State management
@@ -728,7 +714,7 @@ export default function FeeStructurePage() {
                             <span className="font-medium">
                               ₹
                               {structure.items
-                                ?.reduce((sum: number, item: any) => sum + item.amount * getFrequencyMultiplier(item.feeType?.frequency), 0)
+                                ?.reduce((sum: number, item: any) => sum + item.amount * getFeeFrequencyMultiplier(item.feeType?.frequency), 0)
                                 .toLocaleString()}
                             </span>
                           </div>
@@ -1360,7 +1346,7 @@ export default function FeeStructurePage() {
                   <span className="text-muted-foreground">Total Amount:</span>
                   <p className="font-medium">
                     ₹{selectedStructure.items
-                      ?.reduce((sum: number, item: any) => sum + item.amount * getFrequencyMultiplier(item.feeType?.frequency), 0)
+                      ?.reduce((sum: number, item: any) => sum + item.amount * getFeeFrequencyMultiplier(item.feeType?.frequency), 0)
                       .toLocaleString()}
                   </p>
                 </div>

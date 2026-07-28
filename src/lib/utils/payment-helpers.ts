@@ -3,6 +3,9 @@ import { differenceInCalendarMonths } from "date-fns";
 import { FeeItemStatus } from "@/lib/types/fees";
 import { currentUser } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
+import { getFeeFrequencyMultiplier } from "@/lib/utils/fee-frequency";
+
+export { getFeeFrequencyMultiplier };
 
 /**
  * Calculates fee item status based on payment information
@@ -308,25 +311,6 @@ export async function getActiveFeeDiscount(
   });
   if (!row || !row.isActive || row.schoolId !== schoolId) return null;
   return { discountType: row.discountType, value: row.value };
-}
-
-/**
- * Number of billing occurrences per academic year for a fee type's frequency,
- * used to expand a per-occurrence amount (e.g. Monthly tuition) into its annual total.
- */
-export function getFeeFrequencyMultiplier(frequency: FeeFrequency): number {
-  switch (frequency) {
-    case "MONTHLY":
-      return 12;
-    case "QUARTERLY":
-      return 4;
-    case "SEMI_ANNUAL":
-      return 2;
-    case "ANNUAL":
-    case "ONE_TIME":
-    default:
-      return 1;
-  }
 }
 
 /**

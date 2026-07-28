@@ -9,6 +9,7 @@
 
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { getFeeFrequencyMultiplier } from "@/lib/utils/fee-frequency";
 
 // ============================================================================
 // Types and Interfaces
@@ -138,8 +139,11 @@ export class FeeStructureAnalyticsService {
     const structureDetails: FeeStructureDetail[] = [];
 
     for (const structure of feeStructures) {
-      // Calculate total amount for this structure
-      const totalAmount = structure.items.reduce((sum, item) => sum + item.amount, 0);
+      // Calculate total amount for this structure, annualized by fee item frequency
+      const totalAmount = structure.items.reduce(
+        (sum, item) => sum + item.amount * getFeeFrequencyMultiplier(item.feeType.frequency),
+        0
+      );
 
       // Get unique students affected by this structure
       const studentIds = new Set<string>();
@@ -290,8 +294,11 @@ export class FeeStructureAnalyticsService {
       throw new Error("Fee structure not found");
     }
 
-    // Calculate total amount
-    const totalAmount = structure.items.reduce((sum, item) => sum + item.amount, 0);
+    // Calculate total amount, annualized by fee item frequency
+    const totalAmount = structure.items.reduce(
+      (sum, item) => sum + item.amount * getFeeFrequencyMultiplier(item.feeType.frequency),
+      0
+    );
 
     // Get unique students
     const studentIds = new Set<string>();
@@ -305,12 +312,15 @@ export class FeeStructureAnalyticsService {
     const revenueProjection = totalAmount * studentsAffected;
 
     // Break down by fee type
-    const feeTypeBreakdown = structure.items.map((item) => ({
-      feeTypeId: item.feeTypeId,
-      feeTypeName: item.feeType.name,
-      amount: item.amount,
-      projection: item.amount * studentsAffected,
-    }));
+    const feeTypeBreakdown = structure.items.map((item) => {
+      const annualizedAmount = item.amount * getFeeFrequencyMultiplier(item.feeType.frequency);
+      return {
+        feeTypeId: item.feeTypeId,
+        feeTypeName: item.feeType.name,
+        amount: annualizedAmount,
+        projection: annualizedAmount * studentsAffected,
+      };
+    });
 
     return {
       feeStructureId: structure.id,
