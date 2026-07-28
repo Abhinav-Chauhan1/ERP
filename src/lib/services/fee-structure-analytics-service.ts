@@ -10,6 +10,7 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getFeeFrequencyMultiplier } from "@/lib/utils/fee-frequency";
+import { calculateNetPayable, DiscountInput } from "@/lib/utils/payment-helpers";
 
 // ============================================================================
 // Types and Interfaces
@@ -124,6 +125,9 @@ export class FeeStructureAnalyticsService {
             feeType: true,
           },
         },
+        discounts: {
+          where: { isActive: true },
+        },
       },
     });
 
@@ -154,8 +158,14 @@ export class FeeStructureAnalyticsService {
       });
       const studentsAffected = studentIds.size;
 
-      // Calculate revenue projection
-      const revenueProjection = totalAmount * studentsAffected;
+      // Calculate revenue projection net of active per-student discounts
+      const discountMap = new Map<string, DiscountInput>(
+        structure.discounts.map((d) => [d.studentId, { discountType: d.discountType, value: d.value }])
+      );
+      const revenueProjection = Array.from(studentIds).reduce(
+        (sum, studentId) => sum + calculateNetPayable(totalAmount, discountMap.get(studentId) ?? null),
+        0
+      );
 
       // Add to structure details
       structureDetails.push({
@@ -287,6 +297,9 @@ export class FeeStructureAnalyticsService {
             feeType: true,
           },
         },
+        discounts: {
+          where: { isActive: true },
+        },
       },
     });
 
@@ -309,7 +322,17 @@ export class FeeStructureAnalyticsService {
     });
 
     const studentsAffected = studentIds.size;
-    const revenueProjection = totalAmount * studentsAffected;
+
+    // Revenue projection net of active per-student discounts
+    const discountMap = new Map<string, DiscountInput>(
+      structure.discounts.map((d) => [d.studentId, { discountType: d.discountType, value: d.value }])
+    );
+    const grossRevenueProjection = totalAmount * studentsAffected;
+    const revenueProjection = Array.from(studentIds).reduce(
+      (sum, studentId) => sum + calculateNetPayable(totalAmount, discountMap.get(studentId) ?? null),
+      0
+    );
+    const totalDiscountAmount = grossRevenueProjection - revenueProjection;
 
     // Break down by fee type
     const feeTypeBreakdown = structure.items.map((item) => {
@@ -328,6 +351,8 @@ export class FeeStructureAnalyticsService {
       totalAmount,
       studentsAffected,
       revenueProjection,
+      grossRevenueProjection,
+      totalDiscountAmount,
       feeTypeBreakdown,
     };
   }
