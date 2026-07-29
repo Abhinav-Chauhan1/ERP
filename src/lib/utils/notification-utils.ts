@@ -303,7 +303,7 @@ export async function createReceiptVerificationNotification(params: {
     title: "Payment Receipt Verified",
     message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been verified. Amount: ₹${params.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Remaining balance: ₹${params.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
     type: "RECEIPT_VERIFIED" as NotificationType,
-    link: params.link || "/student/fees/receipts",
+    link: params.link || "/student/fees",
   });
 }
 
@@ -325,7 +325,7 @@ export async function createReceiptRejectionNotification(params: {
     title: "Payment Receipt Rejected",
     message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been rejected. Reason: ${params.rejectionReason}. Please upload a new receipt with the correct information.`,
     type: "RECEIPT_REJECTED" as NotificationType,
-    link: params.link || "/student/fees/upload-receipt",
+    link: params.link || "/student/fees",
   });
 }
 

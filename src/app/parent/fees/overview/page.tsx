@@ -6,10 +6,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { getFeeOverview } from "@/lib/actions/parent-fee-actions";
-import { getPaymentConfig } from "@/lib/actions/paymentConfigActions";
 import { FeeBreakdownCard } from "@/components/parent/fees/fee-breakdown-card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Receipt, CreditCard, AlertCircle } from "lucide-react";
+import { Download, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -118,10 +117,6 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
   // Get fee overview for selected child
   const feeOverviewResult = await getFeeOverview({ childId: selectedChild.id });
 
-  // Get payment configuration
-  const paymentConfigResult = await getPaymentConfig();
-  const paymentConfig = paymentConfigResult.success ? paymentConfigResult.data : null;
-
   if (!feeOverviewResult.success || !feeOverviewResult.data) {
     return (
       <div className="h-full p-6">
@@ -167,34 +162,6 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
             <span className="hidden sm:inline">Export to PDF</span>
             <span className="sm:hidden">Export</span>
           </Button>
-
-          {/* Payment Options based on configuration */}
-          {paymentConfig?.enableOfflineVerification && (
-            <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`} className="contents">
-              <Button variant="outline" className="text-xs sm:text-sm">
-                <Receipt className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Upload Receipt</span>
-                <span className="sm:hidden">Upload</span>
-              </Button>
-            </Link>
-          )}
-
-          {paymentConfig?.enableOnlinePayment && (
-            <Link href={`/parent/fees/payment?childId=${selectedChild.id}`} className="contents">
-              <Button className="text-xs sm:text-sm col-span-2 sm:col-span-1">
-                <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
-                Pay Online
-              </Button>
-            </Link>
-          )}
-
-          {/* Show warning if no payment methods are enabled */}
-          {!paymentConfig?.enableOfflineVerification && !paymentConfig?.enableOnlinePayment && (
-            <Button disabled className="text-xs sm:text-sm col-span-2">
-              <FileText className="h-4 w-4 mr-1 sm:mr-2" />
-              No Payment Methods
-            </Button>
-          )}
         </div>
       </div>
 
@@ -217,15 +184,12 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
         discountAmount={feeData.discountAmount}
       />
 
-      {/* Warning if no payment methods are enabled */}
-      {!paymentConfig?.enableOfflineVerification && !paymentConfig?.enableOnlinePayment && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No payment methods are currently available. Please contact the school administration for assistance with fee payments.
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          To make a fee payment, please contact the school office.
+        </AlertDescription>
+      </Alert>
 
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -235,31 +199,6 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
             <p className="text-sm text-gray-600">View all past payments and receipts</p>
           </div>
         </Link>
-
-        <Link href={`/parent/fees/receipts?childId=${selectedChild.id}`}>
-          <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-            <h3 className="font-medium mb-1">Receipt History</h3>
-            <p className="text-sm text-gray-600">Track status of uploaded payment receipts</p>
-          </div>
-        </Link>
-
-        {paymentConfig?.enableOnlinePayment && (
-          <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
-            <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-              <h3 className="font-medium mb-1">Pay Online</h3>
-              <p className="text-sm text-gray-600">Make online payment through payment gateway</p>
-            </div>
-          </Link>
-        )}
-
-        {paymentConfig?.enableOfflineVerification && (
-          <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`}>
-            <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-              <h3 className="font-medium mb-1">Upload Receipt</h3>
-              <p className="text-sm text-gray-600">Upload payment receipt for verification</p>
-            </div>
-          </Link>
-        )}
       </div>
     </div>
   );

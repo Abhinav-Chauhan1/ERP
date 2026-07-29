@@ -516,9 +516,9 @@ export function getReceiptVerificationSuccessEmailHtml(
     }
     
     <div class="btn-container">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/receipts" class="btn">View Receipt Details</a>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees" class="btn">View Fee Status</a>
     </div>
-    
+
     <p>Best regards,<br>The SikshaMitra Team</p>
   `;
 
@@ -548,7 +548,7 @@ ${data.remainingBalance > 0
       : `Congratulations! Your fee payment for ${data.feeStructureName} is now complete.`
     }
 
-View your receipt details at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/receipts
+View your fee status at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees
 
 ---
 This is an automated notification from SikshaMitra.
@@ -594,12 +594,12 @@ export function getReceiptRejectionEmailHtml(
       <p style="margin-bottom: 0;">${data.rejectionReason}</p>
     </div>
     
-    <p><strong>Action Required:</strong> Please review the rejection reason above and upload a new receipt with the correct information.</p>
-    
+    <p><strong>Action Required:</strong> Please review the rejection reason above and contact the school office to resolve this payment.</p>
+
     <div class="btn-container">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/upload-receipt" class="btn">Upload New Receipt</a>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees" class="btn">View Fee Status</a>
     </div>
-    
+
     <p>Best regards,<br>The SikshaMitra Team</p>
   `;
 
@@ -625,9 +625,9 @@ Rejection Reason:
 ${data.rejectionReason}
 
 ACTION REQUIRED:
-Please review the rejection reason above and upload a new receipt with the correct information.
+Please review the rejection reason above and contact the school office to resolve this payment.
 
-Upload a new receipt at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/upload-receipt
+View your fee status at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees
 
 ---
 This is an automated notification from SikshaMitra.

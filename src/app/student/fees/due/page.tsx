@@ -3,13 +3,12 @@ export const dynamic = 'force-dynamic';
 import { Metadata } from "next";
 import { format } from "date-fns";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, DollarSign, CalendarClock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CalendarClock, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getDuePayments } from "@/lib/actions/student-fee-actions";
 import { Progress } from "@/components/ui/progress";
-import { PaymentDialog } from "@/components/student/payment-dialog";
 
 export const metadata: Metadata = {
   title: "Due Payments | Student Portal",
@@ -68,19 +67,6 @@ export default async function DuePaymentsPage() {
               <div className="text-sm text-amber-700 mb-1">Total Amount Due</div>
               <div className="text-4xl font-bold text-amber-900">₹{totalDue.toFixed(2)}</div>
               <div className="text-xs text-amber-600 mt-2">{duePayments.length} payments pending</div>
-              {totalDue > 0 && (
-                <PaymentDialog
-                  feeItems={duePayments}
-                  totalAmount={totalDue}
-                  isPayAll={true}
-                  trigger={
-                    <Button className="w-full mt-4 bg-amber-600 hover:bg-amber-700">
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Pay All (₹{totalDue.toFixed(2)})
-                    </Button>
-                  }
-                />
-              )}
             </div>
           </div>
 

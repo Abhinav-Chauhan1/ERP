@@ -11,6 +11,11 @@ import { format } from "date-fns";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
 import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
+import {
+  getFeeAmountsForClass,
+  getActiveFeeDiscount,
+  calculateNetPayable,
+} from "@/lib/utils/payment-helpers";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -27,6 +32,59 @@ async function checkPermission(resource: string, action: PermissionAction, error
   }
 
   return userId;
+}
+
+/**
+ * Recomputes the true outstanding net-payable ceiling for a student against a
+ * fee structure — annualized by fee-item frequency, net of any active discount,
+ * minus prior COMPLETED payments — so a recorded/edited amount can never drift
+ * above what's actually owed, regardless of which UI path produced it.
+ * Mirrors the same recompute-and-validate pattern used by the online payment flow.
+ */
+async function computeNetPayableCeiling(
+  studentId: string,
+  feeStructureId: string,
+  schoolId: string,
+  excludePaymentId?: string
+): Promise<number> {
+  const student = await db.student.findFirst({
+    where: { id: studentId, schoolId },
+    include: {
+      enrollments: {
+        where: { status: "ACTIVE" },
+        take: 1,
+        select: { classId: true },
+      },
+    },
+  });
+  if (!student) return 0;
+
+  const feeStructure = await db.feeStructure.findFirst({
+    where: { id: feeStructureId, schoolId },
+    include: { items: { select: { feeTypeId: true } } },
+  });
+  if (!feeStructure) return 0;
+
+  const classId = student.enrollments[0]?.classId;
+  const feeTypeIds = feeStructure.items.map((item) => item.feeTypeId);
+  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId);
+  const grossTotal = feeTypeIds.reduce((sum, id) => sum + (amountMap.get(id) ?? 0), 0);
+
+  const discount = await getActiveFeeDiscount(studentId, feeStructureId, schoolId);
+  const netPayable = calculateNetPayable(grossTotal, discount);
+
+  const completedPayments = await db.feePayment.aggregate({
+    where: {
+      studentId,
+      feeStructureId,
+      schoolId,
+      status: PaymentStatus.COMPLETED,
+      ...(excludePaymentId ? { id: { not: excludePaymentId } } : {}),
+    },
+    _sum: { paidAmount: true },
+  });
+
+  return netPayable - (completedPayments._sum.paidAmount ?? 0);
 }
 
 // Get all fee payments with filters
@@ -181,6 +239,18 @@ export async function recordPayment(data: any) {
     });
     if (!student) return { success: false, error: "Student not found in this school" };
 
+    // Guard against a recorded amount ever exceeding what's actually owed
+    // (annualized by frequency, net of active discount, minus prior COMPLETED payments)
+    const ceiling = await computeNetPayableCeiling(data.studentId, data.feeStructureId, schoolId);
+    const submittedAmount = parseFloat(data.amount);
+    const submittedPaidAmount = parseFloat(data.paidAmount);
+    if (submittedAmount > ceiling + 0.01 || submittedPaidAmount > ceiling + 0.01) {
+      return {
+        success: false,
+        error: `Payment amount exceeds outstanding balance of ₹${Math.max(ceiling, 0).toFixed(2)}`,
+      };
+    }
+
     const payment = await db.feePayment.create({
       data: {
         studentId: data.studentId,
@@ -272,6 +342,23 @@ export async function updatePayment(id: string, data: any) {
 
     if (!existingPayment) {
       return { success: false, error: "Payment not found or access denied" };
+    }
+
+    // Guard against an edited amount ever exceeding what's actually owed,
+    // excluding this payment's own current value from the "already paid" sum
+    const ceiling = await computeNetPayableCeiling(
+      existingPayment.studentId,
+      existingPayment.feeStructureId,
+      schoolId,
+      id
+    );
+    const submittedAmount = parseFloat(data.amount);
+    const submittedPaidAmount = parseFloat(data.paidAmount);
+    if (submittedAmount > ceiling + 0.01 || submittedPaidAmount > ceiling + 0.01) {
+      return {
+        success: false,
+        error: `Payment amount exceeds outstanding balance of ₹${Math.max(ceiling, 0).toFixed(2)}`,
+      };
     }
 
     const payment = await db.feePayment.update({
@@ -595,7 +682,38 @@ export async function getFeeStructuresForStudent(studentId: string) {
       },
     });
 
-    return { success: true, data: feeStructures };
+    // Attach the true annualized, discount-net payable amount and remaining
+    // balance for each structure, so callers never have to fall back to a raw
+    // sum of fee-item amounts (which ignores billing frequency and discounts).
+    const classId = enrollment.class.id;
+    const feeStructuresWithAmounts = await Promise.all(
+      feeStructures.map(async (structure) => {
+        const feeTypeIds = structure.items.map((item) => item.feeTypeId);
+        const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId);
+        const grossTotal = feeTypeIds.reduce((sum, id) => sum + (amountMap.get(id) ?? 0), 0);
+
+        const discount = await getActiveFeeDiscount(studentId, structure.id, schoolId);
+        const netPayableAmount = calculateNetPayable(grossTotal, discount);
+
+        const completedPayments = await db.feePayment.aggregate({
+          where: {
+            studentId,
+            feeStructureId: structure.id,
+            schoolId,
+            status: PaymentStatus.COMPLETED,
+          },
+          _sum: { paidAmount: true },
+        });
+        const remainingBalance = Math.max(
+          netPayableAmount - (completedPayments._sum.paidAmount ?? 0),
+          0
+        );
+
+        return { ...structure, netPayableAmount, remainingBalance };
+      })
+    );
+
+    return { success: true, data: feeStructuresWithAmounts };
   } catch (error) {
     console.error("Error fetching fee structures:", error);
     return { success: false, error: "Failed to fetch fee structures" };

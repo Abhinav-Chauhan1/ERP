@@ -11,7 +11,6 @@ import { Progress } from "@/components/ui/progress";
 import { FeeDetailsTable } from "@/components/student/fee-details-table";
 import { FeeSummaryStats } from "@/components/student/fee-summary-stats";
 import { getStudentFeeDetails } from "@/lib/actions/student-fee-actions";
-import { PaymentDialog } from "@/components/student/payment-dialog";
 
 export const metadata: Metadata = {
   title: "Fee Details | Student Portal",
@@ -81,23 +80,6 @@ export default async function StudentFeeDetailsPage() {
           </div>
           {balance > 0 && feeStructure && (
             <div className="mt-6 flex gap-3">
-              <PaymentDialog
-                feeItems={feeStructure.items.filter((item: any) => {
-                  // Filter unpaid items
-                  const paymentForItem = feePayments.find(
-                    (payment) => payment.amount === item.amount && payment.status === "COMPLETED"
-                  );
-                  return !paymentForItem;
-                })}
-                totalAmount={balance}
-                isPayAll={true}
-                trigger={
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Pay Balance (₹{balance.toFixed(2)})
-                  </Button>
-                }
-              />
               <Button variant="outline" className="flex-1" asChild>
                 <Link href="/student/fees/due">
                   View Due Payments
@@ -161,17 +143,6 @@ export default async function StudentFeeDetailsPage() {
               
               {upcomingFees.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <PaymentDialog
-                    feeItems={upcomingFees}
-                    totalAmount={upcomingFees.reduce((sum, fee) => sum + fee.amount, 0)}
-                    isPayAll={true}
-                    trigger={
-                      <Button className="w-full min-h-[44px]">
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        Pay All Upcoming (₹{upcomingFees.reduce((sum, fee) => sum + fee.amount, 0).toFixed(2)})
-                      </Button>
-                    }
-                  />
                   <Button variant="outline" className="w-full min-h-[44px]" asChild>
                     <Link href="/student/fees/due">
                       View All Upcoming
@@ -208,17 +179,6 @@ export default async function StudentFeeDetailsPage() {
                   ))}
                   
                   <div className="mt-4 space-y-2">
-                    <PaymentDialog
-                      feeItems={overdueFees}
-                      totalAmount={overdueFees.reduce((sum, fee) => sum + fee.amount, 0)}
-                      isPayAll={true}
-                      trigger={
-                        <Button className="w-full min-h-[44px] bg-red-600 hover:bg-red-700">
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Pay All Overdue (₹{overdueFees.reduce((sum, fee) => sum + fee.amount, 0).toFixed(2)})
-                        </Button>
-                      }
-                    />
                     <Button variant="outline" className="w-full min-h-[44px]" asChild>
                       <Link href="/student/fees/due">
                         View Details

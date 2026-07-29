@@ -95,7 +95,7 @@ describe("Receipt Notification Templates", () => {
       expect(result.message).toContain("5,000.00");
       expect(result.message).toContain("2,000.00");
       expect(result.type).toBe("RECEIPT_VERIFIED");
-      expect(result.link).toBe("/student/fees/receipts");
+      expect(result.link).toBe("/student/fees");
     });
   });
 
@@ -108,7 +108,7 @@ describe("Receipt Notification Templates", () => {
       expect(result.message).toContain(mockRejectionData.feeStructureName);
       expect(result.message).toContain(mockRejectionData.rejectionReason);
       expect(result.type).toBe("RECEIPT_REJECTED");
-      expect(result.link).toBe("/student/fees/upload-receipt");
+      expect(result.link).toBe("/student/fees");
     });
   });
 });

@@ -175,7 +175,7 @@ export function getVerificationSuccessNotification(
     title: "Payment Receipt Verified",
     message: `Your payment receipt (${data.receiptReference}) for ${data.feeStructureName} has been verified. Amount: ₹${data.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Remaining balance: ₹${data.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
     type: "RECEIPT_VERIFIED",
-    link: "/student/fees/receipts",
+    link: "/student/fees",
   };
 }
 
@@ -189,8 +189,8 @@ export function getRejectionNotification(
 ): { title: string; message: string; type: string; link: string } {
   return {
     title: "Payment Receipt Rejected",
-    message: `Your payment receipt (${data.receiptReference}) for ${data.feeStructureName} has been rejected. Reason: ${data.rejectionReason}. Please upload a new receipt with the correct information.`,
+    message: `Your payment receipt (${data.receiptReference}) for ${data.feeStructureName} has been rejected. Reason: ${data.rejectionReason}. Please contact the school office to resolve this payment.`,
     type: "RECEIPT_REJECTED",
-    link: "/student/fees/upload-receipt",
+    link: "/student/fees",
   };
 }

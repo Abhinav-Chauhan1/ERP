@@ -52,7 +52,6 @@ export const parentRoutes: RouteItem[] = [
         submenu: [
             { label: "Overview", href: "/parent/fees" },
             { label: "Payment History", href: "/parent/fees/history" },
-            { label: "Make Payment", href: "/parent/fees/payment" },
         ]
     },
     {

@@ -343,12 +343,10 @@ export default function PaymentsPage() {
     form.setValue("feeStructureId", feeStructureId);
     const selectedStructure = feeStructures.find((fs) => fs.id === feeStructureId);
     if (selectedStructure) {
-      const totalAmount = selectedStructure.items.reduce(
-        (sum: number, item: any) => sum + item.amount,
-        0
-      );
-      form.setValue("amount", totalAmount);
-      form.setValue("paidAmount", totalAmount);
+      // netPayableAmount/remainingBalance are server-computed: annualized by
+      // fee-item billing frequency and net of any active student discount.
+      form.setValue("amount", selectedStructure.netPayableAmount);
+      form.setValue("paidAmount", selectedStructure.remainingBalance);
     }
   }
 

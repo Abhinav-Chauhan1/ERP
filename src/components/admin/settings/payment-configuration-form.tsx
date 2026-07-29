@@ -279,11 +279,9 @@ export function PaymentConfigurationForm({ initialData }: PaymentConfigurationFo
                 <Alert className="py-2">
                   <AlertCircle className="h-3.5 w-3.5" />
                   <AlertDescription className="text-xs">
-                    Register this webhook URL in your Cashfree dashboard under Developers → Webhooks:
-                    <br />
-                    <code className="font-mono text-xs bg-muted px-1 rounded break-all">
-                      {process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/payments/webhook
-                    </code>
+                    Online fee collection has been moved entirely to school staff via Record Payment —
+                    parents and students no longer initiate payments themselves, so there is no webhook
+                    endpoint to register for this integration.
                   </AlertDescription>
                 </Alert>
 

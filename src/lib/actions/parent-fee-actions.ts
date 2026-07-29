@@ -3,27 +3,18 @@
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
-import { UserRole, PaymentStatus, PaymentMethod } from "@prisma/client";
+import { UserRole, PaymentStatus } from "@prisma/client";
 import {
   feeOverviewSchema,
   paymentHistoryFilterSchema,
-  createPaymentSchema,
-  verifyPaymentSchema,
   downloadReceiptSchema,
   type FeeOverviewInput,
   type PaymentHistoryFilter,
-  type CreatePaymentInput,
-  type VerifyPaymentInput,
   type DownloadReceiptInput,
 } from "@/lib/schemaValidation/parent-fee-schemas";
-import { sanitizeText, sanitizeAlphanumeric } from "@/lib/utils/input-sanitization";
-import { verifyCsrfToken } from "@/lib/utils/csrf";
-import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
-import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName } from "@/lib/utils";
-import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   getActiveFeeDiscount,
   calculateDiscountAmount,
@@ -76,19 +67,6 @@ async function verifyParentChildRelationship(
     where: { parentId, studentId: childId, schoolId }
   });
   return !!relationship;
-}
-
-// ─── Ownership check for fee structures ──────────────────────────────────────
-
-async function verifyFeeStructureOwnership(
-  feeStructureId: string,
-  schoolId: string
-): Promise<boolean> {
-  const feeStructure = await db.feeStructure.findUnique({
-    where: { id: feeStructureId },
-    select: { schoolId: true, isActive: true }
-  });
-  return !!feeStructure && feeStructure.schoolId === schoolId && feeStructure.isActive;
 }
 
 // ─── getFeeOverview ───────────────────────────────────────────────────────────
@@ -343,187 +321,6 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
   } catch (error) {
     console.error("Error fetching payment history:", error);
     return { success: false, message: "Failed to fetch payment history" };
-  }
-}
-
-// ─── createPayment ────────────────────────────────────────────────────────────
-
-export async function createPayment(input: CreatePaymentInput & { csrfToken?: string }) {
-  try {
-    if (input.csrfToken) {
-      const isCsrfValid = await verifyCsrfToken(input.csrfToken);
-      if (!isCsrfValid) return { success: false, message: "Invalid CSRF token" };
-    }
-
-    const validated = createPaymentSchema.parse(input);
-
-    const parent = await getCurrentParent();
-    if (!parent) return { success: false, message: "Unauthorized" };
-
-    const rateLimitResult = checkRateLimit(`payment:${parent.id}`, RateLimitPresets.PAYMENT);
-    if (!rateLimitResult) {
-      return { success: false, message: "Too many payment requests. Please try again later." };
-    }
-
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
-    if (!hasAccess) return { success: false, message: "Access denied" };
-
-    // H-1: Verify feeStructure belongs to this school and is active
-    const feeStructureValid = await verifyFeeStructureOwnership(validated.feeStructureId, parent.schoolId);
-    if (!feeStructureValid) return { success: false, message: "Invalid fee structure" };
-
-    const feeStructure = await db.feeStructure.findUnique({
-      where: { id: validated.feeStructureId },
-      include: { items: { include: { feeType: true } } }
-    });
-
-    // feeStructureValid already confirmed it exists and is active
-    const validFeeTypeIds = feeStructure!.items.map(item => item.feeTypeId);
-    const invalidFeeTypes = validated.feeTypeIds.filter(id => !validFeeTypeIds.includes(id));
-    if (invalidFeeTypes.length > 0) {
-      return { success: false, message: "Invalid fee types selected" };
-    }
-
-    const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-    const sanitizedTransactionId = validated.transactionId
-      ? sanitizeAlphanumeric(validated.transactionId, "-_")
-      : null;
-    const sanitizedRemarks = validated.remarks ? sanitizeText(validated.remarks) : null;
-
-    const payment = await db.feePayment.create({
-      data: {
-        studentId: validated.childId,
-        feeStructureId: validated.feeStructureId,
-        amount: validated.amount,
-        paidAmount: validated.amount,
-        balance: 0,
-        paymentDate: new Date(),
-        paymentMethod: validated.paymentMethod,
-        transactionId: sanitizedTransactionId,
-        receiptNumber,
-        status: validated.paymentMethod === PaymentMethod.ONLINE_PAYMENT
-          ? PaymentStatus.PENDING
-          : PaymentStatus.COMPLETED,
-        remarks: sanitizedRemarks,
-        schoolId: parent.schoolId
-      }
-    });
-
-    await syncFeeInvoiceSummary(validated.childId);
-
-    revalidatePath("/parent/fees");
-
-    return {
-      success: true,
-      data: {
-        paymentId: payment.id,
-        receiptNumber: payment.receiptNumber,
-        status: payment.status
-      },
-      message: "Payment initiated successfully"
-    };
-  } catch (error) {
-    console.error("Error creating payment:", error);
-    return { success: false, message: "Failed to create payment" };
-  }
-}
-
-// ─── verifyPayment ────────────────────────────────────────────────────────────
-
-export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: string }) {
-  try {
-    if (input.csrfToken) {
-      const isCsrfValid = await verifyCsrfToken(input.csrfToken);
-      if (!isCsrfValid) return { success: false, message: "Invalid CSRF token" };
-    }
-
-    const validated = verifyPaymentSchema.parse(input);
-
-    const parent = await getCurrentParent();
-    if (!parent) return { success: false, message: "Unauthorized" };
-
-    const rateLimitResult = checkRateLimit(`payment-verify:${parent.id}`, RateLimitPresets.PAYMENT);
-    if (!rateLimitResult) {
-      return { success: false, message: "Too many verification requests. Please try again later." };
-    }
-
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
-    if (!hasAccess) return { success: false, message: "Access denied" };
-
-    const feeStructureValid = await verifyFeeStructureOwnership(validated.feeStructureId, parent.schoolId);
-    if (!feeStructureValid) return { success: false, message: "Invalid fee structure" };
-
-    // Verify payment status with Cashfree (server-to-server)
-    const { verifyCashfreePayment } = await import("@/lib/utils/payment-gateway");
-    const cashfreeResult = await verifyCashfreePayment(validated.cfOrderId);
-
-    if (!cashfreeResult.success) {
-      return { success: false, message: "Payment not completed or verification failed" };
-    }
-
-    const sanitizedCfPaymentId = sanitizeAlphanumeric(cashfreeResult.cfPaymentId, "-_");
-
-    // Idempotency: webhook may have already created the record
-    const existingPayment = await db.feePayment.findFirst({
-      where: {
-        transactionId: sanitizedCfPaymentId,
-        schoolId: parent.schoolId
-      }
-    });
-
-    if (existingPayment) {
-      return {
-        success: true,
-        data: {
-          paymentId: existingPayment.id,
-          receiptNumber: existingPayment.receiptNumber,
-          status: existingPayment.status,
-          amount: existingPayment.paidAmount,
-          transactionId: existingPayment.transactionId,
-        },
-        message: "Payment already verified"
-      };
-    }
-
-    // Webhook hasn't fired yet — create the record now
-    const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-    const sanitizedCfOrderId = sanitizeAlphanumeric(validated.cfOrderId, "-_");
-
-    const payment = await db.feePayment.create({
-      data: {
-        studentId: validated.childId,
-        feeStructureId: validated.feeStructureId,
-        amount: cashfreeResult.amount,
-        paidAmount: cashfreeResult.amount,
-        balance: 0,
-        paymentDate: new Date(),
-        paymentMethod: PaymentMethod.ONLINE_PAYMENT,
-        transactionId: sanitizedCfPaymentId,
-        receiptNumber,
-        status: PaymentStatus.COMPLETED,
-        remarks: `Online payment via Cashfree. Order ID: ${sanitizedCfOrderId}`,
-        schoolId: parent.schoolId
-      }
-    });
-
-    await syncFeeInvoiceSummary(validated.childId);
-
-    revalidatePath("/parent/fees");
-
-    return {
-      success: true,
-      data: {
-        paymentId: payment.id,
-        receiptNumber: payment.receiptNumber,
-        status: payment.status,
-        amount: payment.paidAmount,
-        transactionId: payment.transactionId,
-      },
-      message: "Payment verified successfully"
-    };
-  } catch (error) {
-    console.error("Error verifying payment:", error);
-    return { success: false, message: "Failed to verify payment" };
   }
 }
 
