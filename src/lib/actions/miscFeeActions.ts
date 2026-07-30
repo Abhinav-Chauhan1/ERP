@@ -518,3 +518,97 @@ export const bulkSaveClassDiscounts = withSchoolAuthAction(
     }
   }
 );
+
+export interface BookFeeClassAnalytics {
+  classId: string;
+  className: string;
+  studentsWithBookFee: number;
+  totalAmount: number;
+  totalDiscount: number;
+  totalNetAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+}
+
+// Class-wise rollup of Books Fee (MiscFeePayment, category=BOOKS) for the fee
+// analytics page — mirrors the Class -> enrollments -> studentIds pattern used
+// in fee-structure-analytics-service.ts, but keyed per-class instead of merged
+// into one set, and joins misc fees by (studentId, class's academicYearId) so
+// an unfiltered "all years" query doesn't cross-match a student's fee row from
+// a different academic year than the class being summed.
+export const getBookFeeAnalyticsByClass = withSchoolAuthAction(
+  async (schoolId: string, userId: string, userRole: string, academicYearId?: string) => {
+    try {
+      await checkPermission("FEE_DISCOUNT", "READ", "You do not have permission to view fees");
+
+      const classes = await db.class.findMany({
+        where: { schoolId, ...(academicYearId ? { academicYearId } : {}) },
+        include: {
+          enrollments: {
+            where: { status: "ACTIVE" },
+            select: { studentId: true },
+          },
+        },
+        orderBy: { name: "asc" },
+      });
+
+      if (classes.length === 0) {
+        return { success: true, data: [] as BookFeeClassAnalytics[] };
+      }
+
+      const allStudentIds = Array.from(
+        new Set(classes.flatMap((cls) => cls.enrollments.map((e) => e.studentId)))
+      );
+
+      const miscFees = await db.miscFeePayment.findMany({
+        where: {
+          schoolId,
+          category: "BOOKS",
+          studentId: { in: allStudentIds },
+          ...(academicYearId ? { academicYearId } : {}),
+        },
+      });
+
+      const miscFeeMap = new Map<string, (typeof miscFees)[number]>();
+      for (const m of miscFees) {
+        miscFeeMap.set(`${m.studentId}::${m.academicYearId}`, m);
+      }
+
+      const result: BookFeeClassAnalytics[] = classes.map((cls) => {
+        let studentsWithBookFee = 0;
+        let totalAmount = 0;
+        let totalDiscount = 0;
+        let totalNetAmount = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+
+        for (const enrollment of cls.enrollments) {
+          const misc = miscFeeMap.get(`${enrollment.studentId}::${cls.academicYearId}`);
+          if (!misc) continue;
+          studentsWithBookFee++;
+          totalAmount += misc.amount;
+          totalDiscount += misc.discountAmount;
+          totalNetAmount += misc.netAmount;
+          totalPaid += misc.paidAmount;
+          totalBalance += misc.balance;
+        }
+
+        return {
+          classId: cls.id,
+          className: cls.name,
+          studentsWithBookFee,
+          totalAmount,
+          totalDiscount,
+          totalNetAmount,
+          totalPaid,
+          totalBalance,
+        };
+      });
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error("Error fetching book fee analytics:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Failed to fetch book fee analytics" };
+    }
+  }
+);
