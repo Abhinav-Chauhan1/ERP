@@ -74,6 +74,7 @@ export default function AnalyticsPage() {
       "Is Template",
       "Students Affected",
       "Total Amount (INR)",
+      "Discount (INR)",
       "Revenue Projection (INR)",
       "Created At",
     ];
@@ -86,6 +87,7 @@ export default function AnalyticsPage() {
       structure.isTemplate ? "Yes" : "No",
       structure.studentsAffected,
       structure.totalAmount,
+      structure.discountAmount,
       structure.revenueProjection,
       new Date(structure.createdAt).toLocaleDateString(),
     ]);
@@ -121,6 +123,7 @@ export default function AnalyticsPage() {
       'Is Template': structure.isTemplate ? "Yes" : "No",
       'Students Affected': structure.studentsAffected,
       'Total Amount (INR)': structure.totalAmount,
+      'Discount (INR)': structure.discountAmount,
       'Revenue Projection (INR)': structure.revenueProjection,
       'Created At': new Date(structure.createdAt).toLocaleDateString(),
     }));

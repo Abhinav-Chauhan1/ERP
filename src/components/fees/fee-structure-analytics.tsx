@@ -294,13 +294,14 @@ export function FeeStructureAnalyticsComponent({
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Students</TableHead>
                 <TableHead className="text-right">Total Amount</TableHead>
+                <TableHead className="text-right">Discount</TableHead>
                 <TableHead className="text-right">Revenue</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {analytics.structureDetails.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No fee structures found
                   </TableCell>
                 </TableRow>
@@ -345,6 +346,11 @@ export function FeeStructureAnalyticsComponent({
                     <TableCell className="text-right">{structure.studentsAffected}</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(structure.totalAmount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {structure.discountAmount > 0
+                        ? formatCurrency(structure.discountAmount)
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(structure.revenueProjection)}

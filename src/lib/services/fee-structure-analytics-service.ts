@@ -45,6 +45,7 @@ export interface FeeStructureDetail {
   studentsAffected: number;
   totalAmount: number;
   revenueProjection: number;
+  discountAmount: number;
   createdAt: Date;
 }
 
@@ -166,6 +167,7 @@ export class FeeStructureAnalyticsService {
         (sum, studentId) => sum + calculateNetPayable(totalAmount, discountMap.get(studentId) ?? null),
         0
       );
+      const discountAmount = totalAmount * studentsAffected - revenueProjection;
 
       // Add to structure details
       structureDetails.push({
@@ -180,6 +182,7 @@ export class FeeStructureAnalyticsService {
         studentsAffected,
         totalAmount,
         revenueProjection,
+        discountAmount,
         createdAt: structure.createdAt,
       });
 
