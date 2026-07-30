@@ -612,3 +612,126 @@ export const getBookFeeAnalyticsByClass = withSchoolAuthAction(
     }
   }
 );
+
+export interface NormalFeeClassAnalytics {
+  classId: string;
+  className: string;
+  studentsWithNormalFee: number;
+  totalAmount: number;
+  totalDiscount: number;
+  totalNetAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+}
+
+// Class-wise rollup of Normal Fee (FeeStructure/FeeDiscount, via the
+// already-synced FeeInvoiceSummary) for the fee analytics page — the
+// counterpart to getBookFeeAnalyticsByClass above, but Normal Fee has no
+// single table of its own: gross/discount/net/paid/balance all live on
+// FeeInvoiceSummary, kept in sync by syncFeeInvoiceSummary. Resolves each
+// class's applicable fee structure with the same class-relation-first,
+// applicableClasses-fallback pattern used in getFeeOverview/
+// getFeeStructuresForStudent, then batches a single FeeInvoiceSummary query
+// across all resolved structures rather than querying per class.
+export const getNormalFeeAnalyticsByClass = withSchoolAuthAction(
+  async (schoolId: string, userId: string, userRole: string, academicYearId?: string) => {
+    try {
+      await checkPermission("FEE_DISCOUNT", "READ", "You do not have permission to view fees");
+
+      const classes = await db.class.findMany({
+        where: { schoolId, ...(academicYearId ? { academicYearId } : {}) },
+        include: {
+          enrollments: {
+            where: { status: "ACTIVE" },
+            select: { studentId: true },
+          },
+        },
+        orderBy: { name: "asc" },
+      });
+
+      if (classes.length === 0) {
+        return { success: true, data: [] as NormalFeeClassAnalytics[] };
+      }
+
+      const academicYearIds = Array.from(new Set(classes.map((cls) => cls.academicYearId)));
+      const feeStructures = await db.feeStructure.findMany({
+        where: {
+          schoolId,
+          academicYearId: { in: academicYearIds },
+          isActive: true,
+        },
+        include: { classes: { select: { classId: true } } },
+      });
+
+      const classToStructureId = new Map<string, string>();
+      for (const cls of classes) {
+        const match = feeStructures.find(
+          (fs) =>
+            fs.academicYearId === cls.academicYearId &&
+            (fs.classes.some((c) => c.classId === cls.id) ||
+              (fs.classes.length === 0 && !!fs.applicableClasses?.includes(cls.name)))
+        );
+        if (match) classToStructureId.set(cls.id, match.id);
+      }
+
+      const allStudentIds = Array.from(
+        new Set(classes.flatMap((cls) => cls.enrollments.map((e) => e.studentId)))
+      );
+      const relevantStructureIds = Array.from(new Set(classToStructureId.values()));
+
+      const invoiceSummaries = relevantStructureIds.length
+        ? await db.feeInvoiceSummary.findMany({
+            where: {
+              schoolId,
+              feeStructureId: { in: relevantStructureIds },
+              studentId: { in: allStudentIds },
+            },
+          })
+        : [];
+
+      const invoiceMap = new Map<string, (typeof invoiceSummaries)[number]>();
+      for (const inv of invoiceSummaries) {
+        invoiceMap.set(`${inv.studentId}::${inv.feeStructureId}`, inv);
+      }
+
+      const result: NormalFeeClassAnalytics[] = classes.map((cls) => {
+        const structureId = classToStructureId.get(cls.id);
+        let studentsWithNormalFee = 0;
+        let totalAmount = 0;
+        let totalDiscount = 0;
+        let totalNetAmount = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+
+        if (structureId) {
+          for (const enrollment of cls.enrollments) {
+            const inv = invoiceMap.get(`${enrollment.studentId}::${structureId}`);
+            if (!inv) continue;
+            studentsWithNormalFee++;
+            totalAmount += inv.grossTotal;
+            totalDiscount += inv.discountAmount;
+            totalNetAmount += inv.netTotal;
+            totalPaid += inv.paidAmount;
+            totalBalance += inv.balance;
+          }
+        }
+
+        return {
+          classId: cls.id,
+          className: cls.name,
+          studentsWithNormalFee,
+          totalAmount,
+          totalDiscount,
+          totalNetAmount,
+          totalPaid,
+          totalBalance,
+        };
+      });
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error("Error fetching normal fee analytics:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Failed to fetch normal fee analytics" };
+    }
+  }
+);

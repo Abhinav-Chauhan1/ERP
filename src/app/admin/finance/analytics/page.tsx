@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeeStructureAnalyticsComponent } from "@/components/fees/fee-structure-analytics";
+import { NormalFeeAnalyticsComponent } from "@/components/fees/normal-fee-analytics";
 import { BookFeeAnalyticsComponent } from "@/components/fees/book-fee-analytics";
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 import { getClasses } from "@/lib/actions/classesActions";
@@ -171,6 +172,7 @@ export default function AnalyticsPage() {
             classes={classes}
             onExport={handleExport}
           />
+          <NormalFeeAnalyticsComponent academicYears={academicYears} />
           <BookFeeAnalyticsComponent academicYears={academicYears} />
         </>
       )}
