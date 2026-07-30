@@ -15,6 +15,7 @@ import {
   getFeeAmountsForClass,
   getActiveFeeDiscount,
   calculateNetPayable,
+  calculateAccruedFeeTotal,
 } from "@/lib/utils/payment-helpers";
 
 // Helper to check permission and throw if denied
@@ -242,27 +243,31 @@ export async function recordPayment(data: any) {
     // Guard against a recorded amount ever exceeding what's actually owed
     // (annualized by frequency, net of active discount, minus prior COMPLETED payments)
     const ceiling = await computeNetPayableCeiling(data.studentId, data.feeStructureId, schoolId);
-    const submittedAmount = parseFloat(data.amount);
     const submittedPaidAmount = parseFloat(data.paidAmount);
-    if (submittedAmount > ceiling + 0.01 || submittedPaidAmount > ceiling + 0.01) {
+    if (submittedPaidAmount > ceiling + 0.01) {
       return {
         success: false,
         error: `Payment amount exceeds outstanding balance of ₹${Math.max(ceiling, 0).toFixed(2)}`,
       };
     }
 
+    // A recorded payment represents money actually collected in this one
+    // transaction, so amount always equals paidAmount (balance 0) and status
+    // is always COMPLETED — both derived here rather than trusted from the
+    // client. Corrections (e.g. marking something REFUNDED later) go through
+    // updatePayment instead, which keeps full manual control.
     const payment = await db.feePayment.create({
       data: {
         studentId: data.studentId,
         feeStructureId: data.feeStructureId,
-        amount: parseFloat(data.amount),
-        paidAmount: parseFloat(data.paidAmount),
-        balance: parseFloat(data.amount) - parseFloat(data.paidAmount),
+        amount: submittedPaidAmount,
+        paidAmount: submittedPaidAmount,
+        balance: 0,
         paymentDate: new Date(data.paymentDate),
         paymentMethod: data.paymentMethod as PaymentMethod,
         transactionId: data.transactionId || null,
         receiptNumber: data.receiptNumber || null,
-        status: data.status as PaymentStatus,
+        status: PaymentStatus.COMPLETED,
         remarks: data.remarks || null,
         schoolId, // Add schoolId
       },
@@ -662,14 +667,22 @@ export async function getFeeStructuresForStudent(studentId: string) {
 
     const enrollment = student.enrollments[0];
 
+    // Prefer the class relation (FeeStructureClass) when a structure has one;
+    // only fall back to the legacy applicableClasses string for structures
+    // with no class relations at all. Mirrors getFeeOverview's filtering.
     const feeStructures = await db.feeStructure.findMany({
       where: {
         schoolId,
         academicYearId: enrollment.class.academicYearId,
         isActive: true,
         OR: [
-          { applicableClasses: null },
-          { applicableClasses: { contains: enrollment.class.name } },
+          { classes: { some: { classId: enrollment.class.id } } },
+          {
+            AND: [
+              { classes: { none: {} } },
+              { applicableClasses: { contains: enrollment.class.name } },
+            ],
+          },
         ],
       },
       include: {
@@ -682,10 +695,29 @@ export async function getFeeStructuresForStudent(studentId: string) {
       },
     });
 
-    // Attach the true annualized, discount-net payable amount and remaining
-    // balance for each structure, so callers never have to fall back to a raw
-    // sum of fee-item amounts (which ignores billing frequency and discounts).
+    // Attach amounts for each structure:
+    // - netPayableAmount: the full annual total, annualized by fee-item
+    //   frequency and net of any active discount (informational, and the
+    //   ceiling a parent may legitimately prepay up to).
+    // - fullRemainingBalance: netPayableAmount minus prior COMPLETED payments
+    //   — the true outstanding cap, matching computeNetPayableCeiling.
+    // - dueNow: the accrual-based amount actually due today (only the
+    //   monthly/quarterly periods that have elapsed, plus one-time/annual
+    //   items whose start has passed), matching FeeInvoiceSummary.dueAmount —
+    //   the figure used everywhere else in the app (dashboards, reports,
+    //   Pending Fees, parent/student views). Read from the already-synced
+    //   FeeInvoiceSummary row when available; falls back to a live accrual
+    //   computation (mirroring syncFeeInvoiceSummary) if that row hasn't been
+    //   created yet for a brand-new enrollment.
     const classId = enrollment.class.id;
+    const invoiceSummaries = await db.feeInvoiceSummary.findMany({
+      where: {
+        studentId,
+        feeStructureId: { in: feeStructures.map((s) => s.id) },
+      },
+    });
+    const invoiceSummaryMap = new Map(invoiceSummaries.map((inv) => [inv.feeStructureId, inv]));
+
     const feeStructuresWithAmounts = await Promise.all(
       feeStructures.map(async (structure) => {
         const feeTypeIds = structure.items.map((item) => item.feeTypeId);
@@ -704,12 +736,33 @@ export async function getFeeStructuresForStudent(studentId: string) {
           },
           _sum: { paidAmount: true },
         });
-        const remainingBalance = Math.max(
-          netPayableAmount - (completedPayments._sum.paidAmount ?? 0),
-          0
-        );
+        const paidSoFar = completedPayments._sum.paidAmount ?? 0;
+        const fullRemainingBalance = Math.max(netPayableAmount - paidSoFar, 0);
 
-        return { ...structure, netPayableAmount, remainingBalance };
+        const invoiceSummary = invoiceSummaryMap.get(structure.id);
+        let dueNow: number;
+        if (invoiceSummary) {
+          dueNow = invoiceSummary.dueAmount;
+        } else {
+          const effectiveStartDate = new Date(
+            Math.max(structure.validFrom.getTime(), enrollment.enrollDate.getTime())
+          );
+          const now = new Date();
+          const asOfDate =
+            structure.validTo && structure.validTo < now ? structure.validTo : now;
+          const accrualItems = structure.items.map((item) => ({
+            annualizedAmount: amountMap.get(item.feeTypeId) ?? item.feeType.amount,
+            frequency: item.feeType.frequency,
+            dueDate: item.dueDate,
+          }));
+          const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
+          const netRatio = grossTotal > 0 ? netPayableAmount / grossTotal : 1;
+          dueNow = Math.max(accruedGrossTotal * netRatio - paidSoFar, 0);
+        }
+        // Never exceed the true remaining balance (e.g. a stale invoice summary row)
+        dueNow = Math.min(dueNow, fullRemainingBalance);
+
+        return { ...structure, netPayableAmount, fullRemainingBalance, dueNow };
       })
     );
 

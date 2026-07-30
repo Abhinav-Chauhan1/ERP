@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Search, DollarSign, PlusCircle,
-  CheckCircle, XCircle, Clock, Eye, Edit, Download, Loader2, AlertCircle
+  CheckCircle, XCircle, Clock, Eye, Edit, Download, Loader2, AlertCircle,
+  ChevronsUpDown, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
 import {
   Form,
   FormControl,
@@ -49,6 +59,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
+import { cn, formatFullName } from "@/lib/utils";
 
 // Import server actions
 import {
@@ -66,10 +77,12 @@ import {
 } from "@/lib/actions/feePaymentActions";
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 
-// Import validation schema
+// Import validation schemas
 import {
-  paymentSchema,
-  PaymentFormValues,
+  recordPaymentSchema,
+  RecordPaymentFormValues,
+  paymentUpdateSchema,
+  PaymentUpdateFormValues,
 } from "@/lib/schemaValidation/feePaymentSchemaValidation";
 import { PaymentsTable, PendingFeesTable } from "@/components/admin/finance-tables";
 
@@ -113,11 +126,36 @@ export default function PaymentsPage() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [feeStructuresLoading, setFeeStructuresLoading] = useState(false);
 
-  // Initialize form
-  const form = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema),
+  // Record Payment (create) flow state
+  const [createStage, setCreateStage] = useState<"search" | "review" | "success">("search");
+  const [paymentMode, setPaymentMode] = useState<"full" | "partial">("full");
+  const [createdPayment, setCreatedPayment] = useState<any>(null);
+  const [studentComboboxOpen, setStudentComboboxOpen] = useState(false);
+
+  // Record Payment form (guided create flow — no amount/status fields, both
+  // derived server-side)
+  const createForm = useForm<RecordPaymentFormValues>({
+    resolver: zodResolver(recordPaymentSchema),
     defaultValues: {
+      studentId: "",
+      feeStructureId: "",
+      paidAmount: 0,
+      paymentDate: new Date(),
+      paymentMethod: "CASH",
+      transactionId: "",
+      receiptNumber: "",
+      remarks: "",
+    },
+  });
+
+  // Edit Payment form (manual correction flow — keeps full control over
+  // amount/paidAmount/status)
+  const editForm = useForm<PaymentUpdateFormValues>({
+    resolver: zodResolver(paymentUpdateSchema),
+    defaultValues: {
+      id: "",
       studentId: "",
       feeStructureId: "",
       amount: 0,
@@ -130,6 +168,10 @@ export default function PaymentsPage() {
       remarks: "",
     },
   });
+
+  const selectedStructure = feeStructures.find(
+    (fs) => fs.id === createForm.watch("feeStructureId")
+  );
 
   // Load academic years and students once on mount, defaulting the year
   // filter to the current session so this page doesn't fetch data twice.
@@ -164,6 +206,33 @@ export default function PaymentsPage() {
     }
   }, [selectedStudentId]);
 
+  // Auto-resolve the fee structure once it's loaded: pick it automatically
+  // when there's exactly one applicable structure (the common case), or
+  // preserve a prefilled selection (e.g. from "Collect") if it's still valid.
+  useEffect(() => {
+    if (!createDialogOpen || createStage !== "review" || feeStructuresLoading) return;
+    const currentId = createForm.getValues("feeStructureId");
+    if (currentId && feeStructures.some((fs) => fs.id === currentId)) return;
+    if (feeStructures.length === 1) {
+      createForm.setValue("feeStructureId", feeStructures[0].id);
+    }
+  }, [feeStructures, feeStructuresLoading, createDialogOpen, createStage]);
+
+  // Keep "Amount to Collect Now" synced to what's actually due today (accrual-
+  // based, matching Pending Fees/dashboards elsewhere) while in "due" mode. If
+  // nothing has accrued yet but a full-year balance remains, default to the
+  // custom-amount path instead, since collecting ₹0 isn't a meaningful default.
+  useEffect(() => {
+    if (createStage !== "review" || !selectedStructure) return;
+    if (selectedStructure.dueNow <= 0 && selectedStructure.fullRemainingBalance > 0) {
+      if (paymentMode === "full") setPaymentMode("partial");
+      return;
+    }
+    if (paymentMode === "full" && selectedStructure.dueNow > 0) {
+      createForm.setValue("paidAmount", selectedStructure.dueNow);
+    }
+  }, [selectedStructure?.id, selectedStructure?.dueNow, selectedStructure?.fullRemainingBalance, paymentMode, createStage]);
+
   async function fetchFinanceData(academicYearId: string) {
     setLoading(true);
     try {
@@ -192,16 +261,21 @@ export default function PaymentsPage() {
   }
 
   async function fetchFeeStructuresForStudent(studentId: string) {
+    setFeeStructuresLoading(true);
     try {
       const result = await getFeeStructuresForStudent(studentId);
       if (result.success) {
         setFeeStructures(result.data || []);
       } else {
         toast.error(result.error || "Failed to fetch fee structures");
+        setFeeStructures([]);
       }
     } catch (error) {
       console.error("Error fetching fee structures:", error);
       toast.error("Failed to fetch fee structures");
+      setFeeStructures([]);
+    } finally {
+      setFeeStructuresLoading(false);
     }
   }
 
@@ -222,37 +296,73 @@ export default function PaymentsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // Handle create payment
-  async function handleCreatePayment() {
-    // Generate receipt number
+  // Open the guided Record Payment dialog, optionally prefilled with a
+  // student/fee structure (e.g. from the "Collect" action on Pending Fees).
+  async function openRecordPaymentDialog(prefill?: { studentId: string; feeStructureId?: string }) {
     const receiptResult = await generateReceiptNumber();
-    if (receiptResult.success) {
-      form.setValue("receiptNumber", receiptResult.data);
-    }
 
-    form.reset({
-      studentId: "",
-      feeStructureId: "",
-      amount: 0,
+    createForm.reset({
+      studentId: prefill?.studentId || "",
+      feeStructureId: prefill?.feeStructureId || "",
       paidAmount: 0,
       paymentDate: new Date(),
       paymentMethod: "CASH",
       transactionId: "",
-      receiptNumber: receiptResult.data || "",
-      status: "COMPLETED",
+      receiptNumber: receiptResult.success ? receiptResult.data : "",
       remarks: "",
     });
+    setCreatedPayment(null);
+    setPaymentMode("full");
     setSelectedPaymentId(null);
+
+    if (prefill?.studentId) {
+      setSelectedStudentId(prefill.studentId);
+      setFeeStructures([]);
+      setCreateStage("review");
+      fetchFeeStructuresForStudent(prefill.studentId);
+    } else {
+      setSelectedStudentId("");
+      setFeeStructures([]);
+      setCreateStage("search");
+    }
+    setCreateDialogOpen(true);
+  }
+
+  // Student selected from the search combobox — advance straight to the
+  // balance-due review step while fee structures load in the background.
+  function handleSelectStudentForPayment(studentId: string) {
+    setSelectedStudentId(studentId);
+    createForm.setValue("studentId", studentId);
+    createForm.setValue("feeStructureId", "");
+    setStudentComboboxOpen(false);
+    setCreateStage("review");
+  }
+
+  function closeCreateDialog() {
+    setCreateDialogOpen(false);
+    createForm.reset({
+      studentId: "",
+      feeStructureId: "",
+      paidAmount: 0,
+      paymentDate: new Date(),
+      paymentMethod: "CASH",
+      transactionId: "",
+      receiptNumber: "",
+      remarks: "",
+    });
     setSelectedStudentId("");
     setFeeStructures([]);
-    setCreateDialogOpen(true);
+    setCreateStage("search");
+    setPaymentMode("full");
+    setCreatedPayment(null);
   }
 
   // Handle edit payment
   function handleEditPayment(payment: any) {
     setSelectedPaymentId(payment.id);
     setSelectedStudentId(payment.studentId);
-    form.reset({
+    editForm.reset({
+      id: payment.id,
       studentId: payment.studentId,
       feeStructureId: payment.feeStructureId,
       amount: payment.amount,
@@ -279,23 +389,33 @@ export default function PaymentsPage() {
     setDeleteDialogOpen(true);
   }
 
-  // Submit payment form
-  async function onSubmitPayment(values: PaymentFormValues) {
+  // Submit the Record Payment form
+  async function onSubmitCreatePayment(values: RecordPaymentFormValues) {
     try {
-      let result;
-      if (selectedPaymentId) {
-        result = await updatePayment(selectedPaymentId, values);
-      } else {
-        result = await recordPayment(values);
-      }
-
+      const result = await recordPayment(values);
       if (result.success) {
-        toast.success(
-          `Payment ${selectedPaymentId ? "updated" : "recorded"} successfully`
-        );
-        setCreateDialogOpen(false);
+        toast.success("Payment recorded successfully");
+        setCreatedPayment(result.data);
+        setCreateStage("success");
+        fetchAllData();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (error) {
+      console.error("Error recording payment:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Submit the Edit Payment form
+  async function onSubmitEditPayment(values: PaymentUpdateFormValues) {
+    if (!selectedPaymentId) return;
+    try {
+      const result = await updatePayment(selectedPaymentId, values);
+      if (result.success) {
+        toast.success("Payment updated successfully");
         setEditDialogOpen(false);
-        form.reset();
+        editForm.reset();
         setSelectedPaymentId(null);
         setSelectedStudentId("");
         setFeeStructures([]);
@@ -304,7 +424,7 @@ export default function PaymentsPage() {
         toast.error(result.error || "An error occurred");
       }
     } catch (error) {
-      console.error("Error submitting payment:", error);
+      console.error("Error updating payment:", error);
       toast.error("An unexpected error occurred");
     }
   }
@@ -327,26 +447,6 @@ export default function PaymentsPage() {
     } catch (error) {
       console.error("Error deleting payment:", error);
       toast.error("An unexpected error occurred");
-    }
-  }
-
-  // Handle student selection
-  function handleStudentChange(studentId: string) {
-    setSelectedStudentId(studentId);
-    form.setValue("studentId", studentId);
-    form.setValue("feeStructureId", "");
-    form.setValue("amount", 0);
-  }
-
-  // Handle fee structure selection
-  function handleFeeStructureChange(feeStructureId: string) {
-    form.setValue("feeStructureId", feeStructureId);
-    const selectedStructure = feeStructures.find((fs) => fs.id === feeStructureId);
-    if (selectedStructure) {
-      // netPayableAmount/remainingBalance are server-computed: annualized by
-      // fee-item billing frequency and net of any active student discount.
-      form.setValue("amount", selectedStructure.netPayableAmount);
-      form.setValue("paidAmount", selectedStructure.remainingBalance);
     }
   }
 
@@ -443,7 +543,7 @@ export default function PaymentsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={handleCreatePayment} className="w-full sm:w-auto">
+          <Button onClick={() => openRecordPaymentDialog()} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Record Payment
           </Button>
@@ -564,7 +664,7 @@ export default function PaymentsPage() {
                       ? "Try adjusting your filters"
                       : "Record your first payment to get started"}
                   </p>
-                  <Button onClick={handleCreatePayment}>
+                  <Button onClick={() => openRecordPaymentDialog()}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Record Payment
                   </Button>
@@ -604,12 +704,10 @@ export default function PaymentsPage() {
                 <PendingFeesTable
                   fees={pendingFees}
                   onCollect={(fee) => {
-                    setSelectedStudentId(fee.studentId);
-                    form.setValue("studentId", fee.studentId);
-                    form.setValue("feeStructureId", fee.feeStructureId);
-                    form.setValue("amount", fee.balance);
-                    form.setValue("paidAmount", fee.balance);
-                    handleCreatePayment();
+                    openRecordPaymentDialog({
+                      studentId: fee.studentId,
+                      feeStructureId: fee.feeStructureId,
+                    });
                   }}
                   emptyMessage="No pending fees found"
                 />
@@ -619,39 +717,344 @@ export default function PaymentsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Create/Edit Payment Dialog */}
+      {/* Record Payment Dialog — guided flow: search student, review resolved
+          balance, pay full or partial, submit, then a receipt step. */}
       <Dialog
-        open={createDialogOpen || editDialogOpen}
-        onOpenChange={(open) => {
-          setCreateDialogOpen(open);
-          setEditDialogOpen(open);
-        }}
+        open={createDialogOpen}
+        onOpenChange={(open) => (open ? setCreateDialogOpen(true) : closeCreateDialog())}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {selectedPaymentId ? "Edit Payment" : "Record Payment"}
-            </DialogTitle>
+            <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
-              {selectedPaymentId
-                ? "Update payment details"
-                : "Record a new fee payment"}
+              {createStage === "success"
+                ? "Payment recorded"
+                : "Search for a student to collect a fee payment"}
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitPayment)} className="space-y-4">
+
+          {createStage === "search" && (
+            <div className="space-y-2">
+              <Label>Student</Label>
+              <Popover open={studentComboboxOpen} onOpenChange={setStudentComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={studentComboboxOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    Search by name, admission ID, or class...
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[420px] max-w-[90vw]" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search students..." />
+                    <CommandEmpty>No student found.</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {students.map((student) => (
+                        <CommandItem
+                          key={student.id}
+                          value={`${student.name} ${student.admissionId} ${student.class} ${student.section}`}
+                          onSelect={() => handleSelectStudentForPayment(student.id)}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{student.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {student.admissionId} • {student.class}-{student.section}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          {createStage === "review" && (
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onSubmitCreatePayment)} className="space-y-4">
+                <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Student</p>
+                    <p className="font-medium">
+                      {students.find((s) => s.id === selectedStudentId)?.name || "—"}
+                    </p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setCreateStage("search")}>
+                    Change
+                  </Button>
+                </div>
+
+                {feeStructuresLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading fee details...
+                  </div>
+                ) : feeStructures.length === 0 ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    No applicable fee structure found for this student's class.
+                  </div>
+                ) : (
+                  <>
+                    {feeStructures.length > 1 ? (
+                      <FormField
+                        control={createForm.control}
+                        name="feeStructureId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fee Structure</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select fee structure" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {feeStructures.map((structure) => (
+                                  <SelectItem key={structure.id} value={structure.id}>
+                                    {structure.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Fee Structure: </span>
+                        <span className="font-medium">{feeStructures[0]?.name}</span>
+                      </p>
+                    )}
+
+                    {selectedStructure && (
+                      selectedStructure.fullRemainingBalance <= 0 ? (
+                        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                          This student has no outstanding balance for this fee structure.
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-3 gap-3 rounded-md border p-3 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Total Fee (after discount)</p>
+                              <p className="font-semibold">
+                                ₹{selectedStructure.netPayableAmount.toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Already Paid</p>
+                              <p className="font-semibold">
+                                ₹{(selectedStructure.netPayableAmount - selectedStructure.fullRemainingBalance).toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Due Now</p>
+                              <p className="font-semibold text-orange-600">
+                                ₹{selectedStructure.dueNow.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          {selectedStructure.dueNow < selectedStructure.fullRemainingBalance && (
+                            <p className="text-xs text-muted-foreground">
+                              Full year remaining: ₹{selectedStructure.fullRemainingBalance.toLocaleString()}
+                              {" "}(includes fees not yet due — e.g. future months of a monthly fee)
+                            </p>
+                          )}
+
+                          <div className="flex gap-2">
+                            {selectedStructure.dueNow > 0 && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={paymentMode === "full" ? "default" : "outline"}
+                                onClick={() => {
+                                  setPaymentMode("full");
+                                  createForm.setValue("paidAmount", selectedStructure.dueNow);
+                                }}
+                              >
+                                Pay Amount Due
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={paymentMode === "partial" ? "default" : "outline"}
+                              onClick={() => setPaymentMode("partial")}
+                            >
+                              Custom Amount
+                            </Button>
+                          </div>
+
+                          <FormField
+                            control={createForm.control}
+                            name="paidAmount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Amount to Collect Now</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    max={selectedStructure.fullRemainingBalance}
+                                    disabled={paymentMode === "full"}
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={createForm.control}
+                              name="paymentDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Payment Date</FormLabel>
+                                  <DatePicker date={field.value} onSelect={field.onChange} />
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={createForm.control}
+                              name="paymentMethod"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Payment Method</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {paymentMethods.map((method) => (
+                                        <SelectItem key={method.value} value={method.value}>
+                                          {method.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={createForm.control}
+                              name="receiptNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Receipt Number</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={createForm.control}
+                              name="transactionId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Transaction ID (Optional)</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={createForm.control}
+                            name="remarks"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Remarks (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <DialogFooter>
+                            <Button type="button" variant="outline" onClick={closeCreateDialog}>
+                              Cancel
+                            </Button>
+                            <Button type="submit">Record Payment</Button>
+                          </DialogFooter>
+                        </>
+                      )
+                    )}
+                  </>
+                )}
+              </form>
+            </Form>
+          )}
+
+          {createStage === "success" && createdPayment && (
+            <div className="space-y-4 text-center py-4">
+              <CheckCircle className="h-12 w-12 text-green-600 mx-auto" />
+              <div>
+                <p className="text-lg font-semibold">
+                  ₹{createdPayment.paidAmount.toLocaleString()} collected from{" "}
+                  {formatFullName(
+                    createdPayment.student.user.firstName,
+                    createdPayment.student.user.lastName
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Receipt #{createdPayment.receiptNumber}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button variant="outline" onClick={() => handleDownloadReceipt(createdPayment.id)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Print / Download Receipt
+                </Button>
+                <Button variant="outline" onClick={() => openRecordPaymentDialog()}>
+                  Record Another Payment
+                </Button>
+                <Button onClick={closeCreateDialog}>Done</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Payment Dialog — manual correction flow, keeps full control
+          over amount/paidAmount/status. */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Payment</DialogTitle>
+            <DialogDescription>Update payment details</DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onSubmitEditPayment)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="studentId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Student</FormLabel>
-                      <Select
-                        onValueChange={handleStudentChange}
-                        value={field.value}
-                        disabled={!!selectedPaymentId}
-                      >
+                      <Select onValueChange={field.onChange} value={field.value} disabled>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select student" />
@@ -670,16 +1073,12 @@ export default function PaymentsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="feeStructureId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Fee Structure</FormLabel>
-                      <Select
-                        onValueChange={handleFeeStructureChange}
-                        value={field.value}
-                        disabled={!selectedStudentId || !!selectedPaymentId}
-                      >
+                      <Select onValueChange={field.onChange} value={field.value} disabled>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select fee structure" />
@@ -700,7 +1099,7 @@ export default function PaymentsPage() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
@@ -717,7 +1116,7 @@ export default function PaymentsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="paidAmount"
                   render={({ field }) => (
                     <FormItem>
@@ -734,15 +1133,12 @@ export default function PaymentsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="paymentDate"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Date</FormLabel>
-                      <DatePicker
-                        date={field.value}
-                        onSelect={field.onChange}
-                      />
+                      <DatePicker date={field.value} onSelect={field.onChange} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -750,7 +1146,7 @@ export default function PaymentsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
@@ -774,7 +1170,7 @@ export default function PaymentsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="status"
                   render={({ field }) => (
                     <FormItem>
@@ -800,7 +1196,7 @@ export default function PaymentsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="receiptNumber"
                   render={({ field }) => (
                     <FormItem>
@@ -813,7 +1209,7 @@ export default function PaymentsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="transactionId"
                   render={({ field }) => (
                     <FormItem>
@@ -827,7 +1223,7 @@ export default function PaymentsPage() {
                 />
               </div>
               <FormField
-                control={form.control}
+                control={editForm.control}
                 name="remarks"
                 render={({ field }) => (
                   <FormItem>
@@ -840,19 +1236,10 @@ export default function PaymentsPage() {
                 )}
               />
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setCreateDialogOpen(false);
-                    setEditDialogOpen(false);
-                  }}
-                >
+                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {selectedPaymentId ? "Update Payment" : "Record Payment"}
-                </Button>
+                <Button type="submit">Update Payment</Button>
               </DialogFooter>
             </form>
           </Form>
