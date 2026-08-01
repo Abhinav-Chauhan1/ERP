@@ -220,10 +220,11 @@ export default function EditStudentPage() {
           if (response.ok) {
             const data = await response.json();
             setSections(data);
-            if (hydratingSectionRef.current) {
-              setSelectedSectionId(hydratingSectionRef.current);
-              hydratingSectionRef.current = null;
-            } else {
+            // Only clear the selection here if we're not mid-hydration; the
+            // hydration effect below applies the enrolled section once the
+            // list has rendered (see its comment for why this can't happen
+            // in the same update as setSections).
+            if (!hydratingSectionRef.current) {
               setSelectedSectionId("");
             }
           }
@@ -239,6 +240,19 @@ export default function EditStudentPage() {
       setSelectedSectionId("");
     }
   }, [selectedClassId]);
+
+  // Apply the enrolled section once its option is actually present in the
+  // list. Setting selectedSectionId in the same update as setSections (i.e.
+  // the moment options go from empty to populated) races Radix Select's
+  // hidden native <select> remount: it dispatches a synthetic change event
+  // that reads back an empty value and clobbers our selection. Reacting to
+  // `sections` in a separate effect lets that remount settle first.
+  useEffect(() => {
+    if (hydratingSectionRef.current && sections.some((s) => s.id === hydratingSectionRef.current)) {
+      setSelectedSectionId(hydratingSectionRef.current);
+      hydratingSectionRef.current = null;
+    }
+  }, [sections]);
 
   useEffect(() => {
     const fetchStudent = async () => {
