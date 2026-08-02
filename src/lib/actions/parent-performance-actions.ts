@@ -223,20 +223,28 @@ export async function getExamResults(input: GetExamResultsInput) {
       classAverages.map(avg => [avg.examId, avg._avg.marks || 0])
     );
 
-    // Calculate ranks for each exam
-    const rankPromises = results.map(async (result) => {
-      const higherScores = await db.examResult.count({
-        where: {
-          examId: result.examId,
-          marks: { gt: result.marks },
-          isAbsent: false
-        }
-      });
-      return { examId: result.examId, rank: higherScores + 1 };
+    // Calculate ranks for each exam: fetch every mark for the exams on this
+    // page once, then rank in memory instead of one count() query per result.
+    const allMarksForExams = await db.examResult.findMany({
+      where: {
+        examId: { in: examIds },
+        isAbsent: false
+      },
+      select: { examId: true, marks: true }
+    });
+    const marksByExamId = new Map<string, number[]>();
+    allMarksForExams.forEach(({ examId, marks }) => {
+      if (!marksByExamId.has(examId)) marksByExamId.set(examId, []);
+      marksByExamId.get(examId)!.push(marks);
     });
 
-    const ranks = await Promise.all(rankPromises);
-    const rankMap = new Map(ranks.map(r => [r.examId, r.rank]));
+    const rankMap = new Map(
+      results.map((result) => {
+        const examMarks = marksByExamId.get(result.examId) ?? [];
+        const higherScores = examMarks.filter((m) => m > result.marks).length;
+        return [result.examId, higherScores + 1];
+      })
+    );
 
     // Format results
     const formattedResults: ExamResultData[] = results.map(result => {

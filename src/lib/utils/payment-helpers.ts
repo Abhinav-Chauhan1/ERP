@@ -314,6 +314,36 @@ export async function getActiveFeeDiscount(
 }
 
 /**
+ * Batched variant of getActiveFeeDiscount for when a caller needs the active
+ * discount (if any) for several fee structures for the same student — one
+ * query instead of one findUnique per structure.
+ */
+export async function getActiveFeeDiscountsForStructures(
+  studentId: string,
+  feeStructureIds: string[],
+  schoolId: string
+): Promise<Map<string, DiscountInput>> {
+  const result = new Map<string, DiscountInput>();
+  const uniqueIds = Array.from(new Set(feeStructureIds));
+  if (uniqueIds.length === 0) return result;
+
+  const rows = await db.feeDiscount.findMany({
+    where: {
+      studentId,
+      feeStructureId: { in: uniqueIds },
+      schoolId,
+      isActive: true,
+    },
+  });
+
+  rows.forEach((row) => {
+    result.set(row.feeStructureId, { discountType: row.discountType, value: row.value });
+  });
+
+  return result;
+}
+
+/**
  * Resolves the annualized amount owed for each fee type against a class: the
  * class-specific override (FeeTypeClassAmount) or the fee type's own default
  * amount, expanded by its billing frequency (e.g. Monthly x12).

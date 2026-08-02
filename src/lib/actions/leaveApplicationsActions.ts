@@ -9,7 +9,7 @@ import {
 } from "../schemaValidation/leaveApplicationsSchemaValidation";
 import { sendLeaveNotification } from "@/lib/services/communication-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
 import { formatFullName } from "@/lib/utils";
@@ -39,7 +39,7 @@ export const createLeaveApplication = withSchoolAuthAction(async (schoolId, user
 
     // If not self, check for admin permissions
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
+      const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.UPDATE);
       if (hasPerm) {
         isAuthorized = true;
       }
@@ -197,7 +197,7 @@ export const updateLeaveApplication = withSchoolAuthAction(async (schoolId, user
 
     // If not owner, check permission
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
+      const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.UPDATE);
       if (hasPerm) isAuthorized = true;
     }
 
@@ -258,7 +258,7 @@ export const updateLeaveApplication = withSchoolAuthAction(async (schoolId, user
 export const processLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, data: LeaveApprovalFormValues) => {
   try {
     // Strict Permission Check: Only authorized roles can approve/reject
-    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
+    const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.UPDATE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions to process leave applications" };
     }
@@ -367,72 +367,82 @@ export const processLeaveApplication = withSchoolAuthAction(async (schoolId, use
         });
 
         if (studentEnrollment) {
-          for (const date of dates) {
-            const existingAttendance = await db.studentAttendance.findFirst({
-              where: {
-                schoolId,
-                studentId: applicantId,
-                date: date,
-                sectionId: studentEnrollment.sectionId
-              }
-            });
-
-            if (existingAttendance) {
-              await db.studentAttendance.update({
-                where: { id: existingAttendance.id, schoolId },
-                data: {
-                  status: "LEAVE",
-                  reason: existingApplication.reason,
-                  markedBy: approverId,
-                }
-              });
-            } else {
-              await db.studentAttendance.create({
-                data: {
-                  schoolId,
-                  studentId: applicantId,
-                  date: date,
-                  sectionId: studentEnrollment.sectionId,
-                  status: "LEAVE",
-                  reason: existingApplication.reason,
-                  markedBy: approverId,
-                }
-              });
-            }
-          }
-        }
-      } else if (applicantType === "TEACHER") {
-        for (const date of dates) {
-          const existingAttendance = await db.teacherAttendance.findFirst({
+          const existingRows = await db.studentAttendance.findMany({
             where: {
               schoolId,
-              teacherId: applicantId,
-              date: date
-            }
+              studentId: applicantId,
+              sectionId: studentEnrollment.sectionId,
+              date: { in: dates },
+            },
           });
+          const existingDates = new Set(existingRows.map((r) => r.date.getTime()));
+          const newDates = dates.filter((d) => !existingDates.has(d.getTime()));
 
-          if (existingAttendance) {
-            await db.teacherAttendance.update({
-              where: { id: existingAttendance.id, schoolId },
-              data: {
-                status: "LEAVE",
-                reason: existingApplication.reason,
-                markedBy: approverId,
-              }
-            });
-          } else {
-            await db.teacherAttendance.create({
-              data: {
-                schoolId,
-                teacherId: applicantId,
-                date: date,
-                status: "LEAVE",
-                reason: existingApplication.reason,
-                markedBy: approverId,
-              }
-            });
-          }
+          await db.$transaction([
+            ...existingRows.map((row) =>
+              db.studentAttendance.update({
+                where: { id: row.id, schoolId },
+                data: {
+                  status: "LEAVE",
+                  reason: existingApplication.reason,
+                  markedBy: approverId,
+                },
+              })
+            ),
+            ...(newDates.length > 0
+              ? [
+                  db.studentAttendance.createMany({
+                    data: newDates.map((date) => ({
+                      schoolId,
+                      studentId: applicantId,
+                      date,
+                      sectionId: studentEnrollment.sectionId,
+                      status: "LEAVE" as const,
+                      reason: existingApplication.reason,
+                      markedBy: approverId,
+                    })),
+                  }),
+                ]
+              : []),
+          ]);
         }
+      } else if (applicantType === "TEACHER") {
+        const existingRows = await db.teacherAttendance.findMany({
+          where: {
+            schoolId,
+            teacherId: applicantId,
+            date: { in: dates },
+          },
+        });
+        const existingDates = new Set(existingRows.map((r) => r.date.getTime()));
+        const newDates = dates.filter((d) => !existingDates.has(d.getTime()));
+
+        await db.$transaction([
+          ...existingRows.map((row) =>
+            db.teacherAttendance.update({
+              where: { id: row.id, schoolId },
+              data: {
+                status: "LEAVE",
+                reason: existingApplication.reason,
+                markedBy: approverId,
+              },
+            })
+          ),
+          ...(newDates.length > 0
+            ? [
+                db.teacherAttendance.createMany({
+                  data: newDates.map((date) => ({
+                    schoolId,
+                    teacherId: applicantId,
+                    date,
+                    status: "LEAVE" as const,
+                    reason: existingApplication.reason,
+                    markedBy: approverId,
+                  })),
+                }),
+              ]
+            : []),
+        ]);
       }
     }
 
@@ -475,7 +485,7 @@ export const deleteLeaveApplication = withSchoolAuthAction(async (schoolId, user
     }
 
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.DELETE);
+      const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.DELETE);
       if (hasPerm) isAuthorized = true;
     }
 
@@ -517,7 +527,7 @@ export const getLeaveApplications = withSchoolAuthAction(async (
   try {
     const where: any = { schoolId };
 
-    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.READ);
 
     if (!hasPerm) {
       // Limit to own applications
@@ -689,7 +699,7 @@ export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, use
     let isAuthorized = false;
 
     // Check permission
-    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.READ);
     if (hasPerm) isAuthorized = true;
 
     // Check ownership if not admin
@@ -817,7 +827,7 @@ export async function getLeaveApplicationsForEntity(entityId: string, entityType
     let isAuthorized = false;
 
     // Check permission
-    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(userId, "ATTENDANCE", PermissionAction.READ);
     if (hasPerm) isAuthorized = true;
 
     // Check ownership if not admin

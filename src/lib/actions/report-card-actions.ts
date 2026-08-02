@@ -211,14 +211,16 @@ export const getParentChildrenReportCards = withSchoolAuthAction(async (
 
     const children = parent.children.map((c) => c.student);
 
-    // Fetch report cards for all children
+    // Fetch report cards for all children in one query instead of one per child
     const reportCardsMap: Record<string, ReportCardListItem[]> = {};
+    children.forEach((child) => {
+      reportCardsMap[child.id] = [];
+    });
 
-    for (const child of children) {
-      // Pass the existing context to maintain consistency
+    if (children.length > 0) {
       const reportCards = await db.reportCard.findMany({
         where: {
-          studentId: child.id,
+          studentId: { in: children.map((c) => c.id) },
           schoolId,
           isPublished: true,
           ...(filters?.termId ? { termId: filters.termId } : {}),
@@ -226,6 +228,7 @@ export const getParentChildrenReportCards = withSchoolAuthAction(async (
         },
         select: {
           id: true,
+          studentId: true,
           percentage: true,
           grade: true,
           rank: true,
@@ -248,18 +251,20 @@ export const getParentChildrenReportCards = withSchoolAuthAction(async (
         },
       });
 
-      reportCardsMap[child.id] = reportCards.map((rc) => ({
-        id: rc.id,
-        termName: rc.term?.name ?? "",
-        academicYear: rc.term?.academicYear.name ?? "",
-        percentage: rc.percentage,
-        grade: rc.grade,
-        rank: rc.rank,
-        isPublished: rc.isPublished,
-        publishDate: rc.publishDate,
-        pdfUrl: rc.pdfUrl,
-        createdAt: rc.createdAt,
-      }));
+      reportCards.forEach((rc) => {
+        reportCardsMap[rc.studentId].push({
+          id: rc.id,
+          termName: rc.term?.name ?? "",
+          academicYear: rc.term?.academicYear.name ?? "",
+          percentage: rc.percentage,
+          grade: rc.grade,
+          rank: rc.rank,
+          isPublished: rc.isPublished,
+          publishDate: rc.publishDate,
+          pdfUrl: rc.pdfUrl,
+          createdAt: rc.createdAt,
+        });
+      });
     }
 
     return {

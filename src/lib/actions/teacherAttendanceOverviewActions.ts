@@ -159,110 +159,89 @@ export async function getTeacherAttendanceOverview() {
         (record.status === "ABSENT" || record.status === "LEAVE") && record.reason
     ).length;
 
+    // Everything below derives from the single weeklyAttendance fetch above
+    // instead of re-querying per day / per class / per student — weeklyAttendance
+    // already covers this teacher's full student population for the week, so
+    // per-day, per-section, and per-student breakdowns are just JS grouping.
+    const attendanceBySectionId = new Map<string, typeof weeklyAttendance>();
+    const attendanceByStudentId = new Map<string, typeof weeklyAttendance>();
+    for (const record of weeklyAttendance) {
+      if (!attendanceBySectionId.has(record.sectionId)) attendanceBySectionId.set(record.sectionId, []);
+      attendanceBySectionId.get(record.sectionId)!.push(record);
+
+      if (!attendanceByStudentId.has(record.studentId)) attendanceByStudentId.set(record.studentId, []);
+      attendanceByStudentId.get(record.studentId)!.push(record);
+    }
+
     // Get attendance data by day for chart
     const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const attendanceByDay = await Promise.all(
-      daysOfWeek.map(async (day, index) => {
-        const dayDate = new Date(startOfThisWeek);
-        dayDate.setDate(dayDate.getDate() + index);
+    const attendanceByDay = daysOfWeek.map((day, index) => {
+      const dayDate = new Date(startOfThisWeek);
+      dayDate.setDate(dayDate.getDate() + index);
 
-        const dayStart = startOfDay(dayDate);
-        const dayEnd = endOfDay(dayDate);
+      const dayStart = startOfDay(dayDate);
+      const dayEnd = endOfDay(dayDate);
 
-        const dayAttendance = await db.studentAttendance.findMany({
-          where: {
-            date: {
-              gte: dayStart,
-              lte: dayEnd,
-            },
-            student: {
-              schoolId, // CRITICAL: Filter through student relation
-            },
-            section: {
-              schoolId, // CRITICAL: Filter through section relation
-              class: {
-                schoolId, // CRITICAL: Filter through class relation
-                teachers: {
-                  some: {
-                    teacherId: teacher.id,
-                    schoolId, // CRITICAL: Filter by school
-                  },
-                },
-              },
-            },
-          },
-        });
+      const dayAttendance = weeklyAttendance.filter(
+        (r) => r.date >= dayStart && r.date <= dayEnd
+      );
 
-        const present = dayAttendance.filter((r) => r.status === "PRESENT").length;
-        const absent = dayAttendance.length - present;
+      const present = dayAttendance.filter((r) => r.status === "PRESENT").length;
+      const absent = dayAttendance.length - present;
 
-        return {
-          date: day.substring(0, 3),
-          present,
-          absent,
-        };
-      })
-    );
+      return {
+        date: day.substring(0, 3),
+        present,
+        absent,
+      };
+    });
 
     // Get class-wise attendance summary
-    const classAttendanceSummary = await Promise.all(
-      teacherClasses.map(async (tc) => {
-        // A ClassTeacher row with sectionId === null covers the whole class;
-        // a row with a sectionId covers only that section (e.g. a section-scoped class head)
-        const relevantSections = tc.sectionId
-          ? tc.class.sections.filter((s) => s.id === tc.sectionId)
-          : tc.class.sections;
+    const classAttendanceSummary = teacherClasses.map((tc) => {
+      // A ClassTeacher row with sectionId === null covers the whole class;
+      // a row with a sectionId covers only that section (e.g. a section-scoped class head)
+      const relevantSections = tc.sectionId
+        ? tc.class.sections.filter((s) => s.id === tc.sectionId)
+        : tc.class.sections;
 
-        const classAttendance = await db.studentAttendance.findMany({
-          where: {
-            date: {
-              gte: startOfThisWeek,
-              lte: endOfThisWeek,
-            },
-            student: {
-              schoolId, // CRITICAL: Filter through student relation
-            },
-            section: tc.sectionId
-              ? { id: tc.sectionId, schoolId }
-              : { classId: tc.classId, schoolId }, // CRITICAL: Filter by school
-          },
-        });
+      const classAttendance = relevantSections.flatMap(
+        (section) => attendanceBySectionId.get(section.id) ?? []
+      );
 
-        const totalStudents = relevantSections.reduce(
-          (sum, section) => sum + section.enrollments.length,
-          0
-        );
+      const totalStudents = relevantSections.reduce(
+        (sum, section) => sum + section.enrollments.length,
+        0
+      );
 
-        const presentInClass = classAttendance.filter(
-          (r) => r.status === "PRESENT"
-        ).length;
-        const averageAttendance =
-          classAttendance.length > 0
-            ? Math.round((presentInClass / classAttendance.length) * 100)
-            : 0;
+      const presentInClass = classAttendance.filter(
+        (r) => r.status === "PRESENT"
+      ).length;
+      const averageAttendance =
+        classAttendance.length > 0
+          ? Math.round((presentInClass / classAttendance.length) * 100)
+          : 0;
 
-        const thisWeekPresent = classAttendance.filter(
-          (r) => r.status === "PRESENT"
-        ).length;
-        const thisWeekAbsent = classAttendance.length - thisWeekPresent;
+      const thisWeekPresent = classAttendance.filter(
+        (r) => r.status === "PRESENT"
+      ).length;
+      const thisWeekAbsent = classAttendance.length - thisWeekPresent;
 
-        return {
-          id: tc.classId,
-          name: tc.class.name,
-          subject: "All Subjects", // Could be enhanced to show specific subject
-          studentCount: totalStudents,
-          averageAttendance,
-          thisWeekPresent,
-          thisWeekAbsent,
-          status:
-            averageAttendance >= 90
-              ? "Good"
-              : averageAttendance >= 75
-                ? "Fair"
-                : "Needs Attention",
-        };
-      })
-    );
+      return {
+        id: tc.classId,
+        name: tc.class.name,
+        subject: "All Subjects", // Could be enhanced to show specific subject
+        studentCount: totalStudents,
+        averageAttendance,
+        thisWeekPresent,
+        thisWeekAbsent,
+        status:
+          averageAttendance >= 90
+            ? "Good"
+            : averageAttendance >= 75
+              ? "Fair"
+              : "Needs Attention",
+      };
+    });
 
     // Get students with low attendance (below 75%)
     const allStudents = teacherClasses.flatMap((tc) => {
@@ -278,50 +257,43 @@ export async function getTeacherAttendanceOverview() {
       );
     });
 
-    const studentsWithLowAttendance = await Promise.all(
-      allStudents.slice(0, 5).map(async (student) => {
-        const studentAttendance = await db.studentAttendance.findMany({
-          where: {
-            studentId: student.studentId,
-            student: {
-              schoolId, // CRITICAL: Filter through student relation
-            },
-            date: {
-              gte: startOfThisWeek,
-              lte: endOfThisWeek,
-            },
-          },
-          include: {
-            student: {
-              include: {
-                user: true,
-              },
-            },
-          },
-        });
+    const lowAttendanceCandidates = allStudents.slice(0, 5);
+    const candidateStudents = await db.student.findMany({
+      where: { id: { in: lowAttendanceCandidates.map((s) => s.studentId) }, schoolId },
+      include: { user: true },
+    });
+    const candidateStudentMap = new Map(candidateStudents.map((s) => [s.id, s]));
 
-        const present = studentAttendance.filter(
-          (r) => r.status === "PRESENT"
-        ).length;
-        const attendanceRate =
-          studentAttendance.length > 0
-            ? Math.round((present / studentAttendance.length) * 100)
-            : 0;
-        const absences = studentAttendance.length - present;
+    const studentsWithLowAttendance = lowAttendanceCandidates.map((student) => {
+      const studentAttendance = attendanceByStudentId.get(student.studentId) ?? [];
+      const studentRecord = candidateStudentMap.get(student.studentId);
 
-        return {
-          id: student.studentId,
-          name: studentAttendance[0]
-            ? `${formatFullName(studentAttendance[0].student.user.firstName, studentAttendance[0].student.user.lastName)}`
-            : "Unknown",
-          admissionId: studentAttendance[0]?.student.admissionId || "N/A",
-          className: student.className,
-          attendanceRate,
-          absences,
-          status: attendanceRate >= 75 ? "Good" : "Needs attention",
-        };
-      })
-    );
+      const present = studentAttendance.filter(
+        (r) => r.status === "PRESENT"
+      ).length;
+      const attendanceRate =
+        studentAttendance.length > 0
+          ? Math.round((present / studentAttendance.length) * 100)
+          : 0;
+      const absences = studentAttendance.length - present;
+
+      // Preserve original behavior: name/admissionId came from the attendance
+      // record's joined student, so a student with zero attendance rows this
+      // week showed "Unknown"/"N/A" even though we know who they are.
+      const hasAttendanceThisWeek = studentAttendance.length > 0;
+
+      return {
+        id: student.studentId,
+        name: hasAttendanceThisWeek && studentRecord
+          ? `${formatFullName(studentRecord.user.firstName, studentRecord.user.lastName)}`
+          : "Unknown",
+        admissionId: (hasAttendanceThisWeek && studentRecord?.admissionId) || "N/A",
+        className: student.className,
+        attendanceRate,
+        absences,
+        status: attendanceRate >= 75 ? "Good" : "Needs attention",
+      };
+    });
 
     // Format today's classes
     const formattedTodayClasses = todayClasses.map((slot) => {

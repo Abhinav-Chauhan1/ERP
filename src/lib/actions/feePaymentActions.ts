@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus, PaymentMethod, PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { sendFeeReminder } from "@/lib/services/communication-service";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { format } from "date-fns";
@@ -14,6 +14,7 @@ import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
 import {
   getFeeAmountsForClass,
   getActiveFeeDiscount,
+  getActiveFeeDiscountsForStructures,
   calculateNetPayable,
   calculateAccruedFeeTotal,
 } from "@/lib/utils/payment-helpers";
@@ -27,7 +28,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
     throw new Error('Unauthorized: You must be logged in');
   }
 
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }
@@ -718,53 +719,66 @@ export async function getFeeStructuresForStudent(studentId: string) {
     });
     const invoiceSummaryMap = new Map(invoiceSummaries.map((inv) => [inv.feeStructureId, inv]));
 
-    const feeStructuresWithAmounts = await Promise.all(
-      feeStructures.map(async (structure) => {
-        const feeTypeIds = structure.items.map((item) => item.feeTypeId);
-        const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId);
-        const grossTotal = feeTypeIds.reduce((sum, id) => sum + (amountMap.get(id) ?? 0), 0);
-
-        const discount = await getActiveFeeDiscount(studentId, structure.id, schoolId);
-        const netPayableAmount = calculateNetPayable(grossTotal, discount);
-
-        const completedPayments = await db.feePayment.aggregate({
-          where: {
-            studentId,
-            feeStructureId: structure.id,
-            schoolId,
-            status: PaymentStatus.COMPLETED,
-          },
-          _sum: { paidAmount: true },
-        });
-        const paidSoFar = completedPayments._sum.paidAmount ?? 0;
-        const fullRemainingBalance = Math.max(netPayableAmount - paidSoFar, 0);
-
-        const invoiceSummary = invoiceSummaryMap.get(structure.id);
-        let dueNow: number;
-        if (invoiceSummary) {
-          dueNow = invoiceSummary.dueAmount;
-        } else {
-          const effectiveStartDate = new Date(
-            Math.max(structure.validFrom.getTime(), enrollment.enrollDate.getTime())
-          );
-          const now = new Date();
-          const asOfDate =
-            structure.validTo && structure.validTo < now ? structure.validTo : now;
-          const accrualItems = structure.items.map((item) => ({
-            annualizedAmount: amountMap.get(item.feeTypeId) ?? item.feeType.amount,
-            frequency: item.feeType.frequency,
-            dueDate: item.dueDate,
-          }));
-          const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
-          const netRatio = grossTotal > 0 ? netPayableAmount / grossTotal : 1;
-          dueNow = Math.max(accruedGrossTotal * netRatio - paidSoFar, 0);
-        }
-        // Never exceed the true remaining balance (e.g. a stale invoice summary row)
-        dueNow = Math.min(dueNow, fullRemainingBalance);
-
-        return { ...structure, netPayableAmount, fullRemainingBalance, dueNow };
-      })
+    // Batch what used to be 3 queries per fee structure into 3 queries total:
+    // one amount lookup covering every fee type across every structure (classId
+    // is constant across this loop), one discount lookup for all structures,
+    // and one groupBy instead of a per-structure aggregate.
+    const allFeeTypeIds = feeStructures.flatMap((s) => s.items.map((item) => item.feeTypeId));
+    const amountMap = await getFeeAmountsForClass(allFeeTypeIds, classId, schoolId);
+    const discountMap = await getActiveFeeDiscountsForStructures(
+      studentId,
+      feeStructures.map((s) => s.id),
+      schoolId
     );
+    const paidByStructure = await db.feePayment.groupBy({
+      by: ["feeStructureId"],
+      where: {
+        studentId,
+        schoolId,
+        status: PaymentStatus.COMPLETED,
+        feeStructureId: { in: feeStructures.map((s) => s.id) },
+      },
+      _sum: { paidAmount: true },
+    });
+    const paidSoFarMap = new Map(
+      paidByStructure.map((row) => [row.feeStructureId, row._sum.paidAmount ?? 0])
+    );
+
+    const feeStructuresWithAmounts = feeStructures.map((structure) => {
+      const feeTypeIds = structure.items.map((item) => item.feeTypeId);
+      const grossTotal = feeTypeIds.reduce((sum, id) => sum + (amountMap.get(id) ?? 0), 0);
+
+      const discount = discountMap.get(structure.id) ?? null;
+      const netPayableAmount = calculateNetPayable(grossTotal, discount);
+
+      const paidSoFar = paidSoFarMap.get(structure.id) ?? 0;
+      const fullRemainingBalance = Math.max(netPayableAmount - paidSoFar, 0);
+
+      const invoiceSummary = invoiceSummaryMap.get(structure.id);
+      let dueNow: number;
+      if (invoiceSummary) {
+        dueNow = invoiceSummary.dueAmount;
+      } else {
+        const effectiveStartDate = new Date(
+          Math.max(structure.validFrom.getTime(), enrollment.enrollDate.getTime())
+        );
+        const now = new Date();
+        const asOfDate =
+          structure.validTo && structure.validTo < now ? structure.validTo : now;
+        const accrualItems = structure.items.map((item) => ({
+          annualizedAmount: amountMap.get(item.feeTypeId) ?? item.feeType.amount,
+          frequency: item.feeType.frequency,
+          dueDate: item.dueDate,
+        }));
+        const accruedGrossTotal = calculateAccruedFeeTotal(accrualItems, effectiveStartDate, asOfDate);
+        const netRatio = grossTotal > 0 ? netPayableAmount / grossTotal : 1;
+        dueNow = Math.max(accruedGrossTotal * netRatio - paidSoFar, 0);
+      }
+      // Never exceed the true remaining balance (e.g. a stale invoice summary row)
+      dueNow = Math.min(dueNow, fullRemainingBalance);
+
+      return { ...structure, netPayableAmount, fullRemainingBalance, dueNow };
+    });
 
     return { success: true, data: feeStructuresWithAmounts };
   } catch (error) {
