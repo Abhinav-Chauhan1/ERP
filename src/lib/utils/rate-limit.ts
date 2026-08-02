@@ -82,33 +82,31 @@ class InMemoryRateLimiter {
   }
 }
 
-// Create rate limiter instance
-let rateLimiter: Ratelimit | InMemoryRateLimiter;
+// Shared Redis client (null in dev/test when Upstash isn't configured, in which
+// case every limiter below falls back to the in-memory implementation).
+const redisClient =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+    : null;
 
-// Try to use Upstash if configured, otherwise fall back to in-memory
-if (
-  process.env.UPSTASH_REDIS_REST_URL &&
-  process.env.UPSTASH_REDIS_REST_TOKEN
-) {
-  // Use Upstash Redis for production
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-
-  rateLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(100, "10 s"),
-    analytics: true,
-    prefix: "@upstash/ratelimit",
-  });
-} else {
-  // Use in-memory rate limiter for development
+if (!redisClient) {
   console.warn(
     "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not configured. Using in-memory rate limiter."
   );
-  rateLimiter = new InMemoryRateLimiter(100, 10000); // 100 requests per 10 seconds
 }
+
+// Default limiter used by rateLimit() below: 100 requests per 10 seconds.
+const rateLimiter: Ratelimit | InMemoryRateLimiter = redisClient
+  ? new Ratelimit({
+      redis: redisClient,
+      limiter: Ratelimit.slidingWindow(100, "10 s"),
+      analytics: true,
+      prefix: "@upstash/ratelimit",
+    })
+  : new InMemoryRateLimiter(100, 10000); // 100 requests per 10 seconds
 
 /**
  * Rate limit a request based on IP address
@@ -216,6 +214,63 @@ export const RateLimitPresets = {
   API: { limit: 100, window: 60000 }, // 100 API calls per minute
 } as const;
 
+// Per-preset limiters, lazily created and cached by "limit:window" so each
+// distinct preset shape (e.g. 10/60s vs 5/60s) gets its own sliding window
+// instead of everyone sharing the default 100/10s limiter above.
+const presetLimiters = new Map<string, Ratelimit | InMemoryRateLimiter>();
+
+function getPresetLimiter(preset: {
+  limit: number;
+  window: number;
+}): Ratelimit | InMemoryRateLimiter {
+  const key = `${preset.limit}:${preset.window}`;
+  const cached = presetLimiters.get(key);
+  if (cached) return cached;
+
+  const limiter: Ratelimit | InMemoryRateLimiter = redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(
+          preset.limit,
+          `${Math.max(1, Math.round(preset.window / 1000))} s`
+        ),
+        analytics: true,
+        prefix: "@upstash/ratelimit:preset",
+      })
+    : new InMemoryRateLimiter(preset.limit, preset.window);
+
+  presetLimiters.set(key, limiter);
+  return limiter;
+}
+
+async function limitWithPreset(
+  identifier: string,
+  preset: { limit: number; window: number }
+) {
+  try {
+    const limiter = getPresetLimiter(preset);
+    if (limiter instanceof InMemoryRateLimiter) {
+      return await limiter.limit(identifier);
+    }
+    const result = await limiter.limit(identifier);
+    return {
+      success: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
+    };
+  } catch (error) {
+    // If rate limiting fails (e.g., Upstash is down), allow the request
+    console.error("Rate limiting error:", error);
+    return {
+      success: true,
+      limit: preset.limit,
+      remaining: preset.limit,
+      reset: Date.now() + preset.window,
+    };
+  }
+}
+
 /**
  * Check rate limit for server actions
  * @param identifier - Unique identifier (typically user ID)
@@ -226,7 +281,7 @@ export async function checkRateLimit(
   identifier: string,
   preset: { limit: number; window: number }
 ): Promise<boolean> {
-  const result = await rateLimit(identifier);
+  const result = await limitWithPreset(identifier, preset);
   return result.success;
 }
 
@@ -240,7 +295,7 @@ export async function rateLimitMiddleware(
   identifier: string,
   preset: { limit: number; window: number }
 ): Promise<{ exceeded: boolean; limit: number; remaining: number; reset: number }> {
-  const result = await rateLimit(identifier);
+  const result = await limitWithPreset(identifier, preset);
   return {
     exceeded: !result.success,
     limit: result.limit,
