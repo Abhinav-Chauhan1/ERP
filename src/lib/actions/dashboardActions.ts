@@ -1,43 +1,34 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { formatFullName, sortByClassName } from "@/lib/utils";
 
-export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  try {
-    // Get counts
-    const [
-      totalStudents,
-      totalTeachers,
-      totalClasses,
-      totalSubjects,
-    ] = await Promise.all([
-      db.student.count({
-        where: {
-          schoolId,
-          user: { isActive: true }
-        }
-      }),
-      db.teacher.count({
-        where: {
-          schoolId,
-          user: { isActive: true }
-        }
-      }),
+// Dashboard counts change slowly (admissions, staff changes) relative to how
+// often the dashboard is loaded, and getDashboardStats/getTotalStudents/
+// getTotalTeachers used to each run their own db.student.count()/db.teacher.count()
+// independently — three separate Suspense sections on the same page load meant
+// the same two counts were queried twice each. Cached here (short TTL, per
+// schoolId) so whichever section resolves first populates it for the rest.
+const getCachedCoreStats = unstable_cache(
+  async (schoolId: string) => {
+    const [totalStudents, totalTeachers, totalClasses, totalSubjects] = await Promise.all([
+      db.student.count({ where: { schoolId, user: { isActive: true } } }),
+      db.teacher.count({ where: { schoolId, user: { isActive: true } } }),
       db.class.count({ where: { schoolId } }),
       db.subject.count({ where: { schoolId } }),
     ]);
+    return { totalStudents, totalTeachers, totalClasses, totalSubjects };
+  },
+  ["dashboard-core-stats"],
+  { revalidate: 90 }
+);
 
-    return {
-      success: true,
-      data: {
-        totalStudents,
-        totalTeachers,
-        totalClasses,
-        totalSubjects,
-      },
-    };
+export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const data = await getCachedCoreStats(schoolId);
+    return { success: true, data };
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
     return { success: false, error: "Failed to fetch dashboard stats" };
@@ -48,17 +39,7 @@ export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, u
 
 export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const totalStudents = await db.student.count({
-      where: {
-        schoolId,
-
-        user: {
-          isActive: true,
-
-        },
-      },
-    });
-
+    const { totalStudents } = await getCachedCoreStats(schoolId);
     return {
       success: true,
       data: totalStudents,
@@ -71,17 +52,7 @@ export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, us
 
 export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const totalTeachers = await db.teacher.count({
-      where: {
-        schoolId,
-
-        user: {
-          isActive: true,
-
-        },
-      },
-    });
-
+    const { totalTeachers } = await getCachedCoreStats(schoolId);
     return {
       success: true,
       data: totalTeachers,
@@ -92,12 +63,14 @@ export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, us
   }
 });
 
-export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  try {
-    // FeeInvoiceSummary.dueAmount is what a student currently owes (accrued
-    // fees minus paid), kept in sync by fee-invoice-service.ts. FeePayment rows
-    // only exist once someone actually pays, so aggregating FeePayment alone
-    // under-reports pending fees for students who haven't paid anything yet.
+// FeeInvoiceSummary.dueAmount is what a student currently owes (accrued fees
+// minus paid), kept in sync by fee-invoice-service.ts. FeePayment rows only
+// exist once someone actually pays, so aggregating FeePayment alone
+// under-reports pending fees for students who haven't paid anything yet.
+// Cached and shared with getNotifications below, which used to run its own
+// near-identical count() of the same rows.
+const getCachedPendingFeeSummary = unstable_cache(
+  async (schoolId: string) => {
     const pendingInvoices = await db.feeInvoiceSummary.aggregate({
       where: {
         schoolId,
@@ -112,11 +85,20 @@ export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: strin
     });
 
     return {
+      totalAmount: pendingInvoices._sum.dueAmount || 0,
+      count: pendingInvoices._count.id || 0,
+    };
+  },
+  ["dashboard-pending-fee-summary"],
+  { revalidate: 90 }
+);
+
+export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const data = await getCachedPendingFeeSummary(schoolId);
+    return {
       success: true,
-      data: {
-        totalAmount: pendingInvoices._sum.dueAmount || 0,
-        count: pendingInvoices._count.id || 0,
-      },
+      data,
     };
   } catch (error) {
     console.error("Error fetching pending fee payments:", error);
@@ -268,8 +250,8 @@ export const getRecentAnnouncementsCount = withSchoolAuthAction(async (schoolId:
   }
 });
 
-export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  try {
+const getCachedStudentAttendanceChartData = unstable_cache(
+  async (schoolId: string) => {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
@@ -291,12 +273,19 @@ export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: st
       if (row.status === 'PRESENT') data.present += row._count.id;
     }
 
-    const chartData = months.map((month) => {
+    return months.map((month) => {
       const data = monthlyData.get(month) ?? { present: 0, total: 0 };
       const percentage = data.total > 0 ? Math.round((data.present / data.total) * 100) : 0;
       return { month, present: percentage };
     });
+  },
+  ["dashboard-student-attendance-chart"],
+  { revalidate: 120 }
+);
 
+export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const chartData = await getCachedStudentAttendanceChartData(schoolId);
     return { success: true, data: chartData };
   } catch (error) {
     console.error("Error fetching attendance data:", error);
@@ -304,8 +293,8 @@ export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: st
   }
 });
 
-export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  try {
+const getCachedExamResultsData = unstable_cache(
+  async (schoolId: string) => {
     // Get average exam results by subject using a single groupBy query (no N+1)
     const subjects = await db.subject.findMany({
       where: { schoolId },
@@ -313,7 +302,7 @@ export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, 
       select: { id: true, name: true },
     });
 
-    if (subjects.length === 0) return { success: true, data: [] };
+    if (subjects.length === 0) return [];
 
     const subjectIds = subjects.map((s) => s.id);
 
@@ -357,12 +346,19 @@ export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, 
       subjectTotals.set(subjectId, existing);
     }
 
-    const resultsData = subjects.map((subject) => {
+    return subjects.map((subject) => {
       const totals = subjectTotals.get(subject.id);
       const average = totals && totals.count > 0 ? Math.round(totals.sum / totals.count) : 0;
       return { subject: subject.name, average };
     });
+  },
+  ["dashboard-exam-results"],
+  { revalidate: 120 }
+);
 
+export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const resultsData = await getCachedExamResultsData(schoolId);
     return { success: true, data: resultsData };
   } catch (error) {
     console.error("Error fetching exam results:", error);
@@ -370,8 +366,8 @@ export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, 
   }
 });
 
-export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  try {
+const getCachedEnrollmentDistribution = unstable_cache(
+  async (schoolId: string) => {
     const allClasses = await db.class.findMany({
       where: { schoolId },
       select: {
@@ -396,11 +392,18 @@ export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: s
     // level would pick the lexicographically-first 6 classes instead.
     const classes = sortByClassName(allClasses).slice(0, 6);
 
-    const data = classes.map((cls) => ({
+    return classes.map((cls) => ({
       name: cls.name,
       value: cls._count.enrollments,
     }));
+  },
+  ["dashboard-enrollment-distribution"],
+  { revalidate: 120 }
+);
 
+export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const data = await getCachedEnrollmentDistribution(schoolId);
     return { success: true, data };
   } catch (error) {
     console.error("Error fetching enrollment distribution:", error);
@@ -575,15 +578,9 @@ export const getNotifications = withSchoolAuthAction(async (schoolId: string, us
       },
     });
 
-    // Get pending fee payments — FeeInvoiceSummary.dueAmount reflects what a
-    // student currently owes (kept in sync by fee-invoice-service.ts), unlike
-    // FeePayment which only has rows once someone has actually paid.
-    const pendingPayments = await db.feeInvoiceSummary.count({
-      where: {
-        schoolId,
-        dueAmount: { gt: 0 },
-      },
-    });
+    // Pending fee payments — shares the same cached aggregate as
+    // getPendingFeePayments instead of re-counting the same rows.
+    const { count: pendingPayments } = await getCachedPendingFeeSummary(schoolId);
 
     // Get upcoming events count
     const upcomingEventsCount = await db.event.count({
