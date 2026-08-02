@@ -3,8 +3,6 @@
  * Provides Excel import/export functionality without security vulnerabilities
  */
 
-import ExcelJS from 'exceljs';
-
 export interface ExcelExportOptions {
   filename: string;
   title?: string;
@@ -23,6 +21,8 @@ export async function exportToExcel(
   if (!data || data.length === 0) {
     throw new Error('No data to export');
   }
+
+  const ExcelJS = (await import('exceljs')).default;
 
   // Create workbook and worksheet
   const workbook = new ExcelJS.Workbook();
@@ -138,6 +138,7 @@ export async function exportToExcel(
  * Parse Excel file and return data
  */
 export async function parseExcelFile(file: File): Promise<any[]> {
+  const ExcelJS = (await import('exceljs')).default;
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
@@ -183,6 +184,7 @@ export async function createExcelTemplate(
   columns: Array<{ key: string; header: string; example?: any }>,
   filename: string
 ): Promise<void> {
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'SikshaMitra';
   workbook.created = new Date();

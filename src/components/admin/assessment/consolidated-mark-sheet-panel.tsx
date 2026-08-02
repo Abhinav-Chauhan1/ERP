@@ -18,8 +18,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import { exportToExcel } from "@/lib/utils/excel";
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   getConsolidatedMarkSheet,
   getConsolidatedMarkSheetFilters,
@@ -150,6 +148,8 @@ export function ConsolidatedMarkSheetPanel() {
   async function handleExportPDF() {
     if (!markSheetData) { toast.error("No data to export"); return; }
     try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
       const doc = new jsPDF('landscape', 'mm', 'a4');
       doc.setFontSize(16);
       doc.text('Consolidated Mark Sheet', 14, 15);

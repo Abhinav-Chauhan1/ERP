@@ -19,8 +19,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import { exportToExcel } from "@/lib/utils/excel";
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   getConsolidatedMarkSheet,
   getConsolidatedMarkSheetFilters,
@@ -216,6 +214,8 @@ export default function ConsolidatedMarkSheetPage() {
     }
 
     try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
       const doc = new jsPDF('landscape', 'mm', 'a4');
 
       // Add title

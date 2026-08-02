@@ -3,8 +3,6 @@
  * Supports PDF, Excel (XLSX), and CSV formats
  */
 
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { exportToExcel as exportToExcelJS } from './excel';
 import Papa from 'papaparse';
 
@@ -68,14 +66,17 @@ export async function exportToExcel(
 /**
  * Export data to PDF format with optional charts
  */
-export function exportToPDF(
+export async function exportToPDF(
   data: any[],
   options: ExportOptions,
   charts?: ChartData[]
-): void {
+): Promise<void> {
   if (!data || data.length === 0) {
     throw new Error('No data to export');
   }
+
+  const { jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
 
   // Create PDF document
   const doc = new jsPDF({
@@ -220,7 +221,7 @@ export async function exportReport(
         await exportToExcel(data, options);
         break;
       case 'pdf':
-        exportToPDF(data, options, charts);
+        await exportToPDF(data, options, charts);
         break;
       default:
         throw new Error(`Unsupported export format: ${format}`);

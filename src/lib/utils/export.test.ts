@@ -131,24 +131,24 @@ describe('Export Utilities', () => {
   });
 
   describe('exportToPDF', () => {
-    it('should export data to PDF format', () => {
+    it('should export data to PDF format', async () => {
       // This test verifies the function runs without errors
       // Actual PDF generation is mocked
-      expect(() => exportToPDF(sampleData, exportOptions)).not.toThrow();
+      await expect(exportToPDF(sampleData, exportOptions)).resolves.not.toThrow();
     });
 
-    it('should throw error when no data provided', () => {
-      expect(() => exportToPDF([], exportOptions)).toThrow('No data to export');
+    it('should throw error when no data provided', async () => {
+      await expect(exportToPDF([], exportOptions)).rejects.toThrow('No data to export');
     });
 
-    it('should handle landscape orientation', () => {
+    it('should handle landscape orientation', async () => {
       const landscapeOptions = { ...exportOptions, orientation: 'landscape' as const };
-      expect(() => exportToPDF(sampleData, landscapeOptions)).not.toThrow();
+      await expect(exportToPDF(sampleData, landscapeOptions)).resolves.not.toThrow();
     });
 
-    it('should handle portrait orientation', () => {
+    it('should handle portrait orientation', async () => {
       const portraitOptions = { ...exportOptions, orientation: 'portrait' as const };
-      expect(() => exportToPDF(sampleData, portraitOptions)).not.toThrow();
+      await expect(exportToPDF(sampleData, portraitOptions)).resolves.not.toThrow();
     });
   });
 
