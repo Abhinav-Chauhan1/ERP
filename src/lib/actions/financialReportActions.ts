@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "@/lib/db";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 
@@ -17,36 +19,27 @@ export const getFeeCollectionReport = withSchoolAuthAction(async (
     const paymentWhere: any = { schoolId };
     if (filters?.status) paymentWhere.status = filters.status;
 
-    const payments = await db.feePayment.findMany({
-      where: paymentWhere,
-      include: {
-        student: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-            enrollments: {
-              where: { schoolId },
-              include: {
-                class: true,
-              },
-              take: 1,
-              orderBy: {
-                enrollDate: 'desc'
-              }
-            },
-          },
-        },
-        feeStructure: true,
-      },
-    });
+    // Only the summary counts/totals below are ever rendered by the caller
+    // (admin/reports/financial/page.tsx) — it never lists individual
+    // payments — so compute them via aggregates/counts instead of pulling
+    // every matching FeePayment row (with a 3-level student/enrollment/class
+    // include) into memory just to .reduce()/.filter() over it here.
+    const [paidAgg, statusCounts] = await Promise.all([
+      db.feePayment.aggregate({
+        where: { ...paymentWhere, status: "COMPLETED" },
+        _sum: { paidAmount: true },
+      }),
+      db.feePayment.groupBy({
+        by: ["status"],
+        where: paymentWhere,
+        _count: { id: true },
+      }),
+    ]);
 
-    const paidAmount = payments
-      .filter(p => p.status === "COMPLETED")
-      .reduce((sum, p) => sum + p.paidAmount, 0);
+    const paidAmount = paidAgg._sum.paidAmount || 0;
+    const totalPayments = statusCounts.reduce((sum, row) => sum + row._count.id, 0);
+    const completedPayments = statusCounts.find((row) => row.status === "COMPLETED")?._count.id || 0;
+    const pendingPayments = statusCounts.find((row) => row.status === "PENDING")?._count.id || 0;
 
     // totalAmount/pendingAmount come from FeeInvoiceSummary (what students
     // actually owe, kept in sync by fee-invoice-service.ts) rather than
@@ -64,15 +57,14 @@ export const getFeeCollectionReport = withSchoolAuthAction(async (
     return {
       success: true,
       data: {
-        payments,
         summary: {
           totalAmount,
           paidAmount,
           pendingAmount,
           collectionRate: totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0,
-          totalPayments: payments.length,
-          completedPayments: payments.filter(p => p.status === "COMPLETED").length,
-          pendingPayments: payments.filter(p => p.status === "PENDING").length,
+          totalPayments,
+          completedPayments,
+          pendingPayments,
         },
       },
     };

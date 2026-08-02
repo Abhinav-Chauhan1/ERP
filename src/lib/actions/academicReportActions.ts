@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "@/lib/db";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { formatFullName } from "@/lib/utils";
