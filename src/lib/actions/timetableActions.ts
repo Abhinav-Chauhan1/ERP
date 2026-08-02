@@ -13,6 +13,7 @@ import { formatISO, parseISO } from 'date-fns';
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName, sortByClassName } from "@/lib/utils";
+import { getTimetableConfig } from "./timetableConfigActions";
 
 // Get all timetables
 export async function getTimetables() {
@@ -806,6 +807,71 @@ export async function getSubjectTeachersForTimetable() {
       error: error instanceof Error ? error.message : "Failed to fetch subject-teachers"
     };
   }
+}
+
+// Aggregates everything the timetable page needs for its initial render,
+// including the default timetable/class/day selections and the slots for
+// that default selection, so the page can be server-rendered in one pass
+// instead of the client waterfalling through 3 "pick a default" effects.
+export async function getTimetablePageData() {
+  const [timetablesResult, classesResult, roomsResult, subjectTeachersResult, configResult] =
+    await Promise.all([
+      getTimetables(),
+      getClassesForTimetable(),
+      getRoomsForTimetable(),
+      getSubjectTeachersForTimetable(),
+      getTimetableConfig(),
+    ]);
+
+  const timetables = timetablesResult.success ? timetablesResult.data || [] : [];
+  const classes = classesResult.success ? classesResult.data || [] : [];
+  const rooms = roomsResult.success ? roomsResult.data || [] : [];
+  const subjectTeachers = subjectTeachersResult.success ? subjectTeachersResult.data || [] : [];
+  const periods = configResult.success && configResult.data
+    ? configResult.data.periods.map(p => ({
+        id: `p${p.order}`,
+        time: `${p.startTime} - ${p.endTime}`,
+        name: p.name,
+        startTime: p.startTime,
+        endTime: p.endTime,
+      }))
+    : [];
+  const weekDays = configResult.success && configResult.data ? configResult.data.daysOfWeek : [];
+
+  const teachers = Array.from(
+    new Map(
+      subjectTeachers.map((st: any) => [st.teacherId, { id: st.teacherId, name: st.teacherName }])
+    ).values()
+  );
+
+  const activeTimetable = timetables.find((t: any) => t.isActive);
+  const defaultTimetableId = activeTimetable?.id ?? timetables[0]?.id ?? "";
+  const defaultClassId = classes[0]?.id ?? "";
+  const defaultDay = weekDays[0] ?? "";
+
+  let initialSlots: any[] = [];
+  if (defaultClassId && defaultTimetableId) {
+    const slotsResult = await getTimetableSlotsByClass(defaultClassId, false);
+    if (slotsResult.success) {
+      initialSlots = (slotsResult.data || []).filter(
+        (slot: any) => slot.timetable.id === defaultTimetableId
+      );
+    }
+  }
+
+  return {
+    timetables,
+    classes,
+    rooms,
+    subjectTeachers,
+    teachers,
+    periods,
+    weekDays,
+    initialSlots,
+    defaultTimetableId,
+    defaultClassId,
+    defaultDay,
+  };
 }
 
 // Helper function to check for slot conflicts

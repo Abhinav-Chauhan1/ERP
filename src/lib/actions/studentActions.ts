@@ -7,8 +7,9 @@ import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
 import { uploadHandler } from "@/lib/services/upload-handler";
 import { r2StorageService } from "@/lib/services/r2-storage-service";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { sortByClassName } from "@/lib/utils";
 
 // Get student with detailed information
 export async function getStudentWithDetails(studentId: string) {
@@ -26,7 +27,7 @@ export async function getStudentWithDetails(studentId: string) {
     const userId = session?.user?.id;
 
     if (userId) {
-      const canRead = await hasPermission(userId, 'STUDENT', 'READ');
+      const canRead = await hasPermissionCached(userId, 'STUDENT', 'READ');
       if (!canRead) {
         console.error('User does not have permission to read student details');
         return null;
@@ -92,6 +93,42 @@ export async function getStudentWithDetails(studentId: string) {
   }
 }
 
+// Aggregates everything the student edit page needs for its initial render:
+// the student record, the class list, and (if the student has an active
+// enrollment) that class's sections — so the class/section Selects can be
+// hydrated with their correct values on the very first render instead of
+// starting empty and racing a client-side fetch.
+export async function getStudentEditPageData(studentId: string) {
+  const student = await getStudentWithDetails(studentId);
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) throw new Error("School context required");
+
+  const classesRaw = await db.class.findMany({
+    where: { schoolId },
+    select: { id: true, name: true },
+  });
+  const classes = sortByClassName(classesRaw);
+
+  const activeEnrollment = student?.enrollments?.[0];
+  let initialSections: Array<{ id: string; name: string }> = [];
+  if (activeEnrollment) {
+    initialSections = await db.classSection.findMany({
+      where: { classId: activeEnrollment.classId, schoolId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  }
+
+  return {
+    student,
+    classes,
+    initialSections,
+    initialClassId: activeEnrollment?.classId ?? "",
+    initialSectionId: activeEnrollment?.sectionId ?? "",
+    enrollmentId: activeEnrollment?.id ?? null,
+  };
+}
+
 /**
  * Upload student profile photo (requires STUDENT:UPDATE permission)
  */
@@ -108,7 +145,7 @@ export async function uploadStudentAvatar(formData: FormData) {
     }
 
     // Permission check: require STUDENT:UPDATE
-    const canUpdate = await hasPermission(currentUserId, 'STUDENT', 'UPDATE');
+    const canUpdate = await hasPermissionCached(currentUserId, 'STUDENT', 'UPDATE');
     if (!canUpdate) {
       return {
         success: false,
@@ -262,7 +299,7 @@ export async function removeStudentAvatar(studentId: string) {
     }
 
     // Permission check: require STUDENT:UPDATE
-    const canUpdate = await hasPermission(currentUserId, 'STUDENT', 'UPDATE');
+    const canUpdate = await hasPermissionCached(currentUserId, 'STUDENT', 'UPDATE');
     if (!canUpdate) {
       return {
         success: false,
