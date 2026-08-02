@@ -13,7 +13,7 @@ import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 import { formatFullName } from "@/lib/utils";
@@ -27,7 +27,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
     throw new Error('Unauthorized: You must be logged in');
   }
 
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }

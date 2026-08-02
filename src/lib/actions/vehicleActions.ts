@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { vehicleSchema, vehicleUpdateSchema, type VehicleFormValues, type VehicleUpdateFormValues } from "@/lib/schemas/vehicle-schemas";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all vehicles with pagination and filters
@@ -139,7 +139,7 @@ export async function createVehicle(data: VehicleFormValues) {
       throw new Error("School context required");
     }
 
-    const hasPerm = await hasPermission(user.id, "VEHICLE", "CREATE");
+    const hasPerm = await hasPermissionCached(user.id, "VEHICLE", "CREATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     
     // Validate input
@@ -189,7 +189,7 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
       throw new Error("School context required");
     }
 
-    const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
+    const hasPerm = await hasPermissionCached(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     
     // Validate input
@@ -251,7 +251,7 @@ export async function deleteVehicle(id: string) {
       throw new Error("School context required");
     }
 
-    const hasPerm = await hasPermission(user.id, "VEHICLE", "DELETE");
+    const hasPerm = await hasPermissionCached(user.id, "VEHICLE", "DELETE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     
     // Check if vehicle exists
@@ -299,7 +299,7 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
       throw new Error("School context required");
     }
 
-    const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
+    const hasPerm = await hasPermissionCached(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     
     // Check if vehicle exists

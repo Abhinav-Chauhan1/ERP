@@ -4,7 +4,7 @@ import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { AttendanceStatus, PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { sortByClassName } from "@/lib/utils";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
@@ -20,7 +20,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
     throw new Error('Unauthorized: You must be logged in');
   }
 
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }
@@ -457,7 +457,7 @@ export async function markStudentAttendance(data: {
     const { user, schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
-    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'CREATE');
+    const hasPerm = await hasPermissionCached(user.id, 'ATTENDANCE', 'CREATE');
     if (!hasPerm) return { success: false, error: 'Permission denied: Cannot CREATE ATTENDANCE' };
 
     const startOfDay = new Date(data.date);
@@ -612,7 +612,7 @@ export async function deleteStudentAttendance(id: string) {
     const { user, schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
-    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'DELETE');
+    const hasPerm = await hasPermissionCached(user.id, 'ATTENDANCE', 'DELETE');
     if (!hasPerm) return { success: false, error: 'Permission denied: Cannot DELETE ATTENDANCE' };
 
     await db.studentAttendance.delete({
@@ -897,7 +897,7 @@ export async function markBulkTeacherAttendance(data: {
     const { user, schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
-    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'CREATE');
+    const hasPerm = await hasPermissionCached(user.id, 'ATTENDANCE', 'CREATE');
     if (!hasPerm) return { success: false, error: 'Permission denied: Cannot CREATE ATTENDANCE' };
 
     const results = await Promise.all(

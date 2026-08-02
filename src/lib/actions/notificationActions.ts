@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
@@ -19,7 +19,7 @@ export async function getNotifications(filters?: {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.READ);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -83,7 +83,7 @@ export async function getNotificationById(id: string) {
 
     // Allow if user owns the notification OR has admin read permissions
     if (notification.userId !== user.id) {
-      const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+      const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.READ);
       if (!hasPerm) {
         return { success: false, error: "Unauthorized" };
       }
@@ -104,7 +104,7 @@ export async function createNotification(data: any) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.CREATE);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.CREATE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -188,7 +188,7 @@ export async function updateNotification(id: string, data: any) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.UPDATE);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.UPDATE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -228,7 +228,7 @@ export async function deleteNotification(id: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.DELETE);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.DELETE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -372,7 +372,7 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.CREATE);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.CREATE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -417,7 +417,7 @@ export async function getNotificationStats() {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.READ);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }
@@ -467,7 +467,7 @@ export async function getUsersForNotifications(role?: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    const hasPerm = await hasPermissionCached(user.id, "COMMUNICATION", PermissionAction.READ);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions" };
     }

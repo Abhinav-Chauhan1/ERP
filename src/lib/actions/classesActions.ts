@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { PermissionAction } from "@prisma/client";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { withSchoolAuthAction, createSecureQuery } from "@/lib/auth/security-wrapper";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { formatFullName, sortByClassNameWithinGroups } from "@/lib/utils";
@@ -35,7 +35,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
     throw new Error('Unauthorized: You must be logged in');
   }
 
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }

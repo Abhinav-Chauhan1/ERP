@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { formatFullName } from "@/lib/utils";
 
 export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
@@ -232,7 +232,7 @@ export const updateUserStatus = withSchoolAuthAction(async (schoolId: string, us
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-    const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
+    const hasPerm = await hasPermissionCached(session.user.id, "USER", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
 
     // Ensure user belongs to school before updating
@@ -263,7 +263,7 @@ export const updateUserRole = withSchoolAuthAction(async (schoolId: string, user
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-    const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
+    const hasPerm = await hasPermissionCached(session.user.id, "USER", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
 
     // Ensure user belongs to school
@@ -294,7 +294,7 @@ export const deleteUser = withSchoolAuthAction(async (schoolId: string, userId: 
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-    const hasPerm = await hasPermission(session.user.id, "USER", "DELETE");
+    const hasPerm = await hasPermissionCached(session.user.id, "USER", "DELETE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
 
     // Ensure user belongs to school

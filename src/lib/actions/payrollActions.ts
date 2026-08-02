@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
 import { formatFullName } from "@/lib/utils";
@@ -13,7 +13,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) throw new Error('Unauthorized');
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) throw new Error(errorMessage || 'Permission denied');
   return userId;
 }

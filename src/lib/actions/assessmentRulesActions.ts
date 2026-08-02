@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { AssessmentRuleFormValues, AssessmentRuleUpdateFormValues } from "../schemaValidation/assessmentRulesSchemaValidation";
 
@@ -13,7 +13,7 @@ async function checkPermission(action: "CREATE" | "UPDATE" | "DELETE" | "VIEW") 
     if (!userId) throw new Error("Unauthorized");
 
     // Using SYSTEM_SETTINGS or ASSESSMENT as base permission
-    const allowed = await hasPermission(userId, "ASSESSMENT", action as any);
+    const allowed = await hasPermissionCached(userId, "ASSESSMENT", action as any);
     if (!allowed) throw new Error("Permission denied");
     return userId;
 }

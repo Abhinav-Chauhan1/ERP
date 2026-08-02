@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { PermissionAction, MiscFeeCategory, PaymentMethod, DiscountType, PaymentStatus } from "@prisma/client";
-import { hasPermission } from "@/lib/utils/permissions";
+import { hasPermissionCached } from "@/lib/utils/permissions";
 import { formatFullName } from "@/lib/utils";
 import { calculateDiscountAmount, calculateNetPayable, getFeeAmountsForClass } from "@/lib/utils/payment-helpers";
 import { syncFeeInvoiceSummary } from "@/lib/services/fee-invoice-service";
@@ -19,7 +19,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
     throw new Error("Unauthorized: You must be logged in");
   }
 
-  const allowed = await hasPermission(userId, resource, action);
+  const allowed = await hasPermissionCached(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }
