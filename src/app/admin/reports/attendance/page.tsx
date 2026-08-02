@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   ArrowLeft, Download, FileText, Users, Calendar,
-  UserCheck, UserX, TrendingUp, Clock, Loader2
+  UserCheck, UserX, TrendingUp, Clock, Loader2, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   getDailyAttendanceSummary,
@@ -37,6 +37,8 @@ export default function AttendanceReportsPage() {
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [reportData, setReportData] = useState<any>(null);
+  const [listPage, setListPage] = useState(1);
+  const LIST_PAGE_SIZE = 10;
 
   useEffect(() => {
     loadInitialData();
@@ -57,7 +59,7 @@ export default function AttendanceReportsPage() {
     }
   };
 
-  const generateReport = async (reportType: string) => {
+  const generateReport = async (reportType: string, page: number = 1) => {
     setLoading(true);
     try {
       let result;
@@ -82,7 +84,8 @@ export default function AttendanceReportsPage() {
             ...filters,
             startDate,
             endDate: new Date(),
-            threshold: 5,
+            page,
+            pageSize: LIST_PAGE_SIZE,
           });
           break;
         case "classwise":
@@ -100,6 +103,8 @@ export default function AttendanceReportsPage() {
             ...filters,
             startDate: termStart,
             endDate: new Date(),
+            page,
+            pageSize: LIST_PAGE_SIZE,
           });
           break;
         default:
@@ -108,6 +113,7 @@ export default function AttendanceReportsPage() {
 
       if (result.success) {
         setReportData({ type: reportType, data: result.data });
+        setListPage(page);
         toast.success("Report generated successfully");
       } else {
         toast.error(result.error || "Failed to generate report");
@@ -355,27 +361,18 @@ export default function AttendanceReportsPage() {
               {reportData.type === "absenteeism" && (
                 <div>
                   <h3 className="font-semibold mb-2">High Absenteeism Analysis</h3>
-                  <div className="grid gap-4 md:grid-cols-3 mb-4">
-                    <div className="bg-red-50 p-3 rounded">
-                      <div className="text-sm text-red-600">Total Absences</div>
-                      <div className="text-xl font-bold">{reportData.data.summary?.totalAbsences || 0}</div>
-                    </div>
-                    <div className="bg-orange-50 p-3 rounded">
-                      <div className="text-sm text-orange-600">High Absenteeism Students</div>
-                      <div className="text-xl font-bold">{reportData.data.summary?.studentsWithHighAbsenteeism || 0}</div>
-                    </div>
-                    <div className="bg-teal-50 p-3 rounded">
-                      <div className="text-sm text-teal-600">Threshold</div>
-                      <div className="text-xl font-bold">{reportData.data.summary?.threshold || 0} days</div>
-                    </div>
-                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Students with any absences in the last month, sorted by absence count.
+                  </p>
                   <div className="space-y-2">
-                    <h4 className="font-medium">Students with High Absenteeism</h4>
-                    {reportData.data.highAbsenteeism?.slice(0, 10).map((student: any) => (
+                    {reportData.data?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No absences recorded for this period.</p>
+                    )}
+                    {reportData.data?.map((student: any) => (
                       <div key={student.studentId} className="flex justify-between items-center p-3 bg-accent rounded">
                         <div>
                           <span className="font-medium">{student.studentName}</span>
-                          <div className="text-sm text-muted-foreground">{student.className}</div>
+                          <div className="text-sm text-muted-foreground">{student.class} - {student.section}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-red-600">{student.absenceCount} days</div>
@@ -383,6 +380,12 @@ export default function AttendanceReportsPage() {
                       </div>
                     ))}
                   </div>
+                  <PaginationControls
+                    page={listPage}
+                    hasMore={(reportData.data?.length || 0) === LIST_PAGE_SIZE}
+                    onChange={(page) => generateReport("absenteeism", page)}
+                    disabled={loading}
+                  />
                 </div>
               )}
 
@@ -395,7 +398,7 @@ export default function AttendanceReportsPage() {
                         <span className="font-medium">{cls.className}</span>
                         <div className="text-right">
                           <div className="font-bold">{cls.attendanceRate.toFixed(1)}%</div>
-                          <div className="text-sm text-muted-foreground">{cls.present}/{cls.total} present</div>
+                          <div className="text-sm text-muted-foreground">{cls.presentCount}/{cls.totalRecords} present</div>
                         </div>
                       </div>
                     ))}
@@ -415,18 +418,60 @@ export default function AttendanceReportsPage() {
                       <div key={student.studentId} className="flex justify-between items-center p-3 bg-accent rounded">
                         <div>
                           <span className="font-medium">{student.studentName}</span>
-                          <div className="text-sm text-muted-foreground">{student.className}</div>
+                          <div className="text-sm text-muted-foreground">{student.class} - {student.section}</div>
                         </div>
                         <div className="text-green-600 font-bold">100%</div>
                       </div>
                     ))}
                   </div>
+                  <PaginationControls
+                    page={listPage}
+                    hasMore={(reportData.data?.students?.length || 0) === LIST_PAGE_SIZE}
+                    onChange={(page) => generateReport("perfect", page)}
+                    disabled={loading}
+                  />
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function PaginationControls({
+  page,
+  hasMore,
+  onChange,
+  disabled,
+}: {
+  page: number;
+  hasMore: boolean;
+  onChange: (page: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between mt-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onChange(page - 1)}
+        disabled={disabled || page <= 1}
+      >
+        <ChevronLeft className="h-4 w-4 mr-1" />
+        Previous
+      </Button>
+      <span className="text-sm text-muted-foreground">Page {page}</span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onChange(page + 1)}
+        disabled={disabled || !hasMore}
+      >
+        Next
+        <ChevronRight className="h-4 w-4 ml-1" />
+      </Button>
     </div>
   );
 }
