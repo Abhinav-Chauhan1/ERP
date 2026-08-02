@@ -1558,6 +1558,7 @@ model TeacherAttendance {
 
   @@unique([teacherId, date])
   @@index([schoolId])
+  @@index([schoolId, date])
 }
 
 model LeaveApplication {
@@ -1581,6 +1582,7 @@ model LeaveApplication {
   @@index([status])
   @@index([fromDate])
   @@index([schoolId])
+  @@index([applicantId, status])
 }
 
 model FeeType {
