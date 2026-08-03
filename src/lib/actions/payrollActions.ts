@@ -65,6 +65,12 @@ export const getPayrolls = withSchoolAuthAction(async (schoolId: string, userId:
                 phone: true,
               },
             },
+            departments: {
+              select: {
+                name: true,
+              },
+              take: 1,
+            },
           },
         },
       },
@@ -295,16 +301,13 @@ export const updatePayroll = withSchoolAuthAction(async (schoolId: string, userI
     });
     if (!existing) return { success: false, error: "Payroll not found" };
 
-    // We only update the net totals or remarks usually, but let's allow updating components if passed
-    // For simplicity in this edit, assuming we just recalculate if components are passed
-
-    // This part would be more complex in a real app (re-calculating everything), 
-    // but for now keeping it compatible with existing simple update if just status/remarks changed.
-
     const updateData: any = {};
-    if (data.status) updateData.status = data.status;
-    if (data.remarks) updateData.remarks = data.remarks;
-    if (data.netSalary) updateData.netSalary = parseFloat(data.netSalary);
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.remarks !== undefined) updateData.remarks = data.remarks;
+    if (data.basicSalary !== undefined) updateData.basicSalary = parseFloat(data.basicSalary);
+    if (data.allowances !== undefined) updateData.allowances = parseFloat(data.allowances);
+    if (data.deductions !== undefined) updateData.deductions = parseFloat(data.deductions);
+    if (data.netSalary !== undefined) updateData.netSalary = parseFloat(data.netSalary);
 
     const payroll = await db.payroll.update({
       where: { id, schoolId },
@@ -328,7 +331,7 @@ export const updatePayroll = withSchoolAuthAction(async (schoolId: string, userI
 
 // Process payment (mark as paid)
 // Process payment (mark as paid)
-export const processPayment = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, paymentDate?: Date) => {
+export const processPayment = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, paymentDate?: Date, paymentDetails?: { paymentMethod?: string; transactionId?: string; remarks?: string }) => {
   try {
     await checkPermission('PAYROLL', 'APPROVE');
 
@@ -342,6 +345,9 @@ export const processPayment = withSchoolAuthAction(async (schoolId: string, user
       data: {
         status: "COMPLETED" as any,
         paymentDate: paymentDate || new Date(),
+        ...(paymentDetails?.paymentMethod && { paymentMethod: paymentDetails.paymentMethod as any }),
+        ...(paymentDetails?.transactionId !== undefined && { transactionId: paymentDetails.transactionId }),
+        ...(paymentDetails?.remarks !== undefined && { remarks: paymentDetails.remarks }),
       },
       include: {
         teacher: {

@@ -27,13 +27,13 @@ export function PayrollTable({ payments, onViewPayslip, onMakePayment, onEdit, m
             render: (payment: any) => (
                 <div>
                     <div className="font-medium">{payment.staffName || `${formatFullName(payment.teacher?.user?.firstName, payment.teacher?.user?.lastName)}`}</div>
-                    <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
+                    <div className="text-xs text-muted-foreground">{payment.employeeId || payment.teacher?.employeeId}</div>
                 </div>
             ),
             mobileRender: (payment: any) => (
                 <div>
                     <div className="font-medium text-sm">{payment.staffName || `${formatFullName(payment.teacher?.user?.firstName, payment.teacher?.user?.lastName)}`}</div>
-                    <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
+                    <div className="text-xs text-muted-foreground">{payment.employeeId || payment.teacher?.employeeId}</div>
                 </div>
             )
         },
@@ -41,7 +41,7 @@ export function PayrollTable({ payments, onViewPayslip, onMakePayment, onEdit, m
             key: "department",
             label: "Department",
             mobilePriority: "low" as const,
-            render: (payment: any) => payment.department,
+            render: (payment: any) => payment.department || payment.teacher?.departments?.[0]?.name || "General",
         },
         {
             key: "month",

@@ -61,6 +61,7 @@ import {
   bulkGeneratePayrolls,
 } from "@/lib/actions/payrollActions";
 import { PayrollTable } from "@/components/admin/payroll-table";
+import { formatFullName } from "@/lib/utils";
 
 // Months for dropdown
 const months = [
@@ -119,6 +120,28 @@ const paymentSchema = z.object({
   remarks: z.string().optional(),
 });
 
+// Payroll statuses
+const payrollStatuses = [
+  { value: "PENDING", label: "Pending" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "PARTIAL", label: "Partial" },
+  { value: "FAILED", label: "Failed" },
+  { value: "REFUNDED", label: "Refunded" },
+];
+
+// Schema for editing an existing payroll
+const editPayrollSchema = z.object({
+  basicSalary: z.number({
+    required_error: "Basic salary is required",
+  }).min(0),
+  allowances: z.number().default(0),
+  deductions: z.number().default(0),
+  status: z.string({
+    required_error: "Status is required",
+  }),
+  remarks: z.string().optional(),
+});
+
 export default function PayrollPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -126,6 +149,7 @@ export default function PayrollPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth() + 1);
@@ -205,9 +229,9 @@ export default function PayrollPage() {
     }
   };
 
-  const handleProcessPayment = async (id: string) => {
+  const handleProcessPayment = async (id: string, paymentDate?: Date, paymentDetails?: { paymentMethod?: string; transactionId?: string; remarks?: string }) => {
     try {
-      const result = await processPayment(id);
+      const result = await processPayment(id, paymentDate, paymentDetails);
       if (result.success) {
         toast.success("Payment processed successfully");
         setPaymentDialogOpen(false);
@@ -219,6 +243,24 @@ export default function PayrollPage() {
     } catch (error) {
       console.error("Error processing payment:", error);
       toast.error("Failed to process payment");
+    }
+  };
+
+  const handleEditPayroll = async (id: string, data: z.infer<typeof editPayrollSchema>) => {
+    try {
+      const netSalary = data.basicSalary + (data.allowances || 0) - (data.deductions || 0);
+      const result = await updatePayroll(id, { ...data, netSalary });
+      if (result.success) {
+        toast.success("Payroll updated successfully");
+        setEditDialogOpen(false);
+        loadPayrolls();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to update payroll");
+      }
+    } catch (error) {
+      console.error("Error updating payroll:", error);
+      toast.error("Failed to update payroll");
     }
   };
 
@@ -278,6 +320,17 @@ export default function PayrollPage() {
     },
   });
 
+  // Initialize form for editing a payroll
+  const editForm = useForm<z.infer<typeof editPayrollSchema>>({
+    resolver: zodResolver(editPayrollSchema),
+    defaultValues: {
+      basicSalary: 0,
+      allowances: 0,
+      deductions: 0,
+      status: "PENDING",
+    },
+  });
+
   // Filter payments based on search and status
   const filteredPayments = salaryPayments.filter(payment => {
     const teacherName = `${payment.teacher?.user?.firstName || ""} ${payment.teacher?.user?.lastName || ""}`;
@@ -317,6 +370,23 @@ export default function PayrollPage() {
     setPayslipDialogOpen(true);
   }
 
+  function handleOpenEdit(payment: any) {
+    setSelectedPayment(payment);
+    editForm.reset({
+      basicSalary: payment.basicSalary,
+      allowances: payment.allowances,
+      deductions: payment.deductions,
+      status: payment.status,
+      remarks: payment.remarks || "",
+    });
+    setEditDialogOpen(true);
+  }
+
+  function onSubmitEdit(values: z.infer<typeof editPayrollSchema>) {
+    if (!selectedPayment?.id) return;
+    handleEditPayroll(selectedPayment.id, values);
+  }
+
   function onStaffChange(staffId: string) {
     const staffMember = staff.find(s => s.id === staffId);
     if (staffMember) {
@@ -341,9 +411,12 @@ export default function PayrollPage() {
   }
 
   function onSubmitPayment(values: z.infer<typeof paymentSchema>) {
-    console.log("Processing payment:", values, "for payroll:", selectedPayment?.id);
-    // Here you would submit the payment data to your backend
-    setPaymentDialogOpen(false);
+    if (!selectedPayment?.id) return;
+    handleProcessPayment(selectedPayment.id, new Date(values.paymentDate), {
+      paymentMethod: values.paymentMethod,
+      transactionId: values.transactionId,
+      remarks: values.remarks,
+    });
   }
 
   function getMonthName(monthNumber: number) {
@@ -632,7 +705,7 @@ export default function PayrollPage() {
                 </div>
                 <div className="border rounded-md p-3 text-center bg-teal-50">
                   <div className="text-sm text-teal-700 font-medium mb-1">Total Amount</div>
-                  <div className="text-2xl font-bold text-teal-800">₹{stats?.totalPaid?._sum?.netSalary?.toLocaleString() || '0'}</div>
+                  <div className="text-2xl font-bold text-teal-800">₹{stats?.totalPaid?.toLocaleString() || '0'}</div>
                 </div>
               </div>
             </CardContent>
@@ -716,14 +789,7 @@ export default function PayrollPage() {
             payments={filteredPayments}
             onViewPayslip={handleViewPayslip}
             onMakePayment={handleMakePayment}
-            onEdit={(payment) => {
-              // Edit logic not explicitly defined in original component's state, but button existed.
-              // Assuming it opens create dialog with pre-filled? 
-              // The original "Edit" button didn't have onClick handler in the view I saw (lines 783-786).
-              // Checked: <Button variant="ghost" size="sm"><Edit .../> Edit</Button> had NO onClick.
-              // So I'll pass a no-op or handle it if I missed it.
-              console.log("Edit clicked", payment);
-            }}
+            onEdit={handleOpenEdit}
             months={months}
           />
         </CardContent>
@@ -735,7 +801,7 @@ export default function PayrollPage() {
           <DialogHeader>
             <DialogTitle>Process Salary Payment</DialogTitle>
             <DialogDescription>
-              Process payment for {selectedPayment?.staffName}
+              Process payment for {selectedPayment && formatFullName(selectedPayment.teacher?.user?.firstName, selectedPayment.teacher?.user?.lastName)}
             </DialogDescription>
           </DialogHeader>
           {selectedPayment && (
@@ -745,11 +811,11 @@ export default function PayrollPage() {
                   <div className="font-medium mb-2">Payment Details</div>
                   <div className="flex justify-between mb-1">
                     <span>Staff:</span>
-                    <span className="font-medium">{selectedPayment.staffName}</span>
+                    <span className="font-medium">{formatFullName(selectedPayment.teacher?.user?.firstName, selectedPayment.teacher?.user?.lastName)}</span>
                   </div>
                   <div className="flex justify-between mb-1">
                     <span>Employee ID:</span>
-                    <span>{selectedPayment.employeeId}</span>
+                    <span>{selectedPayment.teacher?.employeeId}</span>
                   </div>
                   <div className="flex justify-between mb-1">
                     <span>Month:</span>
@@ -875,10 +941,10 @@ export default function PayrollPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-muted-foreground mb-1">Employee Information</div>
-                    <div className="font-medium">{selectedPayment.staffName}</div>
-                    <div>ID: {selectedPayment.employeeId}</div>
-                    <div>Department: {selectedPayment.department}</div>
-                    <div>Position: {selectedPayment.position}</div>
+                    <div className="font-medium">{formatFullName(selectedPayment.teacher?.user?.firstName, selectedPayment.teacher?.user?.lastName)}</div>
+                    <div>ID: {selectedPayment.teacher?.employeeId}</div>
+                    <div>Department: {selectedPayment.teacher?.departments?.[0]?.name || "General"}</div>
+                    <div>Position: {selectedPayment.teacher?.qualification || "Teacher"}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-muted-foreground mb-1">Payment Details</div>
@@ -940,6 +1006,142 @@ export default function PayrollPage() {
               Print
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Payroll Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Payroll</DialogTitle>
+            <DialogDescription>
+              Update payroll for {selectedPayment && formatFullName(selectedPayment.teacher?.user?.firstName, selectedPayment.teacher?.user?.lastName)}
+              {selectedPayment && ` — ${getMonthName(selectedPayment.month)} ${selectedPayment.year}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPayment && (
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="basicSalary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Basic Salary</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="allowances"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Allowances</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="deductions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Deductions</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="bg-accent p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Net Salary:</span>
+                    <span className="font-bold">₹{(
+                      (editForm.watch("basicSalary") || 0) +
+                      (editForm.watch("allowances") || 0) -
+                      (editForm.watch("deductions") || 0)
+                    ).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {payrollStatuses.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="remarks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Remarks (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any notes about this payroll"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
