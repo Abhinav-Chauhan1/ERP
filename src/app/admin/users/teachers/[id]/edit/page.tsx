@@ -4,13 +4,14 @@ import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateTeacher } from "@/lib/actions/usersAction";
+import { updateTeacher, updateUserPassword } from "@/lib/actions/usersAction";
 import { getTeacherWithDetails } from "@/lib/actions/teacherActions";
 import { UserRole } from "@prisma/client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -53,6 +54,28 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const handlePasswordUpdate = async () => {
+    try {
+      if (!newPassword) return;
+      if (!userId) {
+        toast.error("User ID not found");
+        return;
+      }
+      setPasswordLoading(true);
+      await updateUserPassword(userId, newPassword);
+      toast.success("Password updated successfully");
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast.error(error.message || "Failed to update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const form = useForm<EditTeacherFormData>({
     resolver: zodResolver(editTeacherSchema),
@@ -81,6 +104,8 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
           router.push("/admin/users/teachers");
           return;
         }
+
+        setUserId(teacher.user.id);
 
         form.reset({
           firstName: teacher.user.firstName || "",
@@ -363,14 +388,35 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
           <CardDescription>Manage account security settings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center">
+          <div className="space-y-4">
             <div>
-              <h3 className="font-medium">Reset Password</h3>
+              <h3 className="font-medium">Change Password</h3>
               <p className="text-sm text-muted-foreground">
-                Send a password reset link to the teacher
+                Manually set a new password for this teacher
               </p>
             </div>
-            <Button variant="outline">Send Reset Link</Button>
+            <div className="flex items-end gap-4 max-w-md">
+              <div className="grid w-full gap-1.5">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="text"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={handlePasswordUpdate}
+                disabled={passwordLoading || !newPassword}
+              >
+                {passwordLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Update"
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
