@@ -66,6 +66,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
     joinDate: teacher.joinDate,
     salary: teacher.salary ? Number(teacher.salary) : null,
     user: {
+      id: teacher.user.id,
       firstName: teacher.user.firstName,
       lastName: teacher.user.lastName,
       email: teacher.user.email,

@@ -8,11 +8,20 @@ import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, Calendar, Clock, Building2, X, Plus } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, Calendar, Clock, Building2, X, Plus, Loader2 } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { AssignSubjectDialog } from "@/components/users/assign-subject-dialog";
 import { AssignClassDialog } from "@/components/users/assign-class-dialog";
 import { AssignDepartmentDialog } from "@/components/users/assign-department-dialog";
 import { removeTeacherFromDepartment, assignTeacherToDepartment, getDepartments } from "@/lib/actions/departmentsAction";
+import { deleteUser } from "@/lib/actions/usersAction";
 import toast from "react-hot-toast";
 
 interface TeacherDetailClientProps {
@@ -23,6 +32,7 @@ interface TeacherDetailClientProps {
         joinDate: Date;
         salary: number | null;
         user: {
+            id: string;
             firstName: string | null;
             lastName: string | null;
             email: string | null;
@@ -73,6 +83,8 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
     const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
     const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
     const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Calculate attendance statistics
     const totalAttendanceRecords = teacher.attendance.length;
@@ -129,6 +141,20 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
         fetchDepartments();
     };
 
+    const handleDeleteTeacher = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteUser(teacher.user.id);
+            toast.success("Teacher deleted successfully");
+            router.push("/admin/users/teachers");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete teacher");
+        } finally {
+            setIsDeleting(false);
+            setDeleteDialogOpen(false);
+        }
+    };
+
     return (
         <>
         <div className="flex flex-col gap-4">
@@ -152,7 +178,12 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                             Edit
                         </Button>
                     </Link>
-                    <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-500 border-red-200 hover:bg-red-50"
+                        onClick={() => setDeleteDialogOpen(true)}
+                    >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                     </Button>
@@ -536,6 +567,27 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
             onAssign={handleDepartmentAssignment}
             isLoading={isLoadingDepartments}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Delete Teacher</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete <span className="font-semibold">{teacher.user.firstName || ''} {teacher.user.lastName || ''}</span>? This will permanently remove the teacher and all associated data. This action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={handleDeleteTeacher} disabled={isDeleting}>
+                        {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Delete Teacher
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         </>
     );
 }

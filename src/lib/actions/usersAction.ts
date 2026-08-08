@@ -868,7 +868,7 @@ export async function deleteUser(userId: string) {
 
     const user = await db.user.findUnique({
       where: { id: userId },
-      include: { student: { select: { id: true } } },
+      include: { student: { select: { id: true } }, teacher: { select: { id: true } } },
     });
 
     if (!user) {
@@ -906,6 +906,20 @@ export async function deleteUser(userId: string) {
       ]);
     }
 
+    // Teacher assignment relations (class/subject/exam links) aren't cascade-deleted
+    // either, so clear those. Payroll and authored content (courses, question bank,
+    // online exams) are intentionally left as-is, same as student financial records —
+    // a teacher with those hits the P2003 fallback below and must be deactivated instead.
+    if (user.teacher) {
+      const teacherId = user.teacher.id;
+      await db.$transaction([
+        db.classTeacher.deleteMany({ where: { teacherId } }),
+        db.subjectTeacher.deleteMany({ where: { teacherId } }),
+        db.subjectClass.updateMany({ where: { teacherId }, data: { teacherId: null } }),
+        db.exam.updateMany({ where: { creatorId: teacherId }, data: { creatorId: null } }),
+      ]);
+    }
+
     // Delete from our database
     await db.user.delete({
       where: { id: userId }
@@ -917,7 +931,7 @@ export async function deleteUser(userId: string) {
     console.error('Error deleting user:', error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
       throw new Error(
-        'Cannot delete this user: financial records (fee payments/receipts) exist. Deactivate the account instead of deleting it.'
+        'Cannot delete this user: related records exist (e.g. fee payments/receipts, payroll, or authored courses/exams/question bank items). Deactivate the account instead of deleting it.'
       );
     }
     throw new Error('Failed to delete user');
