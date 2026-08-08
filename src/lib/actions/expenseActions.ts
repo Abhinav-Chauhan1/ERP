@@ -6,6 +6,8 @@ import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { hasPermissionCached } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
+import { expenseSchema } from "@/lib/schemaValidation/expenseSchemaValidation";
+import { EXPENSE_CATEGORIES } from "@/lib/constants/expense-categories";
 
 // Helper to check permission
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -17,7 +19,6 @@ async function checkPermission(resource: string, action: PermissionAction, error
   return userId;
 }
 
-// Get all expenses with filters
 // Get all expenses with filters
 export const getExpenses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: {
   category?: string;
@@ -44,21 +45,23 @@ export const getExpenses = withSchoolAuthAction(async (schoolId: string, userId:
       }
     }
 
-    const expenses = await db.expense.findMany({
-      where,
-      orderBy: { date: "desc" },
-      take: PAGE_SIZE,
-      skip: filters?.offset ?? 0,
-    });
+    const [expenses, total] = await Promise.all([
+      db.expense.findMany({
+        where,
+        orderBy: { date: "desc" },
+        take: PAGE_SIZE,
+        skip: filters?.offset ?? 0,
+      }),
+      db.expense.count({ where }),
+    ]);
 
-    return { success: true, data: expenses };
+    return { success: true, data: expenses, total };
   } catch (error) {
     console.error("Error fetching expenses:", error);
     return { success: false, error: "Failed to fetch expenses" };
   }
 });
 
-// Get single expense by ID
 // Get single expense by ID
 export const getExpenseById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
@@ -78,23 +81,25 @@ export const getExpenseById = withSchoolAuthAction(async (schoolId: string, user
 });
 
 // Create new expense
-// Create new expense
 export const createExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: any) => {
   try {
     await checkPermission('EXPENSE', 'CREATE');
 
+    const parsed = expenseSchema.parse(data);
+
     const expense = await db.expense.create({
       data: {
         schoolId,
-        title: data.title,
-        description: data.description || null,
-        category: data.category,
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        paymentMethod: data.paymentMethod || null,
-        paidTo: data.vendor || null,
-        receiptNumber: data.receiptNumber || null,
-
+        title: parsed.title,
+        description: parsed.description || null,
+        category: parsed.category,
+        amount: parsed.amount,
+        date: new Date(parsed.date),
+        paymentMethod: parsed.paymentMethod || undefined,
+        paymentStatus: parsed.paymentStatus || undefined,
+        paidTo: parsed.paidTo || null,
+        receiptNumber: parsed.receiptNumber || null,
+        attachments: parsed.attachments || null,
       },
     });
 
@@ -102,11 +107,11 @@ export const createExpense = withSchoolAuthAction(async (schoolId: string, userI
     return { success: true, data: expense };
   } catch (error) {
     console.error("Error creating expense:", error);
-    return { success: false, error: "Failed to create expense" };
+    const message = error instanceof Error ? error.message : "Failed to create expense";
+    return { success: false, error: message };
   }
 });
 
-// Update expense
 // Update expense
 export const updateExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: any) => {
   try {
@@ -115,18 +120,21 @@ export const updateExpense = withSchoolAuthAction(async (schoolId: string, userI
     const existing = await db.expense.findFirst({ where: { id, schoolId } });
     if (!existing) return { success: false, error: "Expense not found" };
 
+    const parsed = expenseSchema.parse(data);
+
     const expense = await db.expense.update({
       where: { id },
       data: {
-        title: data.title,
-        description: data.description || null,
-        category: data.category,
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        paymentMethod: data.paymentMethod || null,
-        paidTo: data.vendor || null,
-        receiptNumber: data.receiptNumber || null,
-
+        title: parsed.title,
+        description: parsed.description || null,
+        category: parsed.category,
+        amount: parsed.amount,
+        date: new Date(parsed.date),
+        paymentMethod: parsed.paymentMethod || undefined,
+        paymentStatus: parsed.paymentStatus || undefined,
+        paidTo: parsed.paidTo || null,
+        receiptNumber: parsed.receiptNumber || null,
+        attachments: parsed.attachments || null,
       },
     });
 
@@ -134,11 +142,11 @@ export const updateExpense = withSchoolAuthAction(async (schoolId: string, userI
     return { success: true, data: expense };
   } catch (error) {
     console.error("Error updating expense:", error);
-    return { success: false, error: "Failed to update expense" };
+    const message = error instanceof Error ? error.message : "Failed to update expense";
+    return { success: false, error: message };
   }
 });
 
-// Delete expense
 // Delete expense
 export const deleteExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
@@ -155,12 +163,30 @@ export const deleteExpense = withSchoolAuthAction(async (schoolId: string, userI
     return { success: true };
   } catch (error) {
     console.error("Error deleting expense:", error);
-    return { success: false, error: "Failed to delete expense" };
+    const message = error instanceof Error ? error.message : "Failed to delete expense";
+    return { success: false, error: message };
   }
 });
 
-// Get expense statistics
-// Get expense statistics
+// Bulk delete expenses
+export const deleteExpenses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, ids: string[]) => {
+  try {
+    await checkPermission('EXPENSE', 'DELETE');
+
+    const result = await db.expense.deleteMany({
+      where: { id: { in: ids }, schoolId },
+    });
+
+    revalidatePath("/admin/finance/expenses");
+    return { success: true, data: { count: result.count } };
+  } catch (error) {
+    console.error("Error deleting expenses:", error);
+    const message = error instanceof Error ? error.message : "Failed to delete expenses";
+    return { success: false, error: message };
+  }
+});
+
+// Get expense statistics — shape consumed directly by the expenses dashboard page
 export const getExpenseStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, dateFrom?: Date, dateTo?: Date) => {
   try {
     const where: any = { schoolId };
@@ -171,36 +197,65 @@ export const getExpenseStats = withSchoolAuthAction(async (schoolId: string, use
       if (dateTo) where.date.lte = dateTo;
     }
 
-    const [totalExpenses, totalAmount, expensesByCategory] = await Promise.all([
-      db.expense.count({ where }),
-      db.expense.aggregate({
-        where,
-        _sum: {
-          amount: true,
-        },
-      }),
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const [totalAgg, pendingAgg, completedAgg, byCategoryGroup, trendExpenses] = await Promise.all([
+      db.expense.aggregate({ where, _sum: { amount: true }, _count: { id: true } }),
+      db.expense.aggregate({ where: { ...where, paymentStatus: "PENDING" }, _sum: { amount: true }, _count: { id: true } }),
+      db.expense.aggregate({ where: { ...where, paymentStatus: "COMPLETED" }, _sum: { amount: true }, _count: { id: true } }),
       db.expense.groupBy({
         by: ["category"],
         where,
-        _sum: {
-          amount: true,
-        },
-        _count: {
-          id: true,
-        },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      db.expense.findMany({
+        where: { schoolId, date: { gte: sixMonthsAgo } },
+        select: { date: true, amount: true },
       }),
     ]);
+
+    const byCategory = byCategoryGroup
+      .map((item) => ({
+        category: EXPENSE_CATEGORIES.find((c) => c.id === item.category)?.name || item.category,
+        amount: item._sum.amount || 0,
+        count: item._count.id,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Build the last 6 months (oldest -> newest) and bucket trend expenses into them
+    const monthBuckets: { key: string; month: string; amount: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      monthBuckets.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        month: d.toLocaleString("default", { month: "short" }),
+        amount: 0,
+      });
+    }
+    const bucketByKey = new Map(monthBuckets.map((b) => [b.key, b]));
+    for (const expense of trendExpenses) {
+      const key = `${expense.date.getFullYear()}-${expense.date.getMonth()}`;
+      const bucket = bucketByKey.get(key);
+      if (bucket) bucket.amount += expense.amount;
+    }
 
     return {
       success: true,
       data: {
-        totalExpenses,
-        totalAmount: totalAmount._sum.amount || 0,
-        expensesByCategory: expensesByCategory.map((item) => ({
-          category: item.category,
-          amount: item._sum.amount || 0,
-          count: item._count.id,
-        })),
+        totalAmount: totalAgg._sum.amount || 0,
+        totalExpenses: totalAgg._count.id,
+        pendingAmount: pendingAgg._sum.amount || 0,
+        pendingExpenses: pendingAgg._count.id,
+        completedAmount: completedAgg._sum.amount || 0,
+        completedExpenses: completedAgg._count.id,
+        byCategory,
+        monthlyTrend: monthBuckets.map(({ month, amount }) => ({ month, amount })),
       },
     };
   } catch (error) {
@@ -209,7 +264,6 @@ export const getExpenseStats = withSchoolAuthAction(async (schoolId: string, use
   }
 });
 
-// Get expenses by category
 // Get expenses by category
 export const getExpensesByCategory = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, category: string, dateFrom?: Date, dateTo?: Date) => {
   try {
@@ -249,7 +303,6 @@ export const getExpensesByCategory = withSchoolAuthAction(async (schoolId: strin
 });
 
 // Get monthly expense summary
-// Get monthly expense summary
 export const getMonthlyExpenseSummary = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, year: number) => {
   try {
     const expenses = await db.expense.findMany({
@@ -281,5 +334,3 @@ export const getMonthlyExpenseSummary = withSchoolAuthAction(async (schoolId: st
     return { success: false, error: "Failed to fetch monthly summary" };
   }
 });
-
-

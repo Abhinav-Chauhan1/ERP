@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  ArrowLeft, PlusCircle, Search, Filter, Calendar, Download,
-  Receipt, DollarSign, ArrowUp, ArrowDown, Printer, Tag, Edit, Trash2, Eye, Clock,
+  ArrowLeft, PlusCircle, Search, Download,
+  Receipt, DollarSign, Printer, Edit, Trash2, Clock,
   CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,31 +56,21 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
+  deleteExpenses,
   getExpenseStats,
-  getExpensesByCategory,
 } from "@/lib/actions/expenseActions";
 import { ExpensesTable } from "@/components/admin/expenses-table";
+import { SecureFileUpload } from "@/components/shared/secure-file-upload";
+import {
+  EXPENSE_CATEGORIES,
+  EXPENSE_PAYMENT_METHODS,
+  EXPENSE_PAYMENT_STATUSES,
+  getExpenseCategoryLabel,
+  getExpenseCategoryColor,
+} from "@/lib/constants/expense-categories";
 
-// Mock data for expense categories
-const expenseCategories = [
-  { id: "utilities", name: "Utilities", color: "bg-primary/10 text-primary", icon: <Receipt className="h-4 w-4" /> },
-  { id: "supplies", name: "School Supplies", color: "bg-green-100 text-green-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "maintenance", name: "Maintenance", color: "bg-amber-100 text-amber-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "salary", name: "Staff Salary", color: "bg-teal-100 text-teal-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "events", name: "Events", color: "bg-pink-100 text-pink-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "transport", name: "Transportation", color: "bg-indigo-100 text-indigo-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "other", name: "Other", color: "bg-muted text-gray-800", icon: <Receipt className="h-4 w-4" /> },
-];
-
-// Payment methods
-const paymentMethods = [
-  { value: "CASH", label: "Cash" },
-  { value: "CHEQUE", label: "Cheque" },
-  { value: "CREDIT_CARD", label: "Credit Card" },
-  { value: "DEBIT_CARD", label: "Debit Card" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer" },
-  { value: "ONLINE_PAYMENT", label: "Online Payment" },
-];
+const expenseCategories = EXPENSE_CATEGORIES;
+const paymentMethods = EXPENSE_PAYMENT_METHODS;
 
 // Schema for expense form
 const expenseFormSchema = z.object({
@@ -97,10 +87,11 @@ const expenseFormSchema = z.object({
   paymentMethod: z.string({
     required_error: "Payment method is required",
   }),
+  paymentStatus: z.string().optional(),
   paidTo: z.string().min(2, "Paid to must be at least 2 characters long"),
   description: z.string().optional(),
   receiptNumber: z.string().optional(),
-  attachmentFiles: z.any().optional(),
+  attachments: z.string().optional(),
 });
 
 export default function ExpensesPage() {
@@ -114,14 +105,20 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
   const loadExpenses = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: any = {};
+      const filters: any = {
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
+      };
 
       if (categoryFilter !== "all") {
-        filters.category = categoryFilter.toUpperCase();
+        filters.category = categoryFilter;
       }
 
       // Calculate date range
@@ -143,9 +140,10 @@ export default function ExpensesPage() {
         }
       }
 
-      const result = await getExpenses(filters);
+      const result: any = await getExpenses(filters);
       if (result.success && result.data) {
         setExpenses(result.data);
+        setTotalCount(result.total ?? result.data.length);
       } else {
         toast.error(result.error || "Failed to load expenses");
       }
@@ -155,7 +153,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoryFilter, dateRangeFilter]);
+  }, [categoryFilter, dateRangeFilter, page]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -173,6 +171,11 @@ export default function ExpensesPage() {
     loadExpenses();
     loadStats();
   }, [loadExpenses, loadStats]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, dateRangeFilter]);
 
   const handleCreateExpense = async (data: any) => {
     try {
@@ -225,6 +228,56 @@ export default function ExpensesPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+    if (!window.confirm(`Delete ${selectedItems.length} selected expense(s)? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const result = await deleteExpenses(selectedItems);
+      if (result.success) {
+        toast.success(`${result.data?.count ?? selectedItems.length} expense(s) deleted`);
+        setSelectedItems([]);
+        loadExpenses();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to delete expenses");
+      }
+    } catch (error) {
+      console.error("Error bulk deleting expenses:", error);
+      toast.error("Failed to delete expenses");
+    }
+  };
+
+  const handleExportSelected = () => {
+    const rows = expenses.filter((e) => selectedItems.includes(e.id));
+    if (rows.length === 0) return;
+
+    const headers = ["Title", "Category", "Amount", "Date", "Payment Method", "Paid To", "Status", "Receipt Number"];
+    const csvRows = rows.map((e) =>
+      [
+        e.title,
+        getExpenseCategoryLabel(e.category),
+        e.amount,
+        new Date(e.date).toLocaleDateString(),
+        e.paymentMethod || "",
+        e.paidTo || "",
+        e.paymentStatus || "",
+        e.receiptNumber || "",
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
+    const csv = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `expenses-export-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Initialize form for creating/editing expense
   const form = useForm<z.infer<typeof expenseFormSchema>>({
     resolver: zodResolver(expenseFormSchema),
@@ -234,6 +287,7 @@ export default function ExpensesPage() {
       date: new Date().toISOString().split('T')[0],
       description: "",
       receiptNumber: "",
+      paymentStatus: "COMPLETED",
     },
   });
 
@@ -241,7 +295,7 @@ export default function ExpensesPage() {
   // Note: For large datasets, search should also be server-side.
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (expense.vendor && expense.vendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (expense.paidTo && expense.paidTo.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (expense.receiptNumber && expense.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return matchesSearch;
@@ -255,9 +309,10 @@ export default function ExpensesPage() {
       date: new Date().toISOString().split('T')[0],
       description: "",
       receiptNumber: "",
-      attachmentFiles: undefined,
+      attachments: undefined,
       category: undefined,
       paymentMethod: undefined,
+      paymentStatus: "COMPLETED",
       paidTo: "",
     });
     setCreateExpenseDialog(true);
@@ -272,9 +327,11 @@ export default function ExpensesPage() {
         amount: expense.amount,
         date: new Date(expense.date).toISOString().split('T')[0],
         paymentMethod: expense.paymentMethod,
+        paymentStatus: expense.paymentStatus || "COMPLETED",
         paidTo: expense.paidTo || "",
         description: expense.description || "",
         receiptNumber: expense.receiptNumber || "",
+        attachments: expense.attachments || undefined,
       });
       setSelectedExpense(expense);
       setCreateExpenseDialog(true);
@@ -313,13 +370,8 @@ export default function ExpensesPage() {
     }
   }
 
-  function getCategoryLabel(categoryId: string) {
-    return expenseCategories.find(cat => cat.id === categoryId)?.name || categoryId;
-  }
-
-  function getCategoryColor(categoryId: string) {
-    return expenseCategories.find(cat => cat.id === categoryId)?.color || "bg-muted text-gray-800";
-  }
+  const getCategoryLabel = getExpenseCategoryLabel;
+  const getCategoryColor = getExpenseCategoryColor;
 
   return (
     <div className="flex flex-col gap-4">
@@ -452,19 +504,46 @@ export default function ExpensesPage() {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="paidTo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Paid To</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Vendor/Person/Company name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="paidTo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Paid To</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Vendor/Person/Company name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="paymentStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {EXPENSE_PAYMENT_STATUSES.map(status => (
+                              <SelectItem key={status} value={status}>
+                                {status.charAt(0) + status.slice(1).toLowerCase()}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -484,42 +563,52 @@ export default function ExpensesPage() {
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="receiptNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Receipt/Reference Number (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., INV-12345" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="receiptNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Receipt/Reference Number (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., INV-12345" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="attachmentFiles"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Attachments (Optional)</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="attachments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Attachment (Optional)</FormLabel>
+                      {field.value ? (
+                        <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                          <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline truncate">
+                            <Receipt className="h-4 w-4 shrink-0" />
+                            View uploaded attachment
+                          </a>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange(undefined)}>
+                            Remove
+                          </Button>
+                        </div>
+                      ) : (
                         <FormControl>
-                          <Input
-                            type="file"
-                            multiple
-                            onChange={(e) => field.onChange(e.target.files)}
+                          <SecureFileUpload
+                            category="attachment"
+                            onUploadComplete={(result) => field.onChange(result.url)}
+                            onUploadError={(error) => toast.error(error)}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Upload receipts, invoices, or other supporting documents.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                      )}
+                      <FormDescription>
+                        Upload a receipt, invoice, or other supporting document.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateExpenseDialog(false)} type="button">
@@ -661,13 +750,39 @@ export default function ExpensesPage() {
                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExportSelected}>
                       <Download className="h-4 w-4 mr-1" />
                       Export
                     </Button>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
                       <Trash2 className="h-4 w-4 mr-1" />
                       Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {!loading && totalCount > PAGE_SIZE && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalCount)} of {totalCount}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page * PAGE_SIZE >= totalCount}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
                     </Button>
                   </div>
                 </div>
@@ -839,11 +954,11 @@ export default function ExpensesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={
-                    selectedExpense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                      selectedExpense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                    selectedExpense.paymentStatus === "COMPLETED" ? "bg-green-100 text-green-800" :
+                      selectedExpense.paymentStatus === "PENDING" ? "bg-amber-100 text-amber-800" :
                         "bg-red-100 text-red-800"
                   }>
-                    {selectedExpense.status}
+                    {selectedExpense.paymentStatus}
                   </Badge>
                 </div>
               </div>
@@ -853,17 +968,18 @@ export default function ExpensesPage() {
                 <p>{selectedExpense.description || "No description provided."}</p>
               </div>
 
-              {selectedExpense.attachments && selectedExpense.attachments.length > 0 && (
+              {selectedExpense.attachments && (
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">Attachments</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedExpense.attachments.map((attachment: string, index: number) => (
-                      <div key={index} className="border rounded-md p-2 flex items-center">
-                        <Receipt className="h-4 w-4 mr-2 text-primary" />
-                        <span className="text-sm">{attachment}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">Attachment</p>
+                  <a
+                    href={selectedExpense.attachments}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center border rounded-md p-2 text-sm text-primary hover:underline"
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    View attachment
+                  </a>
                 </div>
               )}
             </div>

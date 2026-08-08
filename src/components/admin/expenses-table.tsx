@@ -5,26 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Edit, Eye, Receipt } from "lucide-react";
 import { ResponsiveTable } from "@/components/shared/responsive-table";
-import { format } from "date-fns";
+import { getExpenseCategoryLabel, getExpenseCategoryColor } from "@/lib/constants/expense-categories";
 
-// Mock data (mirrored from page.tsx to ensure consistent rendering)
-const expenseCategories = [
-    { id: "utilities", name: "Utilities", color: "bg-primary/10 text-primary" },
-    { id: "supplies", name: "School Supplies", color: "bg-green-100 text-green-800" },
-    { id: "maintenance", name: "Maintenance", color: "bg-amber-100 text-amber-800" },
-    { id: "salary", name: "Staff Salary", color: "bg-teal-100 text-teal-800" },
-    { id: "events", name: "Events", color: "bg-pink-100 text-pink-800" },
-    { id: "transport", name: "Transportation", color: "bg-indigo-100 text-indigo-800" },
-    { id: "other", name: "Other", color: "bg-muted text-gray-800" },
-];
-
-function getCategoryLabel(categoryId: string) {
-    return expenseCategories.find(cat => cat.id === categoryId)?.name || categoryId;
-}
-
-function getCategoryColor(categoryId: string) {
-    return expenseCategories.find(cat => cat.id === categoryId)?.color || "bg-muted text-gray-800";
-}
+const getCategoryLabel = getExpenseCategoryLabel;
+const getCategoryColor = getExpenseCategoryColor;
 
 interface Expense {
     id: string;
@@ -32,10 +16,10 @@ interface Expense {
     category: string;
     amount: number;
     date: string | Date;
-    status: string;
+    paymentStatus: string;
     receiptNumber?: string;
     description?: string;
-    vendor?: string;
+    paidTo?: string;
 }
 
 interface ExpensesTableProps {
@@ -131,20 +115,20 @@ export function ExpensesTable({
             label: "Status",
             render: (expense: Expense) => (
                 <Badge className={
-                    expense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                        expense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                    expense.paymentStatus === "COMPLETED" ? "bg-green-100 text-green-800" :
+                        expense.paymentStatus === "PENDING" ? "bg-amber-100 text-amber-800" :
                             "bg-red-100 text-red-800"
                 }>
-                    {expense.status}
+                    {expense.paymentStatus}
                 </Badge>
             ),
             mobileRender: (expense: Expense) => (
                 <div className="text-right">
-                    <Badge className={`text-[10px] h-5 px-1.5 ${expense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                        expense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                    <Badge className={`text-[10px] h-5 px-1.5 ${expense.paymentStatus === "COMPLETED" ? "bg-green-100 text-green-800" :
+                        expense.paymentStatus === "PENDING" ? "bg-amber-100 text-amber-800" :
                             "bg-red-100 text-red-800"
                         }`}>
-                        {expense.status}
+                        {expense.paymentStatus}
                     </Badge>
                     <div className="text-[10px] text-muted-foreground mt-1">
                         {new Date(expense.date).toLocaleDateString()}
