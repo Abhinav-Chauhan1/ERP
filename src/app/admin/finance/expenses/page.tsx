@@ -88,7 +88,7 @@ const expenseFormSchema = z.object({
     required_error: "Payment method is required",
   }),
   paymentStatus: z.string().optional(),
-  paidTo: z.string().min(2, "Paid to must be at least 2 characters long"),
+  paidTo: z.string().min(2, "Paid to must be at least 2 characters long").optional().or(z.literal("")),
   description: z.string().optional(),
   receiptNumber: z.string().optional(),
   attachments: z.string().optional(),
@@ -510,9 +510,9 @@ export default function ExpensesPage() {
                     name="paidTo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Paid To</FormLabel>
+                        <FormLabel>Paid To (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Vendor/Person/Company name" {...field} />
+                          <Input placeholder="Vendor/Person/Company name" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -945,7 +945,7 @@ export default function ExpensesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Paid To</p>
-                  <p className="font-medium">{selectedExpense.paidTo}</p>
+                  <p className="font-medium">{selectedExpense.paidTo || "—"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Receipt/Reference</p>
