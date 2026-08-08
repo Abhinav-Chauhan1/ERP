@@ -4,6 +4,9 @@
 *.antigravity
 *.claude
 
+# Local data backups/exports (may contain student PII) — never committed
+/backups/
+
 # Logs
 logs
 *.log

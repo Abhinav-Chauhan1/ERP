@@ -209,7 +209,7 @@ export const getStudentFeeDiscountSummary = withSchoolAuthAction(
       }
 
       const feeTypeIds = feeStructure.items.map((item) => item.feeTypeId);
-      const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId);
+      const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId, studentId);
 
       let grossTotal = 0;
       for (const item of feeStructure.items) {

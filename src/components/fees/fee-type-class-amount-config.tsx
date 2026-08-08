@@ -348,7 +348,7 @@ export function FeeTypeClassAmountConfig({
  * Helper function to extract numeric level from class name
  * e.g., "Class 1" -> 1, "Grade 12" -> 12, "Nursery" -> 0
  */
-function extractClassLevel(name: string): number | null {
+export function extractClassLevel(name: string): number | null {
   // Common pre-school classes
   const preSchoolMap: Record<string, number> = {
     nursery: 0,

@@ -73,7 +73,7 @@ export async function syncFeeInvoiceSummary(studentId: string): Promise<void> {
     if (!feeStructure) return;
 
     const feeTypeIds = feeStructure.items.map((item) => item.feeTypeId);
-    const classAmountMap = await getFeeAmountsForClass(feeTypeIds, classId, student.schoolId);
+    const classAmountMap = await getFeeAmountsForClass(feeTypeIds, classId, student.schoolId, student.id);
 
     const grossTotal = feeStructure.items.reduce(
       (sum, item) => sum + (classAmountMap.get(item.feeTypeId) ?? item.feeType.amount),

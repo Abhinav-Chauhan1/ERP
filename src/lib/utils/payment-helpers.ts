@@ -344,32 +344,42 @@ export async function getActiveFeeDiscountsForStructures(
 }
 
 /**
- * Resolves the annualized amount owed for each fee type against a class: the
- * class-specific override (FeeTypeClassAmount) or the fee type's own default
- * amount, expanded by its billing frequency (e.g. Monthly x12).
+ * Resolves the annualized amount owed for each fee type: a student-specific
+ * override (FeeTypeStudentAmount) takes precedence over the class-specific
+ * override (FeeTypeClassAmount), which takes precedence over the fee type's
+ * own default amount — then the result is expanded by its billing frequency
+ * (e.g. Monthly x12). Pass studentId when resolving for a specific student
+ * so per-student amounts (e.g. individually negotiated fees) are honored.
  */
 export async function getFeeAmountsForClass(
   feeTypeIds: string[],
   classId: string | undefined,
-  schoolId: string
+  schoolId: string,
+  studentId?: string
 ): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   const uniqueFeeTypeIds = Array.from(new Set(feeTypeIds));
   if (uniqueFeeTypeIds.length === 0) return result;
 
-  const [feeTypes, classAmounts] = await Promise.all([
+  const [feeTypes, classAmounts, studentAmounts] = await Promise.all([
     db.feeType.findMany({ where: { id: { in: uniqueFeeTypeIds }, schoolId } }),
     classId
       ? db.feeTypeClassAmount.findMany({
           where: { feeTypeId: { in: uniqueFeeTypeIds }, classId, schoolId },
         })
       : Promise.resolve([]),
+    studentId
+      ? db.feeTypeStudentAmount.findMany({
+          where: { feeTypeId: { in: uniqueFeeTypeIds }, studentId, schoolId },
+        })
+      : Promise.resolve([]),
   ]);
 
   const classAmountMap = new Map(classAmounts.map((ca) => [ca.feeTypeId, ca.amount]));
+  const studentAmountMap = new Map(studentAmounts.map((sa) => [sa.feeTypeId, sa.amount]));
 
   feeTypes.forEach((ft) => {
-    const baseAmount = classAmountMap.get(ft.id) ?? ft.amount;
+    const baseAmount = studentAmountMap.get(ft.id) ?? classAmountMap.get(ft.id) ?? ft.amount;
     result.set(ft.id, baseAmount * getFeeFrequencyMultiplier(ft.frequency));
   });
 
@@ -382,9 +392,10 @@ export async function getFeeAmountsForClass(
 export async function getFeeAmountForClass(
   feeTypeId: string,
   classId: string | undefined,
-  schoolId: string
+  schoolId: string,
+  studentId?: string
 ): Promise<number> {
-  const amounts = await getFeeAmountsForClass([feeTypeId], classId, schoolId);
+  const amounts = await getFeeAmountsForClass([feeTypeId], classId, schoolId, studentId);
   return amounts.get(feeTypeId) ?? 0;
 }
 

@@ -73,6 +73,8 @@ import {
   generateReceiptNumber,
   getPaymentReceiptHTML,
   getConsolidatedReceiptHTML,
+  getFeeItemBalances,
+  type FeeItemBalance,
 } from "@/lib/actions/feePaymentActions";
 
 // Import validation schemas
@@ -94,6 +96,19 @@ const paymentMethods = [
   { value: "ONLINE_PAYMENT", label: "Online Payment" },
   { value: "SCHOLARSHIP", label: "Scholarship" },
 ];
+
+// Fills each fee-type's balance in order until `total` is exhausted, so the
+// breakdown UI has a sensible starting point that sums to the requested total.
+function greedyAllocate(balances: FeeItemBalance[], total: number): Record<string, number> {
+  let left = total;
+  const result: Record<string, number> = {};
+  for (const b of balances) {
+    const amt = Math.max(0, Math.min(b.remaining, left));
+    result[b.feeStructureItemId] = Math.round(amt * 100) / 100;
+    left -= amt;
+  }
+  return result;
+}
 
 // Payment status options
 const paymentStatuses = [
@@ -147,6 +162,11 @@ export function PaymentsClient({
   const [paymentMode, setPaymentMode] = useState<"full" | "partial">("full");
   const [createdPayment, setCreatedPayment] = useState<any>(null);
   const [studentComboboxOpen, setStudentComboboxOpen] = useState(false);
+
+  // Per-fee-type breakdown for the selected fee structure (Record Payment flow)
+  const [itemBalances, setItemBalances] = useState<FeeItemBalance[]>([]);
+  const [itemBalancesLoading, setItemBalancesLoading] = useState(false);
+  const [itemAmounts, setItemAmounts] = useState<Record<string, number>>({});
 
   // Record Payment form (guided create flow — no amount/status fields, both
   // derived server-side)
@@ -222,20 +242,55 @@ export function PaymentsClient({
     }
   }, [feeStructures, feeStructuresLoading, createDialogOpen, createStage]);
 
-  // Keep "Amount to Collect Now" synced to what's actually due today (accrual-
-  // based, matching Pending Fees/dashboards elsewhere) while in "due" mode. If
+  // Load the per-fee-type breakdown once a fee structure is selected, and
+  // default the allocation to what's actually due today (accrual-based,
+  // matching Pending Fees/dashboards elsewhere) distributed across items. If
   // nothing has accrued yet but a full-year balance remains, default to the
   // custom-amount path instead, since collecting ₹0 isn't a meaningful default.
   useEffect(() => {
-    if (createStage !== "review" || !selectedStructure) return;
-    if (selectedStructure.dueNow <= 0 && selectedStructure.fullRemainingBalance > 0) {
-      if (paymentMode === "full") setPaymentMode("partial");
+    if (createStage !== "review" || !selectedStructure || !selectedStudentId) {
+      setItemBalances([]);
+      setItemAmounts({});
       return;
     }
-    if (paymentMode === "full" && selectedStructure.dueNow > 0) {
-      createForm.setValue("paidAmount", selectedStructure.dueNow);
-    }
-  }, [selectedStructure?.id, selectedStructure?.dueNow, selectedStructure?.fullRemainingBalance, paymentMode, createStage]);
+    let cancelled = false;
+    setItemBalancesLoading(true);
+    getFeeItemBalances(selectedStudentId, selectedStructure.id)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setItemBalances(result.data);
+          if (selectedStructure.dueNow <= 0 && selectedStructure.fullRemainingBalance > 0) {
+            setPaymentMode("partial");
+            setItemAmounts({});
+          } else {
+            setPaymentMode("full");
+            setItemAmounts(greedyAllocate(result.data, selectedStructure.dueNow));
+          }
+        } else {
+          toast.error(result.error || "Failed to load fee breakdown");
+          setItemBalances([]);
+          setItemAmounts({});
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setItemBalancesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStructure?.id, selectedStudentId, createStage]);
+
+  // paidAmount is always the live sum of the per-fee-type breakdown.
+  useEffect(() => {
+    const sum = Object.values(itemAmounts).reduce((s, v) => s + (v || 0), 0);
+    createForm.setValue("paidAmount", Math.round(sum * 100) / 100);
+  }, [itemAmounts]);
+
+  function handleItemAmountChange(feeStructureItemId: string, value: string) {
+    const parsed = parseFloat(value);
+    setItemAmounts((prev) => ({ ...prev, [feeStructureItemId]: Number.isFinite(parsed) ? parsed : 0 }));
+  }
 
   async function fetchFinanceData(academicYearId: string) {
     setLoading(true);
@@ -318,6 +373,8 @@ export function PaymentsClient({
     setCreatedPayment(null);
     setPaymentMode("full");
     setSelectedPaymentId(null);
+    setItemBalances([]);
+    setItemAmounts({});
 
     if (prefill?.studentId) {
       setSelectedStudentId(prefill.studentId);
@@ -359,6 +416,8 @@ export function PaymentsClient({
     setCreateStage("search");
     setPaymentMode("full");
     setCreatedPayment(null);
+    setItemBalances([]);
+    setItemAmounts({});
   }
 
   // Handle edit payment
@@ -396,7 +455,10 @@ export function PaymentsClient({
   // Submit the Record Payment form
   async function onSubmitCreatePayment(values: RecordPaymentFormValues) {
     try {
-      const result = await recordPayment(values);
+      const items = Object.entries(itemAmounts)
+        .filter(([, amount]) => amount > 0)
+        .map(([feeStructureItemId, amount]) => ({ feeStructureItemId, amount }));
+      const result = await recordPayment({ ...values, items });
       if (result.success) {
         toast.success("Payment recorded successfully");
         setCreatedPayment(result.data);
@@ -727,7 +789,7 @@ export function PaymentsClient({
         open={createDialogOpen}
         onOpenChange={(open) => (open ? setCreateDialogOpen(true) : closeCreateDialog())}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
@@ -873,49 +935,82 @@ export function PaymentsClient({
                             </p>
                           )}
 
-                          <div className="flex gap-2">
-                            {selectedStructure.dueNow > 0 && (
+                          <div className="flex items-center justify-between gap-2">
+                            <FormLabel className="mb-0">Amount to Collect Now, by fee type</FormLabel>
+                            <div className="flex gap-2">
+                              {selectedStructure.dueNow > 0 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setPaymentMode("full");
+                                    setItemAmounts(greedyAllocate(itemBalances, selectedStructure.dueNow));
+                                  }}
+                                >
+                                  Reset to Amount Due
+                                </Button>
+                              )}
                               <Button
                                 type="button"
                                 size="sm"
-                                variant={paymentMode === "full" ? "default" : "outline"}
+                                variant="outline"
                                 onClick={() => {
-                                  setPaymentMode("full");
-                                  createForm.setValue("paidAmount", selectedStructure.dueNow);
+                                  setPaymentMode("partial");
+                                  setItemAmounts({});
                                 }}
                               >
-                                Pay Amount Due
+                                Clear All
                               </Button>
-                            )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={paymentMode === "partial" ? "default" : "outline"}
-                              onClick={() => setPaymentMode("partial")}
-                            >
-                              Custom Amount
-                            </Button>
+                            </div>
                           </div>
 
+                          {itemBalancesLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                              <Loader2 className="h-4 w-4 animate-spin" /> Loading fee types...
+                            </div>
+                          ) : (
+                            <div className="border rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fee Type</TableHead>
+                                    <TableHead className="text-right">Remaining</TableHead>
+                                    <TableHead className="w-[140px] text-right">Collect Now</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {itemBalances.map((b) => (
+                                    <TableRow key={b.feeStructureItemId}>
+                                      <TableCell>{b.feeTypeName}</TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        ₹{b.remaining.toLocaleString()}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          max={b.remaining}
+                                          value={itemAmounts[b.feeStructureItemId] ?? 0}
+                                          onChange={(e) => handleItemAmountChange(b.feeStructureItemId, e.target.value)}
+                                          className="h-8 text-right"
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          )}
+
+                          <p className="text-sm font-medium text-right">
+                            Total: ₹{createForm.watch("paidAmount").toLocaleString()}
+                          </p>
                           <FormField
                             control={createForm.control}
                             name="paidAmount"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Amount to Collect Now</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    max={selectedStructure.fullRemainingBalance}
-                                    disabled={paymentMode === "full"}
-                                    {...field}
-                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                            render={() => <FormMessage />}
                           />
 
                           <div className="grid grid-cols-2 gap-4">

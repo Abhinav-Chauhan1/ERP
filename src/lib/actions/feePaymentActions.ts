@@ -69,7 +69,7 @@ async function computeNetPayableCeiling(
 
   const classId = student.enrollments[0]?.classId;
   const feeTypeIds = feeStructure.items.map((item) => item.feeTypeId);
-  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId);
+  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId, studentId);
   const grossTotal = feeTypeIds.reduce((sum, id) => sum + (amountMap.get(id) ?? 0), 0);
 
   const discount = await getActiveFeeDiscount(studentId, feeStructureId, schoolId);
@@ -87,6 +87,76 @@ async function computeNetPayableCeiling(
   });
 
   return netPayable - (completedPayments._sum.paidAmount ?? 0);
+}
+
+export interface FeeItemBalance {
+  feeStructureItemId: string;
+  feeTypeId: string;
+  feeTypeName: string;
+  owed: number;
+  paid: number;
+  remaining: number;
+}
+
+/**
+ * Per-fee-type remaining balance for a student against a fee structure: what's
+ * owed (student-override > class-override > default, annualized by frequency)
+ * minus what's already been paid toward that specific item via FeePaymentItem
+ * on COMPLETED payments. Backs the payment-recording breakdown UI.
+ */
+export async function getFeeItemBalances(
+  studentId: string,
+  feeStructureId: string
+): Promise<{ success: true; data: FeeItemBalance[] } | { success: false; error: string }> {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
+      include: { enrollments: { where: { status: "ACTIVE" }, take: 1, select: { classId: true } } },
+    });
+    if (!student) return { success: false, error: "Student not found in this school" };
+
+    const feeStructure = await db.feeStructure.findFirst({
+      where: { id: feeStructureId, schoolId },
+      include: { items: { include: { feeType: true } } },
+    });
+    if (!feeStructure) return { success: false, error: "Fee structure not found" };
+
+    const classId = student.enrollments[0]?.classId;
+    const feeTypeIds = feeStructure.items.map((item) => item.feeTypeId);
+    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, schoolId, studentId);
+
+    const paidByItem = await db.feePaymentItem.groupBy({
+      by: ["feeStructureItemId"],
+      where: {
+        feeStructureItemId: { in: feeStructure.items.map((i) => i.id) },
+        schoolId,
+        feePayment: { studentId, status: PaymentStatus.COMPLETED },
+      },
+      _sum: { amount: true },
+    });
+    const paidMap = new Map(paidByItem.map((p) => [p.feeStructureItemId, p._sum.amount ?? 0]));
+
+    const balances: FeeItemBalance[] = feeStructure.items.map((item) => {
+      const owed = amountMap.get(item.feeTypeId) ?? item.feeType.amount;
+      const paid = paidMap.get(item.id) ?? 0;
+      return {
+        feeStructureItemId: item.id,
+        feeTypeId: item.feeTypeId,
+        feeTypeName: item.feeType.name,
+        owed,
+        paid,
+        remaining: Math.max(owed - paid, 0),
+      };
+    });
+
+    return { success: true, data: balances };
+  } catch (error) {
+    console.error("Error computing fee item balances:", error);
+    return { success: false, error: "Failed to compute fee item balances" };
+  }
 }
 
 // Get all fee payments with filters
@@ -252,6 +322,30 @@ export async function recordPayment(data: any) {
       };
     }
 
+    // Optional per-fee-type breakdown (items: { feeStructureItemId, amount }[]).
+    // Validate it sums to the total and that no single item overpays its own
+    // remaining balance, then persist it as child FeePaymentItem rows so
+    // "amount paid per fee type" can be read back exactly instead of guessed.
+    const items: { feeStructureItemId: string; amount: number }[] | undefined = data.items;
+    if (items && items.length > 0) {
+      const itemsSum = items.reduce((sum, i) => sum + i.amount, 0);
+      if (Math.abs(itemsSum - submittedPaidAmount) > 0.01) {
+        return { success: false, error: "Fee-type breakdown does not add up to the payment amount" };
+      }
+
+      const balancesResult = await getFeeItemBalances(data.studentId, data.feeStructureId);
+      if (!balancesResult.success) {
+        return { success: false, error: balancesResult.error };
+      }
+      const remainingByItem = new Map(balancesResult.data.map((b) => [b.feeStructureItemId, b.remaining]));
+      for (const item of items) {
+        const remaining = remainingByItem.get(item.feeStructureItemId) ?? 0;
+        if (item.amount > remaining + 0.01) {
+          return { success: false, error: `Amount exceeds outstanding balance for one of the fee types` };
+        }
+      }
+    }
+
     // A recorded payment represents money actually collected in this one
     // transaction, so amount always equals paidAmount (balance 0) and status
     // is always COMPLETED — both derived here rather than trusted from the
@@ -271,6 +365,9 @@ export async function recordPayment(data: any) {
         status: PaymentStatus.COMPLETED,
         remarks: data.remarks || null,
         schoolId, // Add schoolId
+        ...(items && items.length > 0
+          ? { items: { create: items.map((i) => ({ feeStructureItemId: i.feeStructureItemId, amount: i.amount, schoolId })) } }
+          : {}),
       },
       include: {
         student: {
@@ -724,7 +821,7 @@ export async function getFeeStructuresForStudent(studentId: string) {
     // is constant across this loop), one discount lookup for all structures,
     // and one groupBy instead of a per-structure aggregate.
     const allFeeTypeIds = feeStructures.flatMap((s) => s.items.map((item) => item.feeTypeId));
-    const amountMap = await getFeeAmountsForClass(allFeeTypeIds, classId, schoolId);
+    const amountMap = await getFeeAmountsForClass(allFeeTypeIds, classId, schoolId, studentId);
     const discountMap = await getActiveFeeDiscountsForStructures(
       studentId,
       feeStructures.map((s) => s.id),

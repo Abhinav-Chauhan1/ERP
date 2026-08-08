@@ -45,6 +45,7 @@ export const adminRoutes: RouteItem[] = [
         submenu: [
             { label: "Overview", href: "/admin/finance", permissions: [PERMISSIONS.READ_FEE, PERMISSIONS.READ_PAYMENT] },
             { label: "Fee Structure", href: "/admin/finance/fee-structure", permissions: [PERMISSIONS.READ_FEE] },
+            { label: "Student Fees", href: "/admin/finance/student-fees", permissions: [PERMISSIONS.READ_FEE] },
             { label: "Payments", href: "/admin/finance/payments", permissions: [PERMISSIONS.READ_PAYMENT] },
             { label: "Receipt Verification", href: "/admin/finance/receipt-verification", permissions: [PERMISSIONS.APPROVE_PAYMENT] },
             { label: "Expenses", href: "/admin/finance/expenses", permissions: [PERMISSIONS.READ_EXPENSE] },

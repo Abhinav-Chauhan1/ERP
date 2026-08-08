@@ -160,7 +160,8 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       getFeeAmountsForClass(
         feeStructure.items.map(i => i.feeTypeId),
         classId,
-        parent.schoolId
+        parent.schoolId,
+        validated.childId
       )
     ]);
 
@@ -372,7 +373,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
 
     // Batch fee amount lookups for receipt
     const feeTypeIds = payment.feeStructure.items.map(i => i.feeTypeId);
-    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, parent.schoolId);
+    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, parent.schoolId, payment.studentId);
 
     const feeItems = payment.feeStructure.items.map(item => ({
       name: item.feeType.name,

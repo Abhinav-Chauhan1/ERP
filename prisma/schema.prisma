@@ -124,6 +124,8 @@ model School {
   FeeStructureItem        FeeStructureItem[]
   FeeType                 FeeType[]
   FeeTypeClassAmount      FeeTypeClassAmount[]
+  FeeTypeStudentAmount    FeeTypeStudentAmount[]
+  FeePaymentItem          FeePaymentItem[]
   GradeScale              GradeScale[]
   LeaveApplication        LeaveApplication[]
   MeritList               MeritList[]
@@ -578,6 +580,7 @@ model Student {
   feePayments           FeePayment[]
   feeInvoiceSummaries   FeeInvoiceSummary[]
   miscFeePayments       MiscFeePayment[]
+  feeTypeAmounts        FeeTypeStudentAmount[]
   reportCards           ReportCard[]
   scholarships          ScholarshipRecipient[]
   school                School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1586,18 +1589,19 @@ model LeaveApplication {
 }
 
 model FeeType {
-  id            String               @id @default(cuid())
-  name          String
-  description   String?
-  amount        Float
-  frequency     FeeFrequency         @default(ANNUAL)
-  isOptional    Boolean              @default(false)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  schoolId      String
-  feeStructures FeeStructureItem[]
-  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classAmounts  FeeTypeClassAmount[]
+  id             String                 @id @default(cuid())
+  name           String
+  description    String?
+  amount         Float
+  frequency      FeeFrequency           @default(ANNUAL)
+  isOptional     Boolean                @default(false)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  schoolId       String
+  feeStructures  FeeStructureItem[]
+  school         School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classAmounts   FeeTypeClassAmount[]
+  studentAmounts FeeTypeStudentAmount[]
 
   @@index([schoolId])
 }
@@ -1629,19 +1633,38 @@ model FeeStructure {
 }
 
 model FeeStructureItem {
-  id             String       @id @default(cuid())
+  id             String           @id @default(cuid())
   feeStructureId String
   feeTypeId      String
   amount         Float
   dueDate        DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   schoolId       String
-  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
-  feeType        FeeType      @relation(fields: [feeTypeId], references: [id])
-  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  feeStructure   FeeStructure     @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  feeType        FeeType          @relation(fields: [feeTypeId], references: [id])
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  paymentItems   FeePaymentItem[]
 
   @@unique([feeStructureId, feeTypeId])
+  @@index([schoolId])
+}
+
+model FeeTypeStudentAmount {
+  id        String   @id @default(cuid())
+  feeTypeId String
+  studentId String
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  schoolId  String
+  feeType   FeeType  @relation(fields: [feeTypeId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([feeTypeId, studentId])
+  @@index([feeTypeId])
+  @@index([studentId])
   @@index([schoolId])
 }
 
@@ -1682,26 +1705,27 @@ model FeeTypeClassAmount {
 }
 
 model FeePayment {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   studentId      String
   feeStructureId String
   amount         Float
   paidAmount     Float
-  balance        Float           @default(0)
+  balance        Float            @default(0)
   paymentDate    DateTime
-  paymentMethod  PaymentMethod   @default(CASH)
-  transactionId  String?         @unique
+  paymentMethod  PaymentMethod    @default(CASH)
+  transactionId  String?          @unique
   receiptNumber  String?
-  status         PaymentStatus   @default(PENDING)
+  status         PaymentStatus    @default(PENDING)
   remarks        String?
-  paymentSource  PaymentSource   @default(MANUAL)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  paymentSource  PaymentSource    @default(MANUAL)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   schoolId       String
-  feeStructure   FeeStructure    @relation(fields: [feeStructureId], references: [id], onDelete: Restrict)
-  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student        Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  feeStructure   FeeStructure     @relation(fields: [feeStructureId], references: [id], onDelete: Restrict)
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
   paymentReceipt PaymentReceipt?
+  items          FeePaymentItem[]
 
   @@index([studentId, status, paymentDate])
   @@index([paymentDate])
@@ -1709,6 +1733,27 @@ model FeePayment {
   @@index([schoolId])
   @@index([schoolId, studentId])
   @@index([schoolId, status, paymentDate])
+}
+
+// Itemized breakdown of a single FeePayment transaction across the fee types
+// it covers (e.g. one receipt paying Annual + Tuition + Book together). Lets
+// "amount paid per fee type" be computed exactly instead of guessed.
+model FeePaymentItem {
+  id                 String           @id @default(cuid())
+  feePaymentId       String
+  feeStructureItemId String
+  amount             Float
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  schoolId           String
+  feePayment         FeePayment       @relation(fields: [feePaymentId], references: [id], onDelete: Cascade)
+  feeStructureItem   FeeStructureItem @relation(fields: [feeStructureItemId], references: [id])
+  school             School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([feePaymentId, feeStructureItemId])
+  @@index([feePaymentId])
+  @@index([feeStructureItemId])
+  @@index([schoolId])
 }
 
 // Materialized snapshot of what a student owes against a fee structure, kept in
