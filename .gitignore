@@ -137,3 +137,11 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Generated showcase report cards (contain real student names)
+storage/showcase-report-cards/
+
+# HCS roster working data — real student records (names, parents, Aadhaar).
+# The repo is public; these must never be committed.
+scripts/.hcs-*.json
+scripts/*.xlsx
