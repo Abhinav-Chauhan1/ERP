@@ -973,17 +973,25 @@ function renderRemarks(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...hex(C.black));
-    doc.text(`Congratulations! You are promoted to ${nextClass}`, MARGIN.left, y);
+    doc.text(
+      nextClass
+        ? `Congratulations! You are promoted to ${nextClass}`
+        : `Congratulations! You have successfully completed ${data.student.class}`,
+      MARGIN.left,
+      y,
+    );
     y += 6;
   }
 
   return y + 2;
 }
 
-function getNextClass(currentClass: string): string {
+function getNextClass(currentClass: string): string | null {
   const match = currentClass.match(/(\d+)/);
   if (match) {
     const num = parseInt(match[1], 10);
+    // Class 12 is terminal — there is no "Class 13" to promote to.
+    if (num >= 12) return null;
     return currentClass.replace(/\d+/, String(num + 1));
   }
   return currentClass;
@@ -1072,7 +1080,7 @@ function renderSecondaryScholasticTable(
   const y = startY + 8;
 
   const head: any[][] = [[
-    { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
+    { content: "Subjects", styles: { halign: "center", valign: "middle" } },
     { content: "Theory", styles: { halign: "center" } },
     { content: "Practical / Internal", styles: { halign: "center" } },
     { content: "Total (100)", styles: { halign: "center" } },
@@ -1162,7 +1170,7 @@ function renderSeniorScholasticTable(
   const y = startY + 8;
 
   const head: any[][] = [[
-    { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
+    { content: "Subjects", styles: { halign: "center", valign: "middle" } },
     { content: "Theory\n(70/80)", styles: { halign: "center" } },
     { content: "Practical /\nInternal\n(30/20)", styles: { halign: "center" } },
     { content: "Total\n(100)", styles: { halign: "center" } },

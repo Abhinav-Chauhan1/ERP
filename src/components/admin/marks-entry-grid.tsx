@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Save, FileDown, AlertCircle, CheckCircle2, History } from "lucide-react";
-import { saveExamMarks, type StudentMarkEntry, getExamResultLastModified } from "@/lib/actions/marksEntryActions";
+import { saveExamMarks, type StudentMarkEntry, getExamResultsLastModified } from "@/lib/actions/marksEntryActions";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
@@ -84,28 +84,36 @@ export function MarksEntryGrid({
     setStudents(initialStudents);
   }, [initialStudents]);
 
-  // Load last modified info for students with existing results
+  // Load last modified info for students with existing results.
+  // One batched call — the previous per-student loop issued a sequential server
+  // action round-trip for every student in the section.
   useEffect(() => {
+    let cancelled = false;
+
     const loadLastModifiedInfo = async () => {
       setLoadingLastModified(true);
+      const result = await getExamResultsLastModified(examId);
+      if (cancelled) return;
+
       const infoMap = new Map<string, LastModifiedInfo>();
-      
-      for (const student of initialStudents) {
-        if (student.resultId) {
-          const result = await getExamResultLastModified(examId, student.id);
-          if (result.success && result.data) {
-            infoMap.set(student.id, result.data);
-          }
+      if (result.success && result.data) {
+        for (const [studentId, info] of Object.entries(result.data)) {
+          infoMap.set(studentId, info as LastModifiedInfo);
         }
       }
-      
       setLastModifiedInfo(infoMap);
       setLoadingLastModified(false);
     };
 
-    if (initialStudents.length > 0) {
+    if (initialStudents.some((s) => s.resultId)) {
       loadLastModifiedInfo();
+    } else {
+      setLastModifiedInfo(new Map());
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [initialStudents, examId]);
 
   const validateField = (
@@ -137,11 +145,31 @@ export function MarksEntryGrid({
     return null;
   };
 
-  const updateStudentMark = (
+  const updateStudentMark = useCallback((
     studentId: string,
     field: keyof Student,
     value: any
   ) => {
+    // Validation runs outside the state updater — updaters must stay pure, or
+    // React's double-invocation in development applies it twice.
+    if (
+      field === "theoryMarks" ||
+      field === "practicalMarks" ||
+      field === "internalMarks"
+    ) {
+      const error = validateField(
+        studentId,
+        field as "theoryMarks" | "practicalMarks" | "internalMarks",
+        value
+      );
+      setValidationErrors((prev) => {
+        const filtered = prev.filter(
+          (e) => !(e.studentId === studentId && e.field === field)
+        );
+        return error ? [...filtered, { studentId, field, message: error }] : filtered;
+      });
+    }
+
     setStudents((prev) =>
       prev.map((student) => {
         if (student.id !== studentId) return student;
@@ -184,29 +212,14 @@ export function MarksEntryGrid({
             updated.percentage = examTotalMarks > 0 ? (total / examTotalMarks) * 100 : 0;
             updated.grade = calculateGrade(updated.percentage);
           }
-
-          // Validate the field
-          const error = validateField(
-            studentId,
-            field as "theoryMarks" | "practicalMarks" | "internalMarks",
-            value
-          );
-
-          setValidationErrors((prev) => {
-            const filtered = prev.filter(
-              (e) => !(e.studentId === studentId && e.field === field)
-            );
-            if (error) {
-              return [...filtered, { studentId, field, message: error }];
-            }
-            return filtered;
-          });
         }
 
         return updated;
       })
     );
-  };
+    // validateField only reads markConfig, which is stable for a loaded exam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markConfig, examTotalMarks]);
 
   const calculateGrade = (percentage: number): string => {
     if (percentage >= 90) return "A+";
@@ -277,6 +290,8 @@ export function MarksEntryGrid({
   const hasInternal = markConfig?.internalMaxMarks !== null && markConfig?.internalMaxMarks !== undefined;
 
   return (
+    // One provider for the whole grid — previously every row mounted its own.
+    <TooltipProvider>
     <div className="space-y-4">
       {/* Action Buttons */}
       <div className="flex justify-between items-center">
@@ -515,7 +530,6 @@ export function MarksEntryGrid({
                       {loadingLastModified ? (
                         <span className="text-xs text-muted-foreground">Loading...</span>
                       ) : lastModifiedInfo.has(student.id) ? (
-                        <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center justify-center gap-1 cursor-help">
@@ -553,7 +567,6 @@ export function MarksEntryGrid({
                               </div>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}
@@ -590,5 +603,6 @@ export function MarksEntryGrid({
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 }

@@ -732,25 +732,48 @@ export async function getTeacherMarksEntryPageData() {
       throw new Error("Teacher not found");
     }
 
-    // Get teacher's assignments
-    const subjectTeachers = await db.subjectTeacher.findMany({
-      where: { teacherId: teacher.id },
-      include: { subject: true },
-    });
-
-    const teacherSubjectClasses = await db.subjectClass.findMany({
-      where: { teacherId: teacher.id },
-      include: {
-        subject: true,
-        class: {
-          include: {
-            sections: { orderBy: { name: "asc" } },
-            academicYear: true,
-          }
+    // Get teacher's assignments, plus the school's own terms and exam types.
+    // These are independent queries — running them serially was the bulk of the
+    // page's load time, since every round trip to the database costs ~0.5s.
+    const [subjectTeachers, teacherSubjectClasses, allTerms, allExamTypes] = await Promise.all([
+      db.subjectTeacher.findMany({
+        where: { teacherId: teacher.id },
+        select: { subjectId: true },
+      }),
+      db.subjectClass.findMany({
+        where: { teacherId: teacher.id },
+        select: {
+          classId: true,
+          subjectId: true,
+          sectionId: true,
+          subject: { select: { id: true, name: true, code: true } },
+          class: {
+            select: {
+              id: true,
+              name: true,
+              sections: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+              academicYear: { select: { name: true, isCurrent: true } },
+            },
+          },
+          section: { select: { name: true } },
         },
-        section: true,
-      },
-    });
+      }),
+      // Ordered by academic year recency rather than isCurrent, which is unreliable
+      // when more than one year is flagged current.
+      db.term.findMany({
+        select: {
+          id: true,
+          name: true,
+          academicYear: { select: { name: true, isCurrent: true, startDate: true } },
+        },
+        orderBy: [{ academicYear: { startDate: "desc" } }, { startDate: "asc" }],
+      }),
+      db.examType.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, cbseComponent: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
 
     const globalSubjectIds = subjectTeachers.map(st => st.subjectId);
     
@@ -772,11 +795,21 @@ export async function getTeacherMarksEntryPageData() {
       }
     });
 
-    // If no assignments at all, return empty datasets
+    // If no assignments at all, return empty datasets. Terms and exam types are
+    // still returned so the filters render — the UI explains the empty exam list.
     if (OR_conditions.length === 0) {
       return {
         success: true,
-        data: { exams: [], classes: [], terms: [], examTypes: [], teacherSubjectClasses: [], globalSubjectIds: [] }
+        data: {
+          exams: [],
+          classes: [],
+          terms: allTerms,
+          examTypes: allExamTypes,
+          teacherSubjectClasses: [],
+          globalSubjectIds: [],
+          subjectsByClass: {},
+          hasAssignments: false,
+        }
       };
     }
 
@@ -804,77 +837,47 @@ export async function getTeacherMarksEntryPageData() {
       orderBy: { examDate: "desc" },
     });
 
-    // Resolve unique classes the teacher has access to
-    let classes: any[] = [];
+    // Resolve the classes the teacher can reach, and the subjects they may enter
+    // marks for in each. A globally-assigned subject only counts for a class that
+    // actually offers it.
+    const classMap = new Map<string, any>();
+    const subjectsByClass = new Map<string, Map<string, { id: string; name: string; code: string | null }>>();
+
+    const addSubject = (classId: string, subject: { id: string; name: string; code: string | null }) => {
+      if (!subjectsByClass.has(classId)) subjectsByClass.set(classId, new Map());
+      subjectsByClass.get(classId)!.set(subject.id, subject);
+    };
+
+    teacherSubjectClasses.forEach(sc => {
+      classMap.set(sc.class.id, sc.class);
+      addSubject(sc.class.id, sc.subject);
+    });
+
     if (globalSubjectIds.length > 0) {
-      // Fetch all classes that offer the global subjects
       const globalSubjectClasses = await db.subjectClass.findMany({
-        where: {
-          subjectId: { in: globalSubjectIds },
-        },
-        include: {
+        where: { subjectId: { in: globalSubjectIds } },
+        select: {
+          subject: { select: { id: true, name: true, code: true } },
           class: {
-            include: {
-              sections: { orderBy: { name: "asc" } },
-              academicYear: true,
-            }
-          }
-        }
+            select: {
+              id: true,
+              name: true,
+              sections: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+              academicYear: { select: { name: true, isCurrent: true } },
+            },
+          },
+        },
       });
-      
-      const classIds = new Set<string>();
-      const classMap = new Map<string, any>();
-      
+
       globalSubjectClasses.forEach(sc => {
-        if (!classIds.has(sc.class.id)) {
-          classIds.add(sc.class.id);
-          classMap.set(sc.class.id, sc.class);
-        }
+        if (!classMap.has(sc.class.id)) classMap.set(sc.class.id, sc.class);
+        addSubject(sc.class.id, sc.subject);
       });
-      
-      teacherSubjectClasses.forEach(sc => {
-        if (!classIds.has(sc.class.id)) {
-          classIds.add(sc.class.id);
-          classMap.set(sc.class.id, sc.class);
-        }
-      });
-      
-      classes = Array.from(classMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      const classMap = new Map<string, any>();
-      teacherSubjectClasses.forEach(sc => {
-        classMap.set(sc.class.id, sc.class);
-      });
-      classes = Array.from(classMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // Resolve unique terms and exam types from the exams list
-    const termIds = new Set<string>();
-    const terms: any[] = [];
-    const examTypeIds = new Set<string>();
-    const examTypes: any[] = [];
-
-    exams.forEach(exam => {
-      if (!termIds.has(exam.term.id)) {
-        termIds.add(exam.term.id);
-        terms.push({
-          id: exam.term.id,
-          name: exam.term.name,
-          academicYear: {
-            name: exam.term.academicYear.name,
-            isCurrent: true,
-          }
-        });
-      }
-      if (!examTypeIds.has(exam.examType.id)) {
-        examTypeIds.add(exam.examType.id);
-        examTypes.push({
-          id: exam.examType.id,
-          name: exam.examType.name,
-          cbseComponent: exam.examType.cbseComponent,
-        });
-      }
-    });
+    const classes = Array.from(classMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true })
+    );
 
     // Format teacherSubjectClasses to pass down to client for filtering
     const formattedAssignments = teacherSubjectClasses.map(sc => ({
@@ -889,10 +892,19 @@ export async function getTeacherMarksEntryPageData() {
       data: {
         exams,
         classes,
-        terms,
-        examTypes,
+        // Terms and exam types come from the school, not from the exam list, so the
+        // filters still work for a teacher whose classes have no exams scheduled yet.
+        terms: allTerms,
+        examTypes: allExamTypes,
         teacherSubjectClasses: formattedAssignments,
         globalSubjectIds,
+        subjectsByClass: Object.fromEntries(
+          [...subjectsByClass].map(([classId, subjects]) => [
+            classId,
+            [...subjects.values()].sort((a, b) => a.name.localeCompare(b.name)),
+          ])
+        ),
+        hasAssignments: true,
       }
     };
   } catch (error) {

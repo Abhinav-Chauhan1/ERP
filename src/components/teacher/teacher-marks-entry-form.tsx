@@ -13,10 +13,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, X } from "lucide-react";
-import {
-  getTeacherMarksEntryPageData,
-  getTeacherSubjectsByClass,
-} from "@/lib/actions/teacherExamsActions";
+import { getTeacherMarksEntryPageData } from "@/lib/actions/teacherExamsActions";
 import { getEnrolledStudentsForMarks } from "@/lib/actions/marksEntryActions";
 import { MarksEntryGrid } from "@/components/admin/marks-entry-grid";
 import { Badge } from "@/components/ui/badge";
@@ -85,13 +82,14 @@ export function TeacherMarksEntryForm() {
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
   const [globalSubjectIds, setGlobalSubjectIds] = useState<string[]>([]);
+  const [subjectsByClass, setSubjectsByClass] = useState<Record<string, Subject[]>>({});
+  const [hasAssignments, setHasAssignments] = useState(true);
 
   // Filter state
   const [filterTermId, setFilterTermId] = useState<string>("");
   const [filterExamTypeId, setFilterExamTypeId] = useState<string>("");
   const [filterSubjectId, setFilterSubjectId] = useState<string>("");
   const [filterClassId, setFilterClassId] = useState<string>("");
-  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
 
   // Selection state
   const [selectedExamId, setSelectedExamId] = useState<string>("");
@@ -120,6 +118,8 @@ export function TeacherMarksEntryForm() {
           setExamTypes(result.data.examTypes || []);
           setAssignments(result.data.teacherSubjectClasses || []);
           setGlobalSubjectIds(result.data.globalSubjectIds || []);
+          setSubjectsByClass(result.data.subjectsByClass || {});
+          setHasAssignments(result.data.hasAssignments !== false);
         } else {
           setError(result.error || "Failed to load marks entry data");
         }
@@ -137,15 +137,15 @@ export function TeacherMarksEntryForm() {
     };
   }, []);
 
-  // Filter subjects when class selection changes
+  // Subjects for the selected class come from the initial payload — fetching them
+  // per selection cost a server round trip during which the dropdown sat empty.
+  const filteredSubjects: Subject[] = useMemo(
+    () => (filterClassId ? subjectsByClass[filterClassId] ?? [] : []),
+    [filterClassId, subjectsByClass]
+  );
+
   useEffect(() => {
     setFilterSubjectId("");
-    setFilteredSubjects([]);
-    if (!filterClassId) return;
-
-    getTeacherSubjectsByClass(filterClassId).then((result) => {
-      if (result.success) setFilteredSubjects(result.data || []);
-    });
   }, [filterClassId]);
 
   // Filter sections when class and subject selection changes
@@ -273,8 +273,24 @@ export function TeacherMarksEntryForm() {
   const canLoadStudents =
     selectedExamId && selectedClassId && selectedSectionId && !isLoadingStudents;
 
+  // Explains an empty exam list, which otherwise reads as "the filters are broken".
+  const emptyStateMessage = isLoading
+    ? null
+    : !hasAssignments
+    ? "You have no subject or class assignments yet, so there are no exams to enter marks for. Ask an administrator to assign you to a class and subject."
+    : exams.length === 0
+    ? "No exams have been created for your classes yet. Marks entry becomes available once an administrator schedules them."
+    : null;
+
   return (
     <div className="space-y-6">
+      {emptyStateMessage && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{emptyStateMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Filters */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">

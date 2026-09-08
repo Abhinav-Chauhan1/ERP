@@ -10,6 +10,7 @@
 import { db as prisma } from '@/lib/db';
 import { AuditAction } from '@prisma/client';
 import { headers } from 'next/headers';
+import { getTenantContext, SUPER_ADMIN_GLOBAL } from '@/lib/tenant-context';
 
 export interface AuditLogEntry {
   userId: string;
@@ -19,6 +20,8 @@ export interface AuditLogEntry {
   changes?: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
+  /** Defaults to the active tenant context. AuditLog is RLS-exempt, so it is set explicitly. */
+  schoolId?: string;
 }
 
 export interface AuditFilters {
@@ -59,7 +62,15 @@ async function getRequestMetadata(): Promise<{ ipAddress: string; userAgent: str
 export async function logAudit(entry: AuditLogEntry): Promise<void> {
   try {
     const metadata = await getRequestMetadata();
-    
+
+    // AuditLog is exempt from the RLS extension (nullable schoolId, cross-tenant
+    // rows), so nothing injects the tenant for us — without this every
+    // school-scoped audit query returns nothing.
+    const tenantSchoolId = getTenantContext()?.schoolId;
+    const schoolId =
+      entry.schoolId ??
+      (tenantSchoolId && tenantSchoolId !== SUPER_ADMIN_GLOBAL ? tenantSchoolId : undefined);
+
     await prisma.auditLog.create({
       data: {
         userId: entry.userId,
@@ -69,6 +80,7 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
         changes: entry.changes || undefined,
         ipAddress: entry.ipAddress || metadata.ipAddress,
         userAgent: entry.userAgent || metadata.userAgent,
+        schoolId,
       },
     });
   } catch (error) {

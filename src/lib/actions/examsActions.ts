@@ -571,8 +571,16 @@ function resolveCBSETermNumber(termName: string | null | undefined, inputTermNum
 }
 
 export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
+  const { schoolId } = await requireSchoolAccess();
+  // The core rejects an empty schoolId itself, keeping one error shape for callers.
+  return autoGenerateCBSEExamsForSchool(schoolId ?? "", input);
+}
+
+export async function autoGenerateCBSEExamsForSchool(
+  schoolId: string,
+  input: AutoGenerateExamsInput
+) {
   try {
-    const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
     const term = await db.term.findFirst({
@@ -811,7 +819,11 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
     }
 
     const total = created + ptCreated;
-    revalidatePath("/admin/assessment/exams");
+    // Cache revalidation is a UI concern and only works inside a request. Callers
+    // outside one (scripts, jobs) must not see a completed write reported as failed.
+    try {
+      revalidatePath("/admin/assessment/exams");
+    } catch {}
     return {
       success: true,
       created: total,

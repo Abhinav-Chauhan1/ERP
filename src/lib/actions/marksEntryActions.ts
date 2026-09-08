@@ -577,52 +577,60 @@ export const getMarksAuditLogs = withSchoolAuthAction(
 );
 
 /**
- * Get last modified info for an exam result
+ * Get last modified info for every result of an exam, keyed by studentId.
+ *
+ * Matches audit rows on resourceId (the ExamResult id) rather than JSON paths
+ * inside `changes`: it is a plain indexed column, and the UPDATE payload written
+ * by logUpdate carries no examId/studentId for a path match to find.
  */
-export async function getExamResultLastModified(
-  examId: string,
-  studentId: string
-): Promise<ActionResult> {
-  try {
-    const { schoolId } = await requireSchoolAccess();
+export const getExamResultsLastModified = withSchoolAuthAction(
+  async (schoolId: string, _userId: string, _role: string, examId: string): Promise<ActionResult> => {
+    try {
+      const results = await db.examResult.findMany({
+        where: { examId, schoolId },
+        select: { id: true, studentId: true },
+      });
+      if (results.length === 0) return { success: true, data: {} };
 
-    const lastLog = await db.auditLog.findFirst({
-      where: {
-        resource: "ExamResult",
-        schoolId,
-        OR: [
-          { changes: { path: ["created", "examId"], equals: examId } },
-          { changes: { path: ["before", "examId"], equals: examId } },
-        ],
-        AND: [
-          {
-            OR: [
-              { changes: { path: ["created", "studentId"], equals: studentId } },
-              { changes: { path: ["before", "studentId"], equals: studentId } },
-            ],
-          },
-        ],
-      },
-      include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
-      },
-      orderBy: { timestamp: "desc" },
-    });
+      const studentByResultId = new Map(results.map((r) => [r.id, r.studentId]));
 
-    if (!lastLog) return { success: true, data: null };
+      const logs = await db.auditLog.findMany({
+        where: {
+          resource: "ExamResult",
+          resourceId: { in: [...studentByResultId.keys()] },
+        },
+        select: {
+          resourceId: true,
+          action: true,
+          timestamp: true,
+          createdAt: true,
+          user: { select: { firstName: true, lastName: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
 
-    return {
-      success: true,
-      data: { timestamp: lastLog.timestamp, user: lastLog.user, action: lastLog.action },
-    };
-  } catch (error) {
-    console.error("Error fetching last modified info:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to fetch last modified info",
-    };
+      // Newest first, so the first row seen for a student is the latest change.
+      const data: Record<string, { timestamp: Date; user: unknown; action: string }> = {};
+      for (const log of logs) {
+        const studentId = log.resourceId ? studentByResultId.get(log.resourceId) : undefined;
+        if (!studentId || data[studentId] || !log.user) continue;
+        data[studentId] = {
+          timestamp: log.timestamp ?? log.createdAt,
+          user: log.user,
+          action: log.action,
+        };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error fetching last modified info:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch last modified info",
+      };
+    }
   }
-}
+);
 
 /**
  * Get terms for marks entry filters — scoped to school
